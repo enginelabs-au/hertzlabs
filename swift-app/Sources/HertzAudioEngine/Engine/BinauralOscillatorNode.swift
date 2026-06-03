@@ -110,8 +110,7 @@ public final class BinauralOscillatorNode {
                 phaseL_ += twoPiLocal * leftHz / sr
                 if phaseL_ >= twoPiLocal { phaseL_ -= twoPiLocal }
 
-                // Right channel: add phaseAngle offset (degrees→radians) each sample
-                phaseR_ += twoPiLocal * rightHz / sr + phaseAngleRad / Double(sr)
+                phaseR_ += twoPiLocal * rightHz / sr
                 if phaseR_ >= twoPiLocal { phaseR_ -= twoPiLocal }
                 if phaseR_ < 0           { phaseR_ += twoPiLocal }
 
@@ -123,7 +122,8 @@ public final class BinauralOscillatorNode {
                 let clampedGainR = min(gainR, AudioConstants.kMaxAmplitude)
 
                 var outL = Float(sin(phaseL_)) * clampedGainL
-                var outR = Float(sin(phaseR_)) * clampedGainR
+                // Phase offset on right ear — radians added at sample, not per-sample rate.
+                var outR = Float(sin(phaseR_ + phaseAngleRad)) * clampedGainR
 
                 // Sample-domain hard ceiling
                 let ceil = AudioConstants.kMaxAmplitude

@@ -15,7 +15,8 @@ const builtin: Preset[] = [
       noiseLevel: 0,
       fadeMs: 75,
       phaseAngle: 0,
-      timingDiffMs: 0,
+      leftDriftHz: 0,
+      rightDriftHz: 0,
     },
   },
   {
@@ -31,7 +32,8 @@ const builtin: Preset[] = [
       noiseLevel: 0,
       fadeMs: 75,
       phaseAngle: 0,
-      timingDiffMs: 0,
+      leftDriftHz: 0,
+      rightDriftHz: 0,
     },
   },
 ];

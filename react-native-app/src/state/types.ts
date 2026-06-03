@@ -25,7 +25,9 @@ export type AudioParamsValues = {
   noiseLevel: number;
   fadeMs: number;
   phaseAngle: number;
-  timingDiffMs: number;
+  /** Per-ear frequency offset (Hz), −12…+12. L/R readouts; native via back-solved carrier/beat. */
+  leftDriftHz: number;
+  rightDriftHz: number;
 };
 
 export type Preset = {

@@ -77,7 +77,8 @@ describe('applyPreset', () => {
         noiseLevel: 5,
         fadeMs: 10,
         phaseAngle: 0,
-        timingDiffMs: 0,
+        leftDriftHz: 0,
+        rightDriftHz: 0,
       },
     };
     get().applyPreset(preset);
@@ -156,7 +157,8 @@ describe('preset slice', () => {
         noiseLevel: 0,
         fadeMs: 75,
         phaseAngle: 0,
-        timingDiffMs: 0,
+        leftDriftHz: 0,
+        rightDriftHz: 0,
       },
     };
     get().addCustomPreset(p);

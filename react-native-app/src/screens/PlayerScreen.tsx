@@ -3,7 +3,6 @@ import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {EngineSelector} from '../components/EngineSelector/EngineSelector';
 import {EngineDialSection} from '../components/engines/EngineDialSection';
 import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
-import {GestureLegend} from '../components/layout/GestureLegend';
 import {CategoryTabBar, type EngineCategoryId} from '../components/layout/CategoryTabBar';
 import {useHertzStore} from '../state/store';
 import {useEngineModeModulation} from '../hooks/useEngineModeModulation';
@@ -57,7 +56,6 @@ export function PlayerScreen() {
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled>
         <ChannelReadoutRow />
-        <GestureLegend />
         <EngineDialSection />
         <CategoryTabBar active={category} onChange={setCategory} />
         <EngineSelector category={category} />

@@ -4,12 +4,7 @@ import type {DialValues} from '../components/CircularController/useDialSharedVal
 import {useHertzStore} from '../state/store';
 
 /**
- * Subscribes to Zustand `carrierHz` + `beatHz` on mount and syncs them into
- * the shared values via `runOnUI`. This handles store→UI-thread direction:
- * preset loads, AI suggestions, or telemetry updates reflect in the dial without
- * a React re-render cycle.
- *
- * The gesture path (dial→Zustand) runs separately in `useDialGestures`.
+ * Subscribes to Zustand audio params and syncs them into dial shared values on the UI thread.
  */
 export function useAudioSharedValues(dialValues: DialValues) {
   const {carrierHz, beatHz, phaseAngle, timingDiffMs} = dialValues;
@@ -20,17 +15,27 @@ export function useAudioSharedValues(dialValues: DialValues) {
         carrierHz: state.carrierHz,
         beatHz: state.beatHz,
         phaseAngle: state.phaseAngle,
-        timingDiffMs: state.timingDiffMs,
+        leftDriftHz: state.leftDriftHz,
+        rightDriftHz: state.rightDriftHz,
         gain: state.gain,
         balance: state.balance,
       }),
-      ({carrierHz: cHz, beatHz: bHz, phaseAngle: pA, timingDiffMs: tD, gain, balance}) => {
+      ({
+        carrierHz: cHz,
+        beatHz: bHz,
+        phaseAngle: pA,
+        leftDriftHz,
+        rightDriftHz,
+        gain,
+        balance,
+      }) => {
         runOnUI(() => {
           'worklet';
           carrierHz.value = cHz;
+          // Keep store TARGET beat on the dial — drift must not rewrite beatHz via gesture commit.
           beatHz.value = bHz;
           phaseAngle.value = pA;
-          timingDiffMs.value = tD;
+          timingDiffMs.value = 0;
           dialValues.gain.value = gain;
           dialValues.balance.value = balance;
         })();
@@ -41,7 +46,8 @@ export function useAudioSharedValues(dialValues: DialValues) {
           a.carrierHz === b.carrierHz &&
           a.beatHz === b.beatHz &&
           a.phaseAngle === b.phaseAngle &&
-          a.timingDiffMs === b.timingDiffMs &&
+          a.leftDriftHz === b.leftDriftHz &&
+          a.rightDriftHz === b.rightDriftHz &&
           a.gain === b.gain &&
           a.balance === b.balance,
       },

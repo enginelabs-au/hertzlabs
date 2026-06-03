@@ -1,8 +1,9 @@
 import React, {useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {ScrollView} from 'react-native-gesture-handler';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
-import {ScreenWaveHeader} from '../components/layout/ScreenWaveHeader';
+import {BackgroundDopplerField} from '../components/background/BackgroundDopplerField';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const BG = HertzTheme.bg;
@@ -200,7 +201,7 @@ export function BackgroundAudioScreen() {
       style={styles.root}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
-      <ScreenWaveHeader height={72} variant="stacked" />
+      <BackgroundDopplerField />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Background Audio</Text>
         <Text style={styles.headerSubtitle}>

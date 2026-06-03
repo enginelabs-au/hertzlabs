@@ -8,11 +8,9 @@ type CommitParams = {
   carrierHz: number;
   beatHz: number;
   phaseAngle: number;
-  timingDiffMs: number;
 };
 
 const PHASE_SCALE = 0.5;
-const TIMING_SCALE = 1.0;
 const CARRIER_SCALE = 200 / Math.PI;
 
 function clamp(value: number, min: number, max: number): number {
@@ -21,8 +19,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function useDialGestures(dialValues: DialValues) {
-  const {carrierHz, beatHz, phaseAngle, timingDiffMs, rotationRad, gestureActive, axisLock} =
-    dialValues;
+  const {carrierHz, beatHz, phaseAngle, rotationRad, gestureActive, axisLock} = dialValues;
 
   const setParam = useHertzStore(state => state.setParam);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -36,7 +33,6 @@ export function useDialGestures(dialValues: DialValues) {
         setParam('carrierHz', params.carrierHz);
         setParam('beatHz', params.beatHz);
         setParam('phaseAngle', params.phaseAngle);
-        setParam('timingDiffMs', params.timingDiffMs);
         debounceTimerRef.current = null;
       }, 16);
     },
@@ -48,15 +44,13 @@ export function useDialGestures(dialValues: DialValues) {
       carrierHz: carrierHz.value,
       beatHz: beatHz.value,
       phaseAngle: phaseAngle.value,
-      timingDiffMs: timingDiffMs.value,
     }),
     (cur, prev) => {
       'worklet';
       if (
         cur.carrierHz !== prev?.carrierHz ||
         cur.beatHz !== prev?.beatHz ||
-        cur.phaseAngle !== prev?.phaseAngle ||
-        cur.timingDiffMs !== prev?.timingDiffMs
+        cur.phaseAngle !== prev?.phaseAngle
       ) {
         runOnJS(debouncedCommit)(cur);
       }
@@ -74,8 +68,6 @@ export function useDialGestures(dialValues: DialValues) {
       'worklet';
       if (axisLock.value === 'vertical') {
         phaseAngle.value = clamp(phaseAngle.value - e.translationY * PHASE_SCALE, 0, 360);
-      } else {
-        timingDiffMs.value = clamp(e.translationX * TIMING_SCALE, -500, 500);
       }
     })
     .onEnd(() => {
@@ -102,5 +94,5 @@ export function useDialGestures(dialValues: DialValues) {
 
   const composedGesture = Gesture.Simultaneous(rotationGesture, panGesture);
 
-  return { composedGesture };
+  return {composedGesture};
 }

@@ -1,6 +1,7 @@
 import {MMKV} from 'react-native-mmkv';
 import type {StateStorage} from 'zustand/middleware';
 import {createJSONStorage, persist} from 'zustand/middleware';
+import {clampDriftHz} from '../../audio/channelFrequencies';
 import type {AppStore} from '../types';
 
 // react-native-mmkv v3 uses NitroModules (JSI).  The factory call is lazy
@@ -58,7 +59,7 @@ try {
 export const persistedStoreOptions = {
   name: 'hertz-store-v1',
   storage: createJSONStorage(() => zustandStorage),
-  onRehydrateStorage: () => (_state: AppStore | undefined, error: unknown) => {
+  onRehydrateStorage: () => (state: AppStore | undefined, error: unknown) => {
     if (error != null) {
       console.warn('[persist] rehydrate failed, clearing persisted snapshot:', error);
       try {
@@ -66,6 +67,11 @@ export const persistedStoreOptions = {
       } catch {
         /* ignore */
       }
+      return;
+    }
+    if (state != null) {
+      state.leftDriftHz = clampDriftHz(state.leftDriftHz);
+      state.rightDriftHz = clampDriftHz(state.rightDriftHz);
     }
   },
   partialize: (state: AppStore) => ({

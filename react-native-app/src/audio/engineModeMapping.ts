@@ -1,4 +1,8 @@
 import type {AppStore, EngineMode} from '../state/types';
+import {
+  channelFrequencies,
+  nativeBinauralFromChannels,
+} from './channelFrequencies';
 import type {BinauralParameters} from './paramMapping';
 import {sanitizeBinauralParameters} from './paramMapping';
 
@@ -9,8 +13,7 @@ export type MappedNativeAudio = BinauralParameters & {
 
 /**
  * Maps UI store + engine mode to parameters sent to the native oscillator.
- * Modes that need AM/pan/phase animation still set base values here;
- * `useEngineModeModulation` applies time-varying overrides while playing.
+ * TARGET beatHz stays in the store; per-ear drift folds into native carrier/beat.
  */
 export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
   const tier = state.tier;
@@ -31,11 +34,11 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
   let beatHz = base.beatHz;
   let gain = base.gain;
   let balance = base.balance;
+  let carrierHz = base.carrierHz;
 
   switch (state.engineType) {
     case 'monaural':
     case 'isochronic':
-      // Same carrier in both ears; envelope or pan applied in modulation hook.
       beatHz = 0;
       balance = 0;
       break;
@@ -45,10 +48,8 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
       phaseAngle = (state.phaseAngle + 90) % 360;
       break;
     case 'phaseModulated':
-      // Base binaural; phase swept in modulation hook.
       break;
     case 'pitchPanning':
-      // Base binaural; balance swept in modulation hook.
       break;
     case 'musicModulation':
       gain = base.gain * 0.88;
@@ -58,13 +59,22 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
       break;
   }
 
+  const {leftHz, rightHz} = channelFrequencies(
+    carrierHz,
+    beatHz,
+    state.leftDriftHz,
+    state.rightDriftHz,
+  );
+  const native = nativeBinauralFromChannels(leftHz, rightHz);
+
   return {
     ...base,
-    beatHz,
+    carrierHz: native.carrierHz,
+    beatHz: native.beatHz,
     gain,
     balance,
     phaseAngle,
-    timingDiffMs: state.timingDiffMs,
+    timingDiffMs: 0,
   };
 }
 

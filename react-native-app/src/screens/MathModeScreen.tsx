@@ -1,9 +1,10 @@
 import React, {useState, useCallback} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {ScrollView} from 'react-native-gesture-handler';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
 import {BRAINWAVE_BANDS} from '../components/ReadoutPanel/brainwaveBands';
-import {ScreenWaveHeader} from '../components/layout/ScreenWaveHeader';
+import {MathMode3DHeader} from '../components/math/MathMode3DHeader';
 import {CommandLineCard} from '../components/layout/CommandLineCard';
 import {MathModeGroupRow, type MathPresetItem} from '../components/math/MathModeGroupRow';
 import {HertzTheme} from '../theme/hertzTheme';
@@ -128,7 +129,7 @@ export function MathModeScreen() {
       style={styles.root}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
-      <ScreenWaveHeader height={88} variant="stacked" />
+      <MathMode3DHeader />
       <CommandLineCard />
 
       <View style={styles.activeChip}>

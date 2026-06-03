@@ -1,9 +1,9 @@
 import {Skia} from '@shopify/react-native-skia';
 import type {SkPath} from '@shopify/react-native-skia';
+import {channelFrequencies} from '../../audio/channelFrequencies';
 import {
-  appendLissajousPath,
+  appendLissajous3DStack,
   appendOscilloscopeTrace,
-  stereoHzFromBinaural,
 } from '../../audio/oscilloscopeMath';
 
 export type HubAudioParams = {
@@ -12,13 +12,16 @@ export type HubAudioParams = {
   phaseAngle: number;
   gain: number;
   balance: number;
+  leftDriftHz: number;
+  rightDriftHz: number;
 };
 
 export type HubScopePaths = {
   top: SkPath;
   left: SkPath;
-  lissajous: SkPath;
-  lissajousGlow: SkPath;
+  lissajousBack: SkPath;
+  lissajousMid: SkPath;
+  lissajousFront: SkPath;
 };
 
 function finite(n: number, fallback: number): number {
@@ -39,21 +42,25 @@ export function buildHubScopePaths(
   const phaseAngle = finite(audio.phaseAngle, 0);
   const gain = finite(audio.gain, 0.45);
   const balance = finite(audio.balance, 0);
+  const leftDriftHz = finite(audio.leftDriftHz, 0);
+  const rightDriftHz = finite(audio.rightDriftHz, 0);
   const t = finite(timeSec, 0);
 
-  const {leftHz, rightHz} = stereoHzFromBinaural(carrierHz, beatHz);
-  const cx = w * 0.52;
-  const cy = h * 0.48;
-  const lissScale = Math.min(w, h) * 0.34;
-  const topLen = Math.max(24, w - 20);
-  const leftLen = Math.max(24, h - 36);
+  const {leftHz, rightHz} = channelFrequencies(carrierHz, beatHz, leftDriftHz, rightDriftHz);
+  const size = Math.min(w, h);
+  const cx = w * 0.48;
+  const cy = h * 0.5;
+  const lissScale = size * 0.44;
+  const borderAmp = size * 0.085;
+  const topLen = Math.max(24, w - 12);
+  const leftLen = Math.max(24, h - 16);
   const phaseRad = (phaseAngle * Math.PI) / 180;
 
   const topB = Skia.PathBuilder.Make();
   appendOscilloscopeTrace(topB, {
     length: topLen,
-    center: 12,
-    amplitude: 9,
+    center: size * 0.055,
+    amplitude: borderAmp,
     hz: leftHz,
     timeSec: t,
     orientation: 'horizontal',
@@ -63,8 +70,8 @@ export function buildHubScopePaths(
   const leftB = Skia.PathBuilder.Make();
   appendOscilloscopeTrace(leftB, {
     length: leftLen,
-    center: 11,
-    amplitude: 8,
+    center: size * 0.05,
+    amplitude: borderAmp * 0.92,
     hz: rightHz,
     timeSec: t,
     orientation: 'vertical',
@@ -72,38 +79,30 @@ export function buildHubScopePaths(
     gain,
   });
 
-  const lissaB = Skia.PathBuilder.Make();
-  appendLissajousPath(lissaB, {
-    cx,
-    cy,
-    scale: lissScale,
-    leftHz,
-    rightHz,
-    phaseDeg: phaseAngle,
-    gain,
-    balance,
-    timeSec: t,
-    pointCount: 120,
-  });
-
-  const glowB = Skia.PathBuilder.Make();
-  appendLissajousPath(glowB, {
-    cx,
-    cy,
-    scale: lissScale * 0.92,
-    leftHz,
-    rightHz,
-    phaseDeg: phaseAngle + 12,
-    gain: gain * 0.75,
-    balance,
-    timeSec: t + 0.002,
-    pointCount: 100,
-  });
+  const backB = Skia.PathBuilder.Make();
+  const midB = Skia.PathBuilder.Make();
+  const frontB = Skia.PathBuilder.Make();
+  appendLissajous3DStack(
+    {back: backB, mid: midB, front: frontB},
+    {
+      cx,
+      cy,
+      scale: lissScale,
+      leftHz,
+      rightHz,
+      phaseDeg: phaseAngle,
+      gain,
+      balance,
+      timeSec: t,
+      pointCount: 130,
+    },
+  );
 
   return {
     top: topB.build(),
     left: leftB.build(),
-    lissajous: lissaB.build(),
-    lissajousGlow: glowB.build(),
+    lissajousBack: backB.build(),
+    lissajousMid: midB.build(),
+    lissajousFront: frontB.build(),
   };
 }

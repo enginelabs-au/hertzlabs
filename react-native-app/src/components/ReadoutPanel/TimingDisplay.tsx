@@ -1,42 +1,24 @@
-import React, {useCallback, useState} from 'react';
+import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
+import {clampDriftHz} from '../../audio/channelFrequencies';
 import {useHertzStore} from '../../state/store';
 
 interface TimingDisplayProps {
   timingDiffMs: SharedValue<number>;
 }
 
-/**
- * Monospace channel timing difference readout.
- * Uses useState + useAnimatedReaction + runOnJS to avoid the AnimatedTextInput
- * blank-value bug in Reanimated 4 + Fabric. Formats with a leading '+' for
- * non-negative values; all string work happens on the JS thread.
- */
-export function TimingDisplay({timingDiffMs}: TimingDisplayProps) {
-  const timingFromStore = useHertzStore(s => s.timingDiffMs);
-  const [timingText, setTimingText] = useState(() => {
-    const ms = timingFromStore;
-    return (ms >= 0 ? '+' : '') + ms.toFixed(1) + ' ms';
-  });
+export function TimingDisplay(_props: TimingDisplayProps) {
+  const leftHz = clampDriftHz(useHertzStore(s => s.leftDriftHz));
+  const rightHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
 
-  const onTiming = useCallback((v: number) => {
-    setTimingText((v >= 0 ? '+' : '') + v.toFixed(1) + ' ms');
-  }, []);
-
-  useAnimatedReaction(
-    () => timingDiffMs.value,
-    val => {
-      runOnJS(onTiming)(val);
-    },
-    [onTiming],
-  );
+  const l = leftHz === 0 ? '0' : `${leftHz > 0 ? '+' : ''}${leftHz.toFixed(1)}`;
+  const r = rightHz === 0 ? '0' : `${rightHz > 0 ? '+' : ''}${rightHz.toFixed(1)}`;
 
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>TIMING </Text>
-      <Text style={styles.value}>{timingText}</Text>
+      <Text style={styles.label}>DRIFT</Text>
+      <Text style={styles.value}>{`L ${l} · R ${r} Hz`}</Text>
     </View>
   );
 }
@@ -44,22 +26,17 @@ export function TimingDisplay({timingDiffMs}: TimingDisplayProps) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 4,
   },
   label: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.5)',
-    letterSpacing: 0.5,
-    width: 72,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 1,
   },
   value: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 20,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-    textAlign: 'right',
-    minWidth: 110,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontVariant: ['tabular-nums'],
   },
 });

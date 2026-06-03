@@ -1,4 +1,5 @@
 import type {StateCreator} from 'zustand';
+import {clampDriftHz} from '../../audio/channelFrequencies';
 import {
   DEFAULT_RAMP_MS,
   type BinauralParameters,
@@ -16,15 +17,31 @@ const defaultAudioParams: AudioParamsValues = {
   noiseLevel: 0,
   fadeMs: DEFAULT_RAMP_MS,
   phaseAngle: 0,
-  timingDiffMs: 0,
+  leftDriftHz: 0,
+  rightDriftHz: 0,
 };
 
-function sanitize(values: AudioParamsValues, tier: AppStore['tier']): AudioParamsValues {
+function clampNumber(value: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(Math.max(value, min), max);
+}
+
+function sanitize(
+  values: AudioParamsValues & {leftDriftMs?: number; rightDriftMs?: number},
+  tier: AppStore['tier'],
+): AudioParamsValues {
+  const leftDriftHz =
+    typeof values.leftDriftHz === 'number' ? values.leftDriftHz : 0;
+  const rightDriftHz =
+    typeof values.rightDriftHz === 'number' ? values.rightDriftHz : 0;
   return {
     ...sanitizeBinauralParameters(values as BinauralParameters, tier),
     waveform: values.waveform,
-    phaseAngle: values.phaseAngle,
-    timingDiffMs: values.timingDiffMs,
+    phaseAngle: clampNumber(values.phaseAngle, 0, 360, 0),
+    leftDriftHz: clampDriftHz(leftDriftHz),
+    rightDriftHz: clampDriftHz(rightDriftHz),
   };
 }
 

@@ -53,6 +53,7 @@ export function appendOscilloscopeTrace(
     orientation: 'horizontal' | 'vertical';
     phaseRad?: number;
     gain?: number;
+    maxSteps?: number;
   },
 ): void {
   'worklet';
@@ -65,8 +66,9 @@ export function appendOscilloscopeTrace(
     orientation,
     phaseRad = 0,
     gain = 1,
+    maxSteps,
   } = opts;
-  const steps = Math.max(120, Math.floor(length / 2));
+  const steps = maxSteps ?? Math.max(120, Math.floor(length / 2));
   const windowSec = Math.max(1 / Math.max(hz, 0.05), 0.02);
   const g = Math.min(Math.max(gain, 0), 1) * MAX_AMP;
 
@@ -146,6 +148,87 @@ export function buildOscilloscopeTrace(opts: Parameters<typeof appendOscilloscop
   const builder = Skia.PathBuilder.Make();
   appendOscilloscopeTrace(builder, opts);
   return builder.build();
+}
+
+export type Lissajous3DLayerOpts = {
+  cx: number;
+  cy: number;
+  scale: number;
+  leftHz: number;
+  rightHz: number;
+  phaseDeg: number;
+  gain: number;
+  balance: number;
+  timeSec: number;
+  /** Y-axis rotation (radians) — tie to inter-aural phase for visible twist. */
+  yawRad: number;
+  pointCount?: number;
+};
+
+/**
+ * Pseudo-3D Lissajous loop: L/R → XYZ, yaw rotation + perspective projection.
+ * Phase shifts the right-channel component and depth (Z), so the figure visibly twists.
+ */
+export function appendLissajous3DLoop(builder: SkPathBuilder, opts: Lissajous3DLayerOpts): void {
+  const {
+    cx,
+    cy,
+    scale,
+    leftHz,
+    rightHz,
+    phaseDeg,
+    gain,
+    balance,
+    timeSec,
+    yawRad,
+    pointCount = 150,
+  } = opts;
+  const phaseRad = (phaseDeg * Math.PI) / 180;
+  const beat = Math.max(Math.abs(rightHz - leftHz), 0.05);
+  const period = 1 / beat;
+  const t0 = timeSec - period;
+  const g = Math.min(Math.max(gain, 0), 1);
+  const cosY = Math.cos(yawRad);
+  const sinY = Math.sin(yawRad);
+
+  for (let i = 0; i <= pointCount; i++) {
+    const t = t0 + (i / pointCount) * period;
+    const {left, right} = binauralSample(t, leftHz, rightHz, phaseDeg, gain, balance);
+    const x3 = left / MAX_AMP;
+    const y3 = right / MAX_AMP;
+    const z3 = Math.sin(TWO_PI * leftHz * t - TWO_PI * rightHz * t - phaseRad) * g * 0.72;
+    const xr = x3 * cosY - z3 * sinY;
+    const zr = x3 * sinY + z3 * cosY;
+    const persp = 1 / (1.18 + zr * 0.38);
+    const sx = cx + xr * scale * persp;
+    const sy = cy + y3 * scale * persp * 0.8;
+    if (i === 0) {
+      builder.moveTo(sx, sy);
+    } else {
+      builder.lineTo(sx, sy);
+    }
+  }
+}
+
+/** Three depth layers (back / mid / front) that share phase-driven yaw. */
+export function appendLissajous3DStack(
+  builders: {back: SkPathBuilder; mid: SkPathBuilder; front: SkPathBuilder},
+  opts: Omit<Lissajous3DLayerOpts, 'yawRad'> & {phaseDeg: number},
+): void {
+  const phaseRad = (opts.phaseDeg * Math.PI) / 180;
+  const stacks: Array<{target: SkPathBuilder; yawOff: number; scaleMul: number; phaseOff: number}> = [
+    {target: builders.back, yawOff: -0.55, scaleMul: 0.68, phaseOff: -22},
+    {target: builders.mid, yawOff: 0, scaleMul: 0.86, phaseOff: 0},
+    {target: builders.front, yawOff: 0.55, scaleMul: 1, phaseOff: 22},
+  ];
+  for (const layer of stacks) {
+    appendLissajous3DLoop(layer.target, {
+      ...opts,
+      phaseDeg: opts.phaseDeg + layer.phaseOff,
+      scale: opts.scale * layer.scaleMul,
+      yawRad: phaseRad + layer.yawOff,
+    });
+  }
 }
 
 /** @deprecated Prefer usePathValue + appendLissajousPath */

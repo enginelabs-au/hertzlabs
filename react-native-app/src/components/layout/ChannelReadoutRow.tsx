@@ -1,53 +1,84 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {channelFrequencies, clampDriftHz} from '../../audio/channelFrequencies';
 import {getBand} from '../ReadoutPanel/brainwaveBands';
+import {DriftSlider} from '../player/DriftSlider';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 
-/** LEFT · TARGET · RIGHT channel cards (Engines screen header). */
+/** LEFT · TARGET · RIGHT readouts with per-ear drift sliders. */
 export function ChannelReadoutRow() {
   const carrier = useHertzStore(s => s.carrierHz);
   const beat = useHertzStore(s => s.beatHz);
-  const left = carrier - beat / 2;
-  const right = carrier + beat / 2;
+  const leftDriftHz = clampDriftHz(useHertzStore(s => s.leftDriftHz));
+  const rightDriftHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
+  const setParam = useHertzStore(s => s.setParam);
+
+  const onLeftDrift = useCallback((hz: number) => setParam('leftDriftHz', hz), [setParam]);
+  const onRightDrift = useCallback((hz: number) => setParam('rightDriftHz', hz), [setParam]);
+
+  const {leftHz, rightHz} = channelFrequencies(carrier, beat, leftDriftHz, rightDriftHz);
   const band = getBand(beat);
   const bandColor = band.hexColor;
 
   return (
-    <View style={styles.row}>
-      <View style={styles.sideCard}>
-        <Text style={styles.sideLabel}>LEFT</Text>
-        <Text style={styles.sideHz}>{Math.round(left)}</Text>
-        <Text style={[styles.sideUnit, {color: HertzTheme.neon.cyan}]}>Hz</Text>
-      </View>
-
-      <View style={[styles.targetCard, {borderColor: `${bandColor}66`}]}>
-        <Text style={[styles.targetLabel, {color: bandColor}]}>TARGET</Text>
-        <Text style={[styles.targetHz, {color: bandColor}]}>{beat.toFixed(2)}</Text>
-        <Text style={[styles.targetUnit, {color: bandColor}]}>Hz</Text>
-        <View style={[styles.bandPill, {borderColor: `${bandColor}99`, backgroundColor: `${bandColor}22`}]}>
-          <Text style={[styles.bandPillText, {color: bandColor}]}>{band.label}</Text>
+    <View style={styles.wrap}>
+      <View style={styles.row}>
+        <View style={styles.sideCol}>
+          <View style={styles.sideCard}>
+            <Text style={styles.sideLabel}>LEFT</Text>
+            <Text style={styles.sideHz}>{leftHz.toFixed(1)}</Text>
+            <Text style={[styles.sideUnit, {color: HertzTheme.neon.cyan}]}>Hz</Text>
+          </View>
+          <DriftSlider
+            label="DRIFT L"
+            driftHz={leftDriftHz}
+            onChange={onLeftDrift}
+            accent={HertzTheme.neon.cyan}
+          />
         </View>
-      </View>
 
-      <View style={styles.sideCard}>
-        <Text style={styles.sideLabel}>RIGHT</Text>
-        <Text style={[styles.sideHz, styles.rightHz]}>{Math.round(right)}</Text>
-        <Text style={styles.sideUnit}>Hz</Text>
+        <View style={[styles.targetCard, {borderColor: `${bandColor}66`}]}>
+          <Text style={[styles.targetLabel, {color: bandColor}]}>TARGET</Text>
+          <Text style={[styles.targetHz, {color: bandColor}]}>{beat.toFixed(2)}</Text>
+          <Text style={[styles.targetUnit, {color: bandColor}]}>Hz</Text>
+          <View style={[styles.bandPill, {borderColor: `${bandColor}99`, backgroundColor: `${bandColor}22`}]}>
+            <Text style={[styles.bandPillText, {color: bandColor}]}>{band.label}</Text>
+          </View>
+        </View>
+
+        <View style={styles.sideCol}>
+          <View style={styles.sideCard}>
+            <Text style={styles.sideLabel}>RIGHT</Text>
+            <Text style={[styles.sideHz, styles.rightHz]}>{rightHz.toFixed(1)}</Text>
+            <Text style={styles.sideUnit}>Hz</Text>
+          </View>
+          <DriftSlider
+            label="DRIFT R"
+            driftHz={rightDriftHz}
+            onChange={onRightDrift}
+            accent={HertzTheme.neon.purple}
+          />
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
+  wrap: {
     paddingHorizontal: 16,
-    gap: 8,
     marginBottom: 8,
   },
-  sideCard: {
+  row: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  sideCol: {
     flex: 1,
+  },
+  sideCard: {
     backgroundColor: HertzTheme.glassFill,
     borderRadius: 12,
     borderWidth: 1,
@@ -64,7 +95,7 @@ const styles = StyleSheet.create({
   },
   sideHz: {
     fontFamily: HertzTheme.mono,
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '600',
     color: HertzTheme.neon.cyan,
     marginTop: 2,
