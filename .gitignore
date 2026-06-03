@@ -1,0 +1,19 @@
+.DS_Store
+
+# React Native
+react-native-app/node_modules/
+react-native-app/ios/Pods/
+react-native-app/ios/build/
+react-native-app/ios/.spm.pods/
+react-native-app/ios/build/SourcePackages/
+react-native-app/android/.gradle/
+react-native-app/android/build/
+react-native-app/android/app/build/
+react-native-app/.env
+react-native-app/.env.local
+**/GenerativeAI-Info.plist
+
+# Swift
+swift-app/.build/
+swift-app/DerivedData/
+*.xcframework

@@ -1,0 +1,163 @@
+import React, {Component, type ErrorInfo, type ReactNode, useEffect, useState} from 'react';
+import {
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {useHertzStore} from '../state/store';
+import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
+import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
+import {MainTabs} from '../navigation/MainTabs';
+import {installAudioSync} from '../state/middleware/audioSync';
+import {HertzAudioClient} from '../audio/HertzAudioClient';
+
+const BG = '#050810';
+
+type BoundaryState = {error: Error | null};
+
+/**
+ * Surfaces silent JS-thread crashes (Skia, TurboModule, store) on screen.
+ */
+class RootErrorBoundary extends Component<{children: ReactNode}, BoundaryState> {
+  state: BoundaryState = {error: null};
+
+  static getDerivedStateFromError(error: Error): BoundaryState {
+    return {error};
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error('[RootErrorBoundary]', error, info.componentStack);
+  }
+
+  render(): ReactNode {
+    const {error} = this.state;
+    if (error != null) {
+      return (
+        <SafeAreaView style={styles.errorRoot}>
+          <Text style={styles.errorTitle}>Hertz Labs — runtime error</Text>
+          <Text style={styles.errorMessage} selectable>
+            {error.message}
+          </Text>
+          {error.stack != null && (
+            <Text style={styles.errorStack} selectable>
+              {error.stack}
+            </Text>
+          )}
+        </SafeAreaView>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function useStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(() => useHertzStore.persist.hasHydrated());
+
+  useEffect(() => {
+    if (useHertzStore.persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+    const unsub = useHertzStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    void Promise.resolve(useHertzStore.persist.rehydrate()).catch((err: unknown) => {
+      console.warn('[App] store rehydrate failed, continuing with defaults:', err);
+      setHydrated(true);
+    });
+    const safety = setTimeout(() => setHydrated(true), 2500);
+    return () => {
+      unsub();
+      clearTimeout(safety);
+    };
+  }, []);
+
+  return hydrated;
+}
+
+function AppContent(): React.JSX.Element {
+  useRevenueCatBoot();
+  const hydrated = useStoreHydrated();
+  const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
+
+  // Wire Zustand state → native audio engine.  Runs once after hydration.
+  useEffect(() => {
+    if (!hydrated) { return; }
+    // Configure native engine with default settings before subscribing.
+    HertzAudioClient.configure(48000, 5);
+    const uninstall = installAudioSync(useHertzStore);
+    return uninstall;
+  }, [hydrated]);
+
+  if (!hydrated) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator color="#4ADE80" size="large" />
+        <Text style={styles.bootText}>Loading Hertz Labs…</Text>
+      </View>
+    );
+  }
+
+  return hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />;
+}
+
+export function App(): React.JSX.Element {
+  return (
+    <RootErrorBoundary>
+      <GestureHandlerRootView style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={BG} />
+        <SafeAreaView style={styles.safe}>
+          <AppContent />
+        </SafeAreaView>
+      </GestureHandlerRootView>
+    </RootErrorBoundary>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  safe: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  boot: {
+    flex: 1,
+    backgroundColor: BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  bootText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
+  },
+  errorRoot: {
+    flex: 1,
+    backgroundColor: '#1a0a0a',
+    padding: 20,
+    justifyContent: 'center',
+  },
+  errorTitle: {
+    color: '#F87171',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  errorMessage: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    marginBottom: 16,
+  },
+  errorStack: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    fontFamily: 'Menlo',
+  },
+});

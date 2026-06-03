@@ -1,0 +1,4 @@
+.build/
+*.xcframework
+DerivedData/
+Config/GenerativeAI-Info.plist

@@ -1,0 +1,51 @@
+{
+  "name": "hertz-labs-binaural-beats",
+  "version": "0.1.0",
+  "private": true,
+  "react-native": {
+    "newArchEnabled": true
+  },
+  "scripts": {
+    "postinstall": "patch-package && node scripts/sync-native-secrets.js",
+    "sync-secrets": "node scripts/sync-native-secrets.js",
+    "generate-icons": "python3 scripts/generate-app-icons.py",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "android": "node scripts/sync-native-secrets.js && react-native run-android",
+    "ios": "node scripts/sync-native-secrets.js && react-native run-ios"
+  },
+  "dependencies": {
+    "@react-native/codegen": "latest",
+    "@shopify/react-native-skia": "^2.6.4",
+    "patch-package": "^8.0.1",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-gesture-handler": "^3.0.0",
+    "react-native-mmkv": "^3.0.0",
+    "react-native-nitro-modules": "0.35.9",
+    "react-native-purchases": "^8.0.0",
+    "react-native-reanimated": "^4.4.0",
+    "react-native-worklets": "^0.9.1",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@react-native-community/cli": "^20.1.3",
+    "@react-native/metro-config": "^0.85.3",
+    "@types/react": "latest",
+    "react-native-dotenv": "^3.4.11",
+    "typescript": "latest",
+    "vitest": "^4.1.8"
+  },
+  "codegenConfig": {
+    "name": "HertzLabsBinauralBeatsSpec",
+    "type": "modules",
+    "jsSrcsDir": "src/audio/specs",
+    "android": {
+      "javaPackageName": "com.hertzlabs.binauralbeats"
+    },
+    "ios": {
+      "modulesConformingToProtocolProvider": {}
+    }
+  }
+}

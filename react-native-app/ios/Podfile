@@ -1,0 +1,282 @@
+platform :ios, '15.1'
+
+plugin 'cocoapods-spm'
+
+require_relative '../node_modules/react-native/scripts/react_native_pods'
+
+# react-native-worklets 0.9.x ships implementation files in "apple/worklets 2/"
+# (with a space and digit) instead of "apple/worklets/", so:
+#   1. The podspec glob `apple/worklets/**` misses them entirely.
+#   2. Those .mm files import <worklets/apple/Header.h> which resolves via the
+#      existing `apple/worklets/apple/` tree — but that tree only has the headers
+#      for files that ARE in `apple/worklets/`.
+# Fix: copy the orphaned headers into `apple/worklets/apple/` so the compiler
+# finds them at the expected include path.  The .mm files themselves are added to
+# the RNWorklets Compile Sources phase in post_install below.
+pre_install do |installer|
+  wl_src  = File.expand_path('../node_modules/react-native-worklets/apple/worklets 2/apple', __FILE__)
+  wl_dst  = File.expand_path('../node_modules/react-native-worklets/apple/worklets/apple',   __FILE__)
+  if Dir.exist?(wl_src) && Dir.exist?(wl_dst)
+    Dir[File.join(wl_src, '*.h')].each do |h|
+      dst = File.join(wl_dst, File.basename(h))
+      unless File.exist?(dst)
+        FileUtils.cp(h, dst)
+        puts "  [Podfile pre_install] Copied #{File.basename(h)} → worklets/apple/"
+      end
+    end
+  end
+end
+
+target 'HertzLabsBinauralBeats' do
+  config = use_native_modules!
+
+  # react-native-worklets is required by react-native-reanimated 4.x
+  pod 'RNWorklets', :path => '../node_modules/react-native-worklets'
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :hermes_enabled => true,
+    :fabric_enabled => true
+  )
+
+  spm_pkg 'HertzAudioEngine', :path => '../../swift-app'
+
+  post_install do |installer|
+    react_native_post_install(installer, config[:reactNativePath])
+
+    # RN 0.85 New Architecture: react-native-worklets 0.9.x does not declare
+    # codegenConfig.ios.modulesProvider, so generateRCTModuleProviders.js never
+    # adds "WorkletsModule" to the RCTModuleProviders mapping.  Without this
+    # entry TurboModuleRegistry.get('WorkletsModule') returns null at runtime and
+    # the JS-side installUnpackers call crashes.  Patch every copy of the
+    # generated file that exists under both the app build dir and the Pods build
+    # dir so the entry survives both `pod install` and incremental Xcode builds.
+    [
+      File.join(installer.sandbox.root, '..', 'build', 'generated', 'ios',
+                'ReactCodegen', 'RCTModuleProviders.mm'),
+      File.join(installer.sandbox.root, 'build', 'generated', 'ios',
+                'ReactCodegen', 'RCTModuleProviders.mm'),
+    ].each do |mm_path|
+      next unless File.exist?(mm_path)
+      content = File.read(mm_path)
+      entry = '@"WorkletsModule": @"WorkletsModule"'
+      next if content.include?(entry)
+      patched = content.sub(
+        'NSDictionary<NSString *, NSString *> * moduleMapping = @{',
+        "NSDictionary<NSString *, NSString *> * moduleMapping = @{\n      #{entry}, // react-native-worklets"
+      )
+      if patched != content
+        File.write(mm_path, patched)
+        puts "  [Podfile post_install] Patched RCTModuleProviders.mm with WorkletsModule entry (#{mm_path})"
+      end
+    end
+
+    # react-native-worklets 0.9.x on RN 0.85.3 New Architecture:
+    #
+    # The RN codegen generates RNWorkletsSpec/ using a stale schema (only exposes
+    # `install`), but the JS runtime expects `installTurboModule`, `start`, and
+    # `toggleSlowAnimationsOnUIRuntime`. Additionally, WorkletsModule.h imports
+    # <rnworklets/rnworklets.h> which must define NativeWorkletsModuleSpec.
+    #
+    # Fix: overwrite the generated files with correctly-named methods, then
+    # create/refresh the public header shim at rnworklets/rnworklets.h.
+    require 'fileutils'
+
+    # The ReactCodegen pod sources live in ios/build/generated/ios/ReactCodegen/
+    # (path = ../build/generated/ios/ReactCodegen relative to ios/Pods/).
+    # The Generate Specs script phase also writes there. We must write worklets
+    # files to THIS directory so they are compiled into libReactCodegen.a.
+    build_codegen = File.join(installer.sandbox.root, '..', 'build', 'generated', 'ios', 'ReactCodegen')
+    # Public headers (for #import <rnworklets/rnworklets.h> resolution)
+    codegen_public = File.join(installer.sandbox.root, 'Headers', 'Public', 'ReactCodegen')
+
+    # ----- 1. Write corrected rnworklets codegen files to ios/build -----
+    # These files become part of libReactCodegen.a via source_files = "**/*.{h,mm,cpp}"
+    rn_spec_dir = File.join(build_codegen, 'rnworklets')
+    FileUtils.mkdir_p(rn_spec_dir)
+
+    correct_header = <<~OBJCPP
+      #ifndef __cplusplus
+      #error This file must be compiled as Obj-C++. If you are importing it, you must change your file extension to .mm.
+      #endif
+      #ifndef RNWorkletsSpec_H
+      #define RNWorkletsSpec_H
+      #import <Foundation/Foundation.h>
+      #import <RCTRequired/RCTRequired.h>
+      #import <RCTTypeSafety/RCTConvertHelpers.h>
+      #import <RCTTypeSafety/RCTTypedModuleConstants.h>
+      #import <React/RCTBridgeModule.h>
+      #import <React/RCTCxxConvert.h>
+      #import <React/RCTManagedPointer.h>
+      #import <ReactCommon/RCTTurboModule.h>
+      #import <optional>
+      #import <vector>
+      NS_ASSUME_NONNULL_BEGIN
+      @protocol NativeWorkletsModuleSpec <RCTBridgeModule, RCTTurboModule>
+      - (NSNumber *)installTurboModule:(BOOL)bundleModeEnabled;
+      - (NSNumber *)toggleSlowAnimationsOnUIRuntime;
+      - (NSNumber *)start;
+      @end
+      @interface NativeWorkletsModuleSpecBase : NSObject {
+      @protected
+      facebook::react::EventEmitterCallback _eventEmitterCallback;
+      }
+      - (void)setEventEmitterCallback:(EventEmitterCallbackWrapper *)eventEmitterCallbackWrapper;
+      @end
+      namespace facebook::react {
+        class JSI_EXPORT NativeWorkletsModuleSpecJSI : public ObjCTurboModule {
+        public:
+          NativeWorkletsModuleSpecJSI(const ObjCTurboModule::InitParams &params);
+        };
+      }
+      NS_ASSUME_NONNULL_END
+      #endif // RNWorkletsSpec_H
+    OBJCPP
+
+    correct_impl = <<~OBJCPP
+      #import "RNWorkletsSpec.h"
+      @implementation NativeWorkletsModuleSpecBase
+      - (void)setEventEmitterCallback:(EventEmitterCallbackWrapper *)eventEmitterCallbackWrapper {
+        _eventEmitterCallback = std::move(eventEmitterCallbackWrapper->_eventEmitterCallback);
+      }
+      @end
+      namespace facebook::react {
+        static facebook::jsi::Value __hostFunction_NativeWorkletsModuleSpecJSI_installTurboModule(facebook::jsi::Runtime& rt, TurboModule &turboModule, const facebook::jsi::Value* args, size_t count) {
+          return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, BooleanKind, "installTurboModule", @selector(installTurboModule:), args, count);
+        }
+        static facebook::jsi::Value __hostFunction_NativeWorkletsModuleSpecJSI_toggleSlowAnimationsOnUIRuntime(facebook::jsi::Runtime& rt, TurboModule &turboModule, const facebook::jsi::Value* args, size_t count) {
+          return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, BooleanKind, "toggleSlowAnimationsOnUIRuntime", @selector(toggleSlowAnimationsOnUIRuntime), args, count);
+        }
+        static facebook::jsi::Value __hostFunction_NativeWorkletsModuleSpecJSI_start(facebook::jsi::Runtime& rt, TurboModule &turboModule, const facebook::jsi::Value* args, size_t count) {
+          return static_cast<ObjCTurboModule&>(turboModule).invokeObjCMethod(rt, BooleanKind, "start", @selector(start), args, count);
+        }
+        NativeWorkletsModuleSpecJSI::NativeWorkletsModuleSpecJSI(const ObjCTurboModule::InitParams &params)
+          : ObjCTurboModule(params) {
+            methodMap_["installTurboModule"] = MethodMetadata {1, __hostFunction_NativeWorkletsModuleSpecJSI_installTurboModule};
+            methodMap_["toggleSlowAnimationsOnUIRuntime"] = MethodMetadata {0, __hostFunction_NativeWorkletsModuleSpecJSI_toggleSlowAnimationsOnUIRuntime};
+            methodMap_["start"] = MethodMetadata {0, __hostFunction_NativeWorkletsModuleSpecJSI_start};
+        }
+      }
+    OBJCPP
+
+    # The MM must import its own header by its local name
+    correct_impl_local = correct_impl.sub('#import "RNWorkletsSpec.h"', '#import "rnworklets.h"')
+    File.write(File.join(rn_spec_dir, 'rnworklets.h'), correct_header)
+    File.write(File.join(rn_spec_dir, 'rnworklets-generated.mm'), correct_impl_local)
+    puts "  [Podfile post_install] Wrote rnworklets/ in ios/build (installTurboModule+start+toggleSlowAnimations)"
+
+    # ----- 2. Create / refresh rnworklets/rnworklets.h public shim -----
+    shim_dir  = File.join(codegen_public, 'rnworklets')
+    FileUtils.mkdir_p(shim_dir)
+    File.write(File.join(shim_dir, 'rnworklets.h'), correct_header)
+    puts "  [Podfile post_install] Wrote rnworklets/rnworklets.h shim"
+
+    # ----- 3. Add rnworklets-generated.mm to ReactCodegen Compile Sources -----
+    # The file was created after pod install ran so it isn't in the .pbxproj yet.
+    reactcodegen_target = installer.pods_project.targets.find { |t| t.name == 'ReactCodegen' }
+    if reactcodegen_target
+      sources_phase = reactcodegen_target.build_phases.find { |bp|
+        bp.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase)
+      }
+      if sources_phase
+        wl_mm_path = File.join(rn_spec_dir, 'rnworklets-generated.mm')
+        if File.exist?(wl_mm_path)
+          already = sources_phase.files.any? { |f|
+            f.file_ref&.real_path&.to_s == wl_mm_path rescue false
+          }
+          unless already
+            mm_flags = '-DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 ' \
+                       '-DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32 ' \
+                       '-Wno-documentation -Wno-nullability-completeness -std=c++20'
+            file_ref  = installer.pods_project.new_file(wl_mm_path)
+            build_file = sources_phase.add_file_reference(file_ref)
+            build_file.settings = { 'COMPILER_FLAGS' => mm_flags }
+            puts "  [Podfile post_install] Added rnworklets-generated.mm to ReactCodegen"
+          end
+        end
+      end
+    end
+
+    # react-native-worklets 0.9.x has a broken npm package layout: the podspec
+    # glob "apple/worklets/**/*.{mm,h,m}" matches apple/worklets/ but WorkletsModule.mm
+    # and related implementation files live in "apple/worklets 2/" (with a space and "2"),
+    # so they are never included in the Compile Sources phase.  Without WorkletsModule.mm
+    # compiled, NSClassFromString(@"WorkletsModule") returns nil and the TurboModuleRegistry
+    # lookup fails at runtime.  Add the missing .mm files here.
+    rnworklets_extra_dir = File.join(
+      installer.sandbox.root, '..', '..', 'node_modules',
+      'react-native-worklets', 'apple', 'worklets 2', 'apple'
+    )
+    if Dir.exist?(rnworklets_extra_dir)
+      rnworklets_target = installer.pods_project.targets.find { |t| t.name == 'RNWorklets' }
+      if rnworklets_target
+        sources_phase = rnworklets_target.build_phases.find { |bp|
+          bp.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase)
+        }
+        if sources_phase
+          Dir[File.join(rnworklets_extra_dir, '**', '*.mm')].each do |mm_file|
+            already = sources_phase.files.any? { |f|
+              f.file_ref&.real_path&.to_s == mm_file rescue false
+            }
+            unless already
+              file_ref = installer.pods_project.new_file(mm_file)
+              sources_phase.add_file_reference(file_ref)
+              puts "  [Podfile post_install] Added #{File.basename(mm_file)} to RNWorklets"
+            end
+          end
+        end
+
+        # The .mm files in "worklets 2" import <worklets/apple/Header.h>.
+        # That path resolves when PODS_TARGET_SRCROOT/apple is in the header
+        # search paths (because SRCROOT/apple/worklets/apple/Header.h exists
+        # after the pre_install copies headers there).
+        rnworklets_target.build_configurations.each do |config|
+          existing = config.build_settings['HEADER_SEARCH_PATHS'] || '$(inherited)'
+          extra    = '"$(PODS_TARGET_SRCROOT)/apple"'
+          unless existing.to_s.include?('$(PODS_TARGET_SRCROOT)/apple')
+            config.build_settings['HEADER_SEARCH_PATHS'] =
+              "#{existing} #{extra}"
+            puts "  [Podfile post_install] Added PODS_TARGET_SRCROOT/apple to RNWorklets HEADER_SEARCH_PATHS (#{config.name})"
+          end
+        end
+      end
+    end
+
+    # react-native-gesture-handler 3.x uses Fabric components (RNGestureHandlerButton,
+    # RNGestureHandlerDetector). CocoaPods generates their Props.cpp / EventEmitters.cpp /
+    # ShadowNodes.cpp / ComponentDescriptors.cpp / States.cpp into
+    # build/generated/ios/ReactCodegen/react/renderer/components/rngesturehandler_codegen/
+    # but (unlike rnskia) does NOT add them to the ReactCodegen target's Compile Sources
+    # phase, producing undefined-symbol linker errors. Add them here.
+    rngh_generated_dir = File.join(
+      installer.sandbox.root, '..', 'build', 'generated', 'ios',
+      'ReactCodegen', 'react', 'renderer', 'components', 'rngesturehandler_codegen'
+    )
+    if Dir.exist?(rngh_generated_dir)
+      reactcodegen_target = installer.pods_project.targets.find { |t| t.name == 'ReactCodegen' }
+      if reactcodegen_target
+        sources_phase = reactcodegen_target.build_phases.find { |bp|
+          bp.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase)
+        }
+        if sources_phase
+          cpp_flags = '-DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 ' \
+                      '-DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32 ' \
+                      '-Wno-documentation -Wno-nullability-completeness -std=c++20'
+          %w[Props.cpp EventEmitters.cpp ShadowNodes.cpp ComponentDescriptors.cpp States.cpp].each do |fname|
+            fpath = File.join(rngh_generated_dir, fname)
+            next unless File.exist?(fpath)
+            already = sources_phase.files.any? { |f|
+              f.file_ref&.real_path&.to_s == fpath rescue false
+            }
+            unless already
+              file_ref = installer.pods_project.new_file(fpath)
+              build_file = sources_phase.add_file_reference(file_ref)
+              build_file.settings = { 'COMPILER_FLAGS' => cpp_flags }
+              puts "  [Podfile post_install] Added #{fname} (rngesturehandler_codegen) to ReactCodegen"
+            end
+          end
+        end
+      end
+    end
+  end
+end
