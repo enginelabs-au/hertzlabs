@@ -67,9 +67,15 @@ function ShaderLayer({index, size, dialValues, clockMs}: ShaderLayerProps) {
  * CircularController above it in the tree). `pointerEvents="none"` is
  * applied on the wrapping View in CircularController.
  */
-export function SineWaveCanvas({dialValues}: {dialValues: DialValues}) {
+type SineWaveCanvasProps = {
+  dialValues: DialValues;
+  /** Override canvas size (e.g. framed hub); defaults to full-width dial. */
+  size?: number;
+};
+
+export function SineWaveCanvas({dialValues, size: sizeProp}: SineWaveCanvasProps) {
   const {width: screenWidth} = useWindowDimensions();
-  const size = Math.min(screenWidth - 32, DIAL_SIZE_DEFAULT);
+  const size = sizeProp ?? Math.min(screenWidth - 32, DIAL_SIZE_DEFAULT);
 
   const {clipPath, ringPath, markerPath} = useMemo(
     () => makeDialPaths(size),

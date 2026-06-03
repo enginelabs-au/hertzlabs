@@ -1,10 +1,14 @@
-#import <React/RCTBridgeModule.h>
-#import <React/RCTEventEmitter.h>
+#import "HertzAudioEventSink.h"
+#import "HertzAudioNativeEngine.h"
 
-@import HertzAudioEngine;
+#import <ReactCommon/RCTTurboModule.h>
+#import <HertzLabsBinauralBeatsSpec/HertzLabsBinauralBeatsSpec.h>
 
-@interface HertzAudioModule : RCTEventEmitter <RCTBridgeModule>
-@property(nonatomic, strong) HertzEngineFacade *engine;
+static NSString *const kHertzAudioShouldStopNotification = @"HertzAudioShouldStop";
+
+@interface HertzAudioModule : NativeHertzAudioSpecBase <NativeHertzAudioSpec, HertzAudioEventSink>
+@property(nonatomic, strong) HertzAudioNativeEngine *nativeEngine;
+@property(nonatomic, assign) BOOL eventEmitterReady;
 @end
 
 @implementation HertzAudioModule
@@ -14,14 +18,25 @@ RCT_EXPORT_MODULE(HertzAudio)
 - (instancetype)init
 {
   if (self = [super init]) {
-    _engine = [[HertzEngineFacade alloc] init];
+    _nativeEngine = [[HertzAudioNativeEngine alloc] init];
+    _nativeEngine.eventSink = self;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleShouldStop:)
+                                                 name:kHertzAudioShouldStopNotification
+                                               object:nil];
   }
   return self;
 }
 
-- (NSArray<NSString *> *)supportedEvents
+- (void)dealloc
 {
-  return @[@"onEngineState", @"onPosition", @"onError"];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)handleShouldStop:(NSNotification *)notification
+{
+  (void)notification;
+  [self pause];
 }
 
 + (BOOL)requiresMainQueueSetup
@@ -29,47 +44,104 @@ RCT_EXPORT_MODULE(HertzAudio)
   return NO;
 }
 
-RCT_EXPORT_METHOD(configure:(double)sampleRate bufferDurationMs:(double)bufferDurationMs)
+- (void)setEventEmitterCallback:(EventEmitterCallbackWrapper *)eventEmitterCallbackWrapper
 {
-  [self.engine configureWithSampleRate:sampleRate bufferDurationMs:bufferDurationMs];
+  [super setEventEmitterCallback:eventEmitterCallbackWrapper];
+  self.eventEmitterReady = YES;
 }
 
-RCT_EXPORT_METHOD(play)
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+    (const facebook::react::ObjCTurboModule::InitParams &)params
 {
-  [self.engine play];
+  return std::make_shared<facebook::react::NativeHertzAudioSpecJSI>(params);
 }
 
-RCT_EXPORT_METHOD(pause)
+#pragma mark - NativeHertzAudioSpec
+
+- (void)configure:(double)sampleRate bufferDurationMs:(double)bufferDurationMs
 {
-  [self.engine pause];
+  NSLog(@"[HertzAudioModule] configure %.0f %.1f", sampleRate, bufferDurationMs);
+  [self.nativeEngine configureWithSampleRate:sampleRate bufferDurationMs:bufferDurationMs];
 }
 
-RCT_EXPORT_METHOD(stop)
+- (void)play
 {
-  [self.engine stop];
+  NSLog(@"[HertzAudioModule] play");
+  [self.nativeEngine play];
 }
 
-RCT_EXPORT_METHOD(setBinauralParameters:(double)carrierHz beatHz:(double)beatHz gain:(double)gain balance:(double)balance)
+- (void)pause
 {
-  [self.engine setBinauralParametersWithCarrierHz:carrierHz
-                                           beatHz:beatHz
-                                             gain:(float)gain
-                                          balance:(float)balance];
+  [self.nativeEngine pause];
 }
 
-RCT_EXPORT_METHOD(setNoise:(NSString *)type level:(double)level)
+- (void)stop
 {
-  [self.engine setNoiseWithType:type level:(float)level];
+  [self.nativeEngine stop];
 }
 
-RCT_EXPORT_METHOD(fade:(double)toGain durationMs:(double)durationMs)
+- (void)setBinauralParameters:(double)carrierHz
+                       beatHz:(double)beatHz
+                         gain:(double)gain
+                      balance:(double)balance
 {
-  [self.engine fadeToGain:(float)toGain durationMs:(NSInteger)durationMs];
+  [self.nativeEngine setBinauralParametersWithCarrierHz:carrierHz
+                                                 beatHz:beatHz
+                                                   gain:(float)gain
+                                                balance:(float)balance];
 }
 
-RCT_EXPORT_METHOD(loadPreset:(NSString *)presetJson)
+- (void)setNoise:(NSString *)type level:(double)level
 {
-  // Presets are decoded on the TypeScript side for this scaffold; native remains authoritative for clamped parameters.
+  [self.nativeEngine setNoiseWithType:type level:(float)level];
+}
+
+- (void)fade:(double)toGain durationMs:(double)durationMs
+{
+  [self.nativeEngine fadeToGain:(float)toGain durationMs:(NSInteger)durationMs];
+}
+
+- (void)loadPreset:(NSString *)presetJson
+{
+  (void)presetJson;
+}
+
+- (void)setPhaseAndTiming:(double)phase timingMs:(double)timingMs
+{
+  [self.nativeEngine setPhaseAndTimingWithPhase:phase timingMs:timingMs];
+}
+
+#pragma mark - HertzAudioEventSink
+
+- (void)emitEngineStateWithState:(NSString *)state
+                     sampleRate:(double)sampleRate
+                          route:(NSString *)route
+{
+  if (!self.eventEmitterReady) {
+    return;
+  }
+  [self emitOnEngineState:@{
+    @"state" : state,
+    @"sampleRate" : @(sampleRate),
+    @"route" : route,
+  }];
+}
+
+- (void)emitPositionWithElapsedSec:(double)elapsedSec
+{
+  if (!self.eventEmitterReady) {
+    return;
+  }
+  [self emitOnPosition:@{@"elapsedSec" : @(elapsedSec)}];
+}
+
+- (void)emitErrorWithCode:(NSString *)code message:(NSString *)message
+{
+  if (!self.eventEmitterReady) {
+    NSLog(@"[HertzAudioModule] error (no emitter): %@ %@", code, message);
+    return;
+  }
+  [self emitOnError:@{@"code" : code, @"message" : message}];
 }
 
 @end

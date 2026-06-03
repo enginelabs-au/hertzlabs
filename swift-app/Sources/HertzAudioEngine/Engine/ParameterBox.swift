@@ -9,8 +9,8 @@ public enum AudioConstants {
     public static let defaultRampMs: Double = 75
     public static let minRampMs: Double = 50
     public static let maxRampMs: Double = 100
-    public static let minBeatHz: Double = 0
-    public static let maxBeatHz: Double = 100
+    public static let minBeatHz: Double = 0.05
+    public static let maxBeatHz: Double = 500
     public static let minCarrierHz: Double = 20
     public static let maxCarrierHz: Double = 1500
 }
@@ -118,7 +118,8 @@ public final class ParameterBox: @unchecked Sendable {
     public func setPlayIntent(_ intent: Bool) {
         var s = read()
         s.playIntent = intent
-        if !intent { s.targetGain = 0 }
+        // Do not zero targetGain here — the render path already mutes when playIntent
+        // is false. Clearing gain breaks resume after pause/stop.
         write(s)
     }
 

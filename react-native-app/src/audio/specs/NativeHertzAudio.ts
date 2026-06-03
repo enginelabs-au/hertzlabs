@@ -37,16 +37,16 @@ export interface Spec extends TurboModule {
   readonly onError: EventEmitter<{ code: string; message: string }>;
 }
 
-// Use `get` instead of `getEnforcing` so the app doesn't crash in environments
-// where the native module hasn't been linked yet (e.g. storybook, Jest, or
-// simulators without the Swift package installed).  A null return is handled
-// gracefully by HertzAudioClient — each method is a no-op when module is absent.
-const _module = TurboModuleRegistry.get<Spec>('HertzAudio');
+function isVitestRuntime(): boolean {
+  const proc = (globalThis as {process?: {env?: {VITEST?: string}}}).process;
+  return proc?.env?.VITEST != null;
+}
+
+const _module = isVitestRuntime() ? null : TurboModuleRegistry.get<Spec>('HertzAudio');
 
 const noop = () => undefined;
 const noopSub = { remove: noop };
 
-// Proxy: real native calls when available, silent no-ops when not.
 const NativeHertzAudio: Spec = _module ?? ({
   configure: noop,
   play: noop,

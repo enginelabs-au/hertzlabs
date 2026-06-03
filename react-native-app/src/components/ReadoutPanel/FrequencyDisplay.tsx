@@ -22,8 +22,10 @@ interface FrequencyDisplayProps {
  *   TARGET Δ      — beat frequency; turns amber on high-volume warning
  */
 export function FrequencyDisplay({carrierHz, beatHz, engineType}: FrequencyDisplayProps) {
-  const [carrierVal, setCarrierVal] = useState(() => carrierHz.value);
-  const [beatVal, setBeatVal] = useState(() => beatHz.value);
+  const carrierFromStore = useHertzStore(s => s.carrierHz);
+  const beatFromStore = useHertzStore(s => s.beatHz);
+  const [carrierVal, setCarrierVal] = useState(carrierFromStore);
+  const [beatVal, setBeatVal] = useState(beatFromStore);
   const highVolumeWarning = useHertzStore(s => s.highVolumeWarningTriggered);
 
   const onCarrier = useCallback((v: number) => setCarrierVal(v), []);

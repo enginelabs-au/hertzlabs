@@ -76,12 +76,11 @@ public final class HertzAudioEngine {
         controlQueue.async {
             self.preferredSampleRate = sampleRate
             self.preferredBufferDurationMs = bufferDurationMs
-            self.sessionController.configure(
-                preferredSampleRate: sampleRate,
-                preferredBufferDurationMs: bufferDurationMs
-            )
-            self.rebuildGraph()
-            self.transition(to: .ready)
+            // Session + graph are established on play() so AVAudioSession is active
+            // and outputFormat reports a valid sample rate (avoids -10851 on simulator).
+            if self.engineState == .uninitialized {
+                self.transition(to: .ready)
+            }
         }
     }
 
@@ -93,17 +92,28 @@ public final class HertzAudioEngine {
             s.playIntent = true
             self.parameterBox.write(s)
             do {
-                // Build the audio graph on first play (if configure() was never called).
-                if self.oscillatorNode == nil || self.engineState == .uninitialized {
-                    self.sessionController.configure(
-                        preferredSampleRate: self.preferredSampleRate,
-                        preferredBufferDurationMs: self.preferredBufferDurationMs
-                    )
+                self.sessionController.configure(
+                    preferredSampleRate: self.preferredSampleRate,
+                    preferredBufferDurationMs: self.preferredBufferDurationMs
+                )
+                #if os(iOS) && targetEnvironment(simulator)
+                self.ensureSimulatorMicPermissionIfNeeded()
+                #endif
+                // (Re)build graph when uninitialized or after a prior failed start (-10851).
+                let needsGraph = self.oscillatorNode == nil
+                    || self.engineState == .uninitialized
+                    || self.engineState == .error
+                    || !self.engine.isRunning
+                if needsGraph {
                     self.rebuildGraph()
                     self.transition(to: .ready)
                 }
                 if !self.engine.isRunning {
                     self.transition(to: .starting)
+                    #if targetEnvironment(simulator)
+                    // Let CoreAudio publish a valid output route after setActive.
+                    usleep(50_000)
+                    #endif
                     try self.engine.start()
                 }
                 self.transition(to: .playing)
@@ -187,21 +197,51 @@ public final class HertzAudioEngine {
 
     // MARK: - Private helpers
 
+    #if os(iOS) && targetEnvironment(simulator)
+    private func ensureSimulatorMicPermissionIfNeeded() {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted:
+            return
+        case .undetermined:
+            let sem = DispatchSemaphore(value: 0)
+            AVAudioApplication.requestRecordPermission { _ in sem.signal() }
+            _ = sem.wait(timeout: .now() + 2.0)
+        default:
+            break
+        }
+    }
+    #endif
+
     private func rebuildGraph() {
         engine.stop()
         engine = AVAudioEngine()
-        limiter = Self.makeLimiterNode()
 
-        let outputFormat = engine.outputNode.outputFormat(forBus: 0)
-        sampleRate = outputFormat.sampleRate > 0 ? outputFormat.sampleRate : preferredSampleRate
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        let sessionRate = session.sampleRate
+        let outputRate = engine.outputNode.inputFormat(forBus: 0).sampleRate
+        sampleRate = [sessionRate, outputRate, preferredSampleRate].first { $0 > 0 && $0.isFinite } ?? 44_100
+        #else
+        sampleRate = preferredSampleRate
+        #endif
+        if sampleRate <= 0 || !sampleRate.isFinite {
+            sampleRate = 44_100
+        }
         let sourceFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
         let oscillator = BinauralOscillatorNode(parameterBox: parameterBox, format: sourceFormat)
         oscillatorNode = oscillator
 
         engine.attach(oscillator.sourceNode)
+        #if targetEnvironment(simulator)
+        engine.connect(oscillator.sourceNode, to: engine.mainMixerNode, format: sourceFormat)
+        #else
+        limiter = Self.makeLimiterNode()
         engine.attach(limiter)
         engine.connect(oscillator.sourceNode, to: limiter, format: sourceFormat)
         engine.connect(limiter, to: engine.mainMixerNode, format: sourceFormat)
+        #endif
+        engine.mainMixerNode.outputVolume = 1.0
+        engine.prepare()
     }
 
     private func wireSessionCallbacks() {
@@ -229,7 +269,16 @@ public final class HertzAudioEngine {
             self?.controlQueue.async {
                 guard let self else { return }
                 self.rebuildGraph()
-                self.transition(to: self.userPlayIntent ? .playing : .ready)
+                if self.userPlayIntent {
+                    do {
+                        try self.engine.start()
+                        self.transition(to: .playing)
+                    } catch {
+                        self.fail(code: "ios_engine_route_restart_failed", message: String(describing: error))
+                    }
+                } else {
+                    self.transition(to: .ready)
+                }
             }
         }
         sessionController.onMediaServicesReset = { [weak self] in

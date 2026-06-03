@@ -2,8 +2,10 @@ import React, {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
+import {ScreenWaveHeader} from '../components/layout/ScreenWaveHeader';
+import {HertzTheme} from '../theme/hertzTheme';
 
-const BG = '#000000';
+const BG = HertzTheme.bg;
 const CARD = 'rgba(255,255,255,0.04)';
 const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#4ADE80';
@@ -198,7 +200,7 @@ export function BackgroundAudioScreen() {
       style={styles.root}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
-      {/* Header */}
+      <ScreenWaveHeader height={72} variant="stacked" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Background Audio</Text>
         <Text style={styles.headerSubtitle}>

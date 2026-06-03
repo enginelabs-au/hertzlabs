@@ -1,4 +1,4 @@
-platform :ios, '15.1'
+platform :ios, '17.0'
 
 plugin 'cocoapods-spm'
 
@@ -59,15 +59,22 @@ target 'HertzLabsBinauralBeats' do
     ].each do |mm_path|
       next unless File.exist?(mm_path)
       content = File.read(mm_path)
-      entry = '@"WorkletsModule": @"WorkletsModule"'
-      next if content.include?(entry)
-      patched = content.sub(
-        'NSDictionary<NSString *, NSString *> * moduleMapping = @{',
-        "NSDictionary<NSString *, NSString *> * moduleMapping = @{\n      #{entry}, // react-native-worklets"
-      )
+      module_entries = [
+        '@"WorkletsModule": @"WorkletsModule"',
+        '@"HertzAudio": @"HertzAudioModule"',
+        '@"HertzTelemetry": @"HertzTelemetryModule"',
+      ]
+      patched = content
+      module_entries.each do |entry|
+        next if patched.include?(entry)
+        patched = patched.sub(
+          'NSDictionary<NSString *, NSString *> * moduleMapping = @{',
+          "NSDictionary<NSString *, NSString *> * moduleMapping = @{\n      #{entry},"
+        )
+      end
       if patched != content
         File.write(mm_path, patched)
-        puts "  [Podfile post_install] Patched RCTModuleProviders.mm with WorkletsModule entry (#{mm_path})"
+        puts "  [Podfile post_install] Patched RCTModuleProviders.mm (#{mm_path})"
       end
     end
 

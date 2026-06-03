@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-reanimated/src/mappers.ts b/node_modules/react-native-reanimated/src/mappers.ts
+index a315683..453ba2c 100644
+--- a/node_modules/react-native-reanimated/src/mappers.ts
++++ b/node_modules/react-native-reanimated/src/mappers.ts
+@@ -1,5 +1,8 @@
+ 'use strict';
+ 
++/** Hermes / RN runtime global — declared for TS when this source file is opened in the IDE. */
++declare const global: typeof globalThis;
++
+ import { scheduleOnUI } from 'react-native-worklets';
+ 
+ import { IS_JEST, SHOULD_BE_USE_WEB } from './common';

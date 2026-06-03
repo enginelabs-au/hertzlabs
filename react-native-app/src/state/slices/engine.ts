@@ -1,7 +1,8 @@
 import type {StateCreator} from 'zustand';
-import type {AppStore, EngineSlice} from '../types';
+import {resolveEngineMode} from '../../audio/engineModes';
+import type {AppStore, EngineSlice, EngineMode} from '../types';
 
-export const createEngineSlice: StateCreator<AppStore, [], [], EngineSlice> = set => ({
+export const createEngineSlice: StateCreator<AppStore, [], [], EngineSlice> = (set, get) => ({
   state: 'uninitialized',
   engineType: 'binaural',
   sampleRate: 48000,
@@ -13,7 +14,10 @@ export const createEngineSlice: StateCreator<AppStore, [], [], EngineSlice> = se
   isStereoRoute: true,
   lastSafetyEvent: null,
 
-  setEngineType: engineType => set({engineType}),
+  setEngineType: (engineType: EngineMode) => {
+    const tier = get().tier;
+    set({engineType: resolveEngineMode(engineType, tier)});
+  },
 
   _ingestNativeState: payload => {
     set(state => ({

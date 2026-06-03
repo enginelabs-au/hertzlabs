@@ -24,16 +24,13 @@ interface BandLabelProps {
  * AnimatedTextInput blank-value bug in Reanimated 4 + Fabric for non-zero
  * initial shared values.
  */
+/** Default Alpha band — synced on first frame via useAnimatedReaction. */
+const DEFAULT_BAND_IDX = 3;
+
 export function BandLabel({bandIndex, bandOpacity}: BandLabelProps) {
-  const [labelText, setLabelText] = useState(
-    () => BAND_LABEL_STRINGS[bandIndex.value] ?? '',
-  );
-  const [rangeText, setRangeText] = useState(
-    () => BAND_HZ_RANGES[bandIndex.value] ?? '',
-  );
-  const [colorText, setColorText] = useState(
-    () => BAND_COLORS[bandIndex.value] ?? '#FFFFFF',
-  );
+  const [labelText, setLabelText] = useState(BAND_LABEL_STRINGS[DEFAULT_BAND_IDX] ?? '');
+  const [rangeText, setRangeText] = useState(BAND_HZ_RANGES[DEFAULT_BAND_IDX] ?? '');
+  const [colorText, setColorText] = useState(BAND_COLORS[DEFAULT_BAND_IDX] ?? '#FFFFFF');
 
   const onBandChange = useCallback((index: number) => {
     setLabelText(BAND_LABEL_STRINGS[index] ?? '');

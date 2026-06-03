@@ -1,9 +1,7 @@
-import {createMMKV} from 'react-native-mmkv';
+import {MMKV} from 'react-native-mmkv';
 import type {StateStorage} from 'zustand/middleware';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import type {AppStore} from '../types';
-
-type MMKVWithDelete = { delete(key: string): void };
 
 // react-native-mmkv v3 uses NitroModules (JSI).  The factory call is lazy
 // but still happens at module-evaluation time; guard it so a bridge hiccup
@@ -17,7 +15,7 @@ const memFallback: StateStorage = {
 
 let zustandStorage: StateStorage;
 try {
-  const storage = createMMKV({id: 'hertz-zustand'});
+  const storage = new MMKV({id: 'hertz-zustand'});
   zustandStorage = {
     getItem: name => {
       try {
@@ -30,7 +28,7 @@ try {
       } catch (e) {
         console.warn('[persist] corrupt MMKV entry, clearing:', name, e);
         try {
-          (storage as unknown as MMKVWithDelete).delete(name);
+          storage.delete(name);
         } catch {
           /* ignore */
         }
@@ -46,7 +44,7 @@ try {
     },
     removeItem: name => {
       try {
-        (storage as unknown as MMKVWithDelete).delete(name);
+        storage.delete(name);
       } catch (e) {
         console.warn('[persist] MMKV removeItem failed:', name, e);
       }

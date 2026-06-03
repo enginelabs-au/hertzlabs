@@ -37,7 +37,16 @@ public final class AudioSessionController: NSObject {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers, .duckOthers])
+            #if targetEnvironment(simulator)
+            // Simulator RemoteIO needs a valid input bus; playback-only leaves inf at 0 Hz (-10851).
+            try session.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .mixWithOthers, .allowBluetooth]
+            )
+            #else
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            #endif
             try session.setPreferredSampleRate(preferredSampleRate)
             try session.setPreferredIOBufferDuration(preferredBufferDurationMs / 1000.0)
             try session.setActive(true)
@@ -46,6 +55,27 @@ public final class AudioSessionController: NSObject {
             startObserving()
         } catch {
             outputRoute = .unknown
+        }
+        #endif
+    }
+
+    /// Call once at app launch so AVAudioEngine can associate with a live session (avoids -10879).
+    public static func bootstrapAtLaunch() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            #if targetEnvironment(simulator)
+            try session.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .mixWithOthers]
+            )
+            #else
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            #endif
+            try session.setActive(true)
+        } catch {
+            NSLog("[AudioSessionController] bootstrap failed: %@", String(describing: error))
         }
         #endif
     }

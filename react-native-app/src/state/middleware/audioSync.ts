@@ -1,5 +1,6 @@
 import {HertzAudioClient} from '../../audio/HertzAudioClient';
-import type {AppStore, AudioParamsValues, EngineState, OutputRoute} from '../types';
+import {mapStateToNativeAudio} from '../../audio/engineModeMapping';
+import type {AppStore, EngineState, OutputRoute} from '../types';
 
 let installed = false;
 
@@ -29,15 +30,23 @@ export function installAudioSync(store: SelectorStore): () => void {
   const unsubscribeNoiseLv = store.subscribe(s => s.noiseLevel,() => pushParams());
   const unsubscribePhase   = store.subscribe(s => s.phaseAngle,() => pushParams());
   const unsubscribeTiming  = store.subscribe(s => s.timingDiffMs, () => pushParams());
+  const unsubscribeEngine    = store.subscribe(s => s.engineType, () => pushParams());
 
   function pushParams() {
-    HertzAudioClient.setBinauralParameters(selectAudioParams(store.getState()));
+    const mapped = mapStateToNativeAudio(store.getState());
+    HertzAudioClient.setBinauralParameters(mapped);
+    HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
   }
 
   const unsubscribeIsPlaying = store.subscribe(
     s => s.isPlaying,
     isPlaying => {
-      if (isPlaying) { HertzAudioClient.play(); }
+      if (isPlaying) {
+        pushParams();
+        HertzAudioClient.play();
+      } else {
+        HertzAudioClient.pause();
+      }
     },
   );
 
@@ -53,6 +62,7 @@ export function installAudioSync(store: SelectorStore): () => void {
     unsubscribeCarrier(); unsubscribeBeat(); unsubscribeGain();
     unsubscribeBalance(); unsubscribeNoise(); unsubscribeNoiseLv();
     unsubscribePhase(); unsubscribeTiming();
+    unsubscribeEngine();
   };
   const unsubscribePlayback = () => {
     unsubscribeIsPlaying(); unsubscribeIsPaused();
@@ -79,6 +89,9 @@ export function installAudioSync(store: SelectorStore): () => void {
     store.getState()._ingestNativeError(`${event.code}: ${event.message}`);
   });
 
+  // Prime native DSP before first play (subscriptions only fire on change).
+  pushParams();
+
   return () => {
     installed = false;
     unsubscribeParams();
@@ -86,21 +99,6 @@ export function installAudioSync(store: SelectorStore): () => void {
     engineSub.remove();
     positionSub.remove();
     errorSub.remove();
-  };
-}
-
-function selectAudioParams(state: AppStore): AudioParamsValues {
-  return {
-    carrierHz: state.carrierHz,
-    beatHz: state.beatHz,
-    gain: state.gain,
-    balance: state.balance,
-    waveform: state.waveform,
-    noiseType: state.noiseType,
-    noiseLevel: state.noiseLevel,
-    fadeMs: state.fadeMs,
-    phaseAngle: state.phaseAngle,
-    timingDiffMs: state.timingDiffMs,
   };
 }
 

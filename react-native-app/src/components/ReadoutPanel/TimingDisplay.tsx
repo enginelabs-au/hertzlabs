@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
+import {useHertzStore} from '../../state/store';
 
 interface TimingDisplayProps {
   timingDiffMs: SharedValue<number>;
@@ -14,8 +15,9 @@ interface TimingDisplayProps {
  * non-negative values; all string work happens on the JS thread.
  */
 export function TimingDisplay({timingDiffMs}: TimingDisplayProps) {
+  const timingFromStore = useHertzStore(s => s.timingDiffMs);
   const [timingText, setTimingText] = useState(() => {
-    const ms = timingDiffMs.value;
+    const ms = timingFromStore;
     return (ms >= 0 ? '+' : '') + ms.toFixed(1) + ' ms';
   });
 

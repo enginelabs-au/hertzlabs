@@ -1,21 +1,17 @@
 import {useEffect, useRef} from 'react';
 import {AppState, type AppStateStatus} from 'react-native';
+import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
 
-/**
- * Stub implementations for native audio engine calls.
- * In production these would call the TurboModule bridge.
- */
 function maintainBackgroundPlayback(): void {
   // iOS: AVAudioSession is already configured for background audio playback
   // in AudioSessionController.swift. No-op here on the JS side.
-  console.log('[BackgroundAudio] maintaining background playback (premium)');
 }
 
 function stopAudioEngine(): void {
-  // Stops the native audio engine on background for free tier.
-  console.log('[BackgroundAudio] stopping audio engine (free tier background)');
+  HertzAudioClient.pause();
+  useHertzStore.getState().requestPause();
 }
 
 /**

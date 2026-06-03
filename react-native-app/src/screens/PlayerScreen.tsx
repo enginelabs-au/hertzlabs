@@ -1,17 +1,14 @@
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {CircularController} from '../components/CircularController/CircularController';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {EngineSelector} from '../components/EngineSelector/EngineSelector';
+import {EngineDialSection} from '../components/engines/EngineDialSection';
+import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
+import {GestureLegend} from '../components/layout/GestureLegend';
+import {CategoryTabBar, type EngineCategoryId} from '../components/layout/CategoryTabBar';
 import {useHertzStore} from '../state/store';
+import {useEngineModeModulation} from '../hooks/useEngineModeModulation';
 import {useKineticModulation} from '../hooks/useKineticModulation';
-
-const BG = '#000000';
-const ACCENT = '#4ADE80';
-const WARN = '#FBBF24';
-const MUTED = 'rgba(255,255,255,0.38)';
-const MONO = 'JetBrainsMono-Regular';
-
-type PlayerTab = 'player' | 'engines';
+import {HertzTheme} from '../theme/hertzTheme';
 
 function VolumeWarningBanner() {
   return (
@@ -35,11 +32,11 @@ function KineticIndicator({active}: {active: boolean}) {
 }
 
 /**
- * Primary Engines tab — shows the holographic dial + readout on the 'Player'
- * sub-tab and the engine selector on the 'Engines' sub-tab.
+ * Engines tab — reference layout: L/TARGET/R readouts, dial hub, category tabs,
+ * accordion engine list, play + kinetic controls.
  */
 export function PlayerScreen() {
-  const [activeTab, setActiveTab] = useState<PlayerTab>('player');
+  const [category, setCategory] = useState<EngineCategoryId>('entrainment');
   const highVolumeWarning = useHertzStore(s => s.highVolumeWarningTriggered);
   const isKineticModeEnabled = useHertzStore(s => s.isKineticModeEnabled);
   const updateSettings = useHertzStore(s => s.updateSettings);
@@ -47,63 +44,47 @@ export function PlayerScreen() {
   const requestPlay = useHertzStore(s => s.requestPlay);
   const requestPause = useHertzStore(s => s.requestPause);
 
-  // Activate kinematic modulation when enabled
   useKineticModulation();
+  useEngineModeModulation();
 
   return (
     <View style={styles.screen}>
-      {/* Volume warning */}
       {highVolumeWarning && <VolumeWarningBanner />}
 
-      {/* Sub-tab switcher */}
-      <View style={styles.subTabBar}>
-        <Pressable
-          style={[styles.subTab, activeTab === 'player' && styles.subTabActive]}
-          onPress={() => setActiveTab('player')}>
-          <Text style={[styles.subTabText, activeTab === 'player' && styles.subTabTextActive]}>
-            Player
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.subTab, activeTab === 'engines' && styles.subTabActive]}
-          onPress={() => setActiveTab('engines')}>
-          <Text style={[styles.subTabText, activeTab === 'engines' && styles.subTabTextActive]}>
-            Engines
-          </Text>
-        </Pressable>
-      </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled>
+        <ChannelReadoutRow />
+        <GestureLegend />
+        <EngineDialSection />
+        <CategoryTabBar active={category} onChange={setCategory} />
+        <EngineSelector category={category} />
+      </ScrollView>
 
-      {activeTab === 'player' ? (
-        <View style={styles.playerContainer}>
-          <CircularController />
-
-          {/* Play / Pause button */}
+      <View style={styles.footer}>
+        <Pressable
+          style={[styles.playBtn, isPlaying && styles.playBtnActive]}
+          onPress={() => (isPlaying ? requestPause() : requestPlay())}
+          accessibilityRole="button"
+          accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+          <Text style={styles.playBtnIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+          <Text style={styles.playBtnLabel}>{isPlaying ? 'PAUSE' : 'PLAY'}</Text>
+        </Pressable>
+        <View style={styles.bottomControls}>
+          <KineticIndicator active={isKineticModeEnabled} />
           <Pressable
-            style={[styles.playBtn, isPlaying && styles.playBtnActive]}
-            onPress={() => isPlaying ? requestPause() : requestPlay()}
-            accessibilityRole="button"
-            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-            <Text style={styles.playBtnIcon}>{isPlaying ? '⏸' : '▶'}</Text>
-            <Text style={styles.playBtnLabel}>{isPlaying ? 'PAUSE' : 'PLAY'}</Text>
+            style={[styles.kineticToggle, isKineticModeEnabled && styles.kineticToggleActive]}
+            onPress={() => updateSettings({isKineticModeEnabled: !isKineticModeEnabled})}
+            accessibilityRole="switch"
+            accessibilityState={{checked: isKineticModeEnabled}}>
+            <Text style={[styles.kineticToggleText, isKineticModeEnabled && styles.kineticToggleTextActive]}>
+              {isKineticModeEnabled ? '◎ Kinetic ON' : '◎ Kinetic OFF'}
+            </Text>
           </Pressable>
-
-          {/* Bottom controls */}
-          <View style={styles.bottomControls}>
-            <KineticIndicator active={isKineticModeEnabled} />
-            <Pressable
-              style={[styles.kineticToggle, isKineticModeEnabled && styles.kineticToggleActive]}
-              onPress={() => updateSettings({isKineticModeEnabled: !isKineticModeEnabled})}
-              accessibilityRole="switch"
-              accessibilityState={{checked: isKineticModeEnabled}}>
-              <Text style={[styles.kineticToggleText, isKineticModeEnabled && styles.kineticToggleTextActive]}>
-                {isKineticModeEnabled ? '◎ Kinetic ON' : '◎ Kinetic OFF'}
-              </Text>
-            </Pressable>
-          </View>
         </View>
-      ) : (
-        <EngineSelector />
-      )}
+      </View>
     </View>
   );
 }
@@ -111,7 +92,14 @@ export function PlayerScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: HertzTheme.bg,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   volWarningBanner: {
     backgroundColor: 'rgba(251,191,36,0.1)',
@@ -124,86 +112,63 @@ const styles = StyleSheet.create({
   volWarningText: {
     fontSize: 12,
     fontWeight: '600',
-    color: WARN,
+    color: HertzTheme.neon.amber,
     textAlign: 'center',
   },
-  subTabBar: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.07)',
-    paddingHorizontal: 16,
-  },
-  subTab: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  subTabActive: {
-    borderBottomColor: ACCENT,
-  },
-  subTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: MUTED,
-    letterSpacing: 0.3,
-  },
-  subTabTextActive: {
-    color: ACCENT,
-  },
-  playerContainer: {
-    flex: 1,
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
+    paddingTop: 10,
+    paddingBottom: 8,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 16,
+    backgroundColor: HertzTheme.bg,
   },
   playBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 32,
     borderWidth: 1.5,
-    borderColor: 'rgba(74,222,128,0.4)',
-    backgroundColor: 'rgba(74,222,128,0.07)',
+    borderColor: 'rgba(167,139,250,0.45)',
+    backgroundColor: 'rgba(167,139,250,0.12)',
   },
   playBtnActive: {
-    borderColor: 'rgba(74,222,128,0.7)',
-    backgroundColor: 'rgba(74,222,128,0.15)',
+    borderColor: HertzTheme.neon.lime,
+    backgroundColor: 'rgba(190,246,100,0.15)',
   },
   playBtnIcon: {
     fontSize: 18,
-    color: ACCENT,
+    color: HertzTheme.neon.lime,
   },
   playBtnLabel: {
-    fontFamily: MONO,
+    fontFamily: HertzTheme.mono,
     fontSize: 13,
     fontWeight: '700',
-    color: ACCENT,
+    color: HertzTheme.neon.lime,
     letterSpacing: 2,
   },
   bottomControls: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginTop: 8,
     paddingHorizontal: 16,
-    paddingBottom: 4,
   },
   kineticBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
-    backgroundColor: 'rgba(147,197,253,0.12)',
+    backgroundColor: 'rgba(92,225,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(147,197,253,0.35)',
+    borderColor: 'rgba(92,225,255,0.35)',
   },
   kineticText: {
-    fontFamily: MONO,
+    fontFamily: HertzTheme.mono,
     fontSize: 9,
     fontWeight: '700',
-    color: 'rgba(147,197,253,0.9)',
+    color: HertzTheme.neon.cyan,
     letterSpacing: 1,
   },
   kineticToggle: {
@@ -212,20 +177,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: HertzTheme.glassBorder,
   },
   kineticToggleActive: {
-    backgroundColor: 'rgba(147,197,253,0.12)',
-    borderColor: 'rgba(147,197,253,0.35)',
+    backgroundColor: 'rgba(92,225,255,0.12)',
+    borderColor: 'rgba(92,225,255,0.35)',
   },
   kineticToggleText: {
-    fontFamily: MONO,
+    fontFamily: HertzTheme.mono,
     fontSize: 11,
     fontWeight: '600',
-    color: MUTED,
+    color: HertzTheme.text.muted,
     letterSpacing: 0.5,
   },
   kineticToggleTextActive: {
-    color: 'rgba(147,197,253,0.9)',
+    color: HertzTheme.neon.cyan,
   },
 });

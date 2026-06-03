@@ -7,6 +7,7 @@ import {BandLabel} from './BandLabel';
 import {FrequencyDisplay} from './FrequencyDisplay';
 import {PhaseDisplay} from './PhaseDisplay';
 import {TimingDisplay} from './TimingDisplay';
+import {HertzTheme} from '../../theme/hertzTheme';
 
 interface ReadoutPanelProps {
   dialValues: DialValues;
@@ -49,15 +50,16 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
+    backgroundColor: HertzTheme.glassFill,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: HertzTheme.glassBorder,
     minWidth: 280,
+    marginHorizontal: 16,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: HertzTheme.glassBorder,
     marginVertical: 10,
   },
   spacer: {

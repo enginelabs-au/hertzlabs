@@ -9,6 +9,7 @@
     "postinstall": "patch-package && node scripts/sync-native-secrets.js",
     "sync-secrets": "node scripts/sync-native-secrets.js",
     "generate-icons": "python3 scripts/generate-app-icons.py",
+    "start": "react-native start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -45,7 +46,10 @@
       "javaPackageName": "com.hertzlabs.binauralbeats"
     },
     "ios": {
-      "modulesConformingToProtocolProvider": {}
+      "modulesProvider": {
+        "HertzAudio": "HertzAudioModule",
+        "HertzTelemetry": "HertzTelemetryModule"
+      }
     }
   }
 }

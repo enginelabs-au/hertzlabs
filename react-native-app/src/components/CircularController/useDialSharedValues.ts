@@ -1,4 +1,5 @@
-import { useSharedValue } from 'react-native-reanimated';
+import {useMemo} from 'react';
+import {useSharedValue} from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 
 /**
@@ -11,6 +12,8 @@ export interface DialValues {
   beatHz: SharedValue<number>;
   phaseAngle: SharedValue<number>;
   timingDiffMs: SharedValue<number>;
+  gain: SharedValue<number>;
+  balance: SharedValue<number>;
   rotationRad: SharedValue<number>;
   gestureActive: SharedValue<boolean>;
   axisLock: SharedValue<'vertical' | 'horizontal' | 'none'>;
@@ -25,17 +28,34 @@ export function useDialSharedValues(): DialValues {
   const beatHz = useSharedValue(10);
   const phaseAngle = useSharedValue(0);
   const timingDiffMs = useSharedValue(0);
+  const gain = useSharedValue(0.45);
+  const balance = useSharedValue(0);
   const rotationRad = useSharedValue(0);
   const gestureActive = useSharedValue(false);
   const axisLock = useSharedValue<'vertical' | 'horizontal' | 'none'>('none');
 
-  return {
-    carrierHz,
-    beatHz,
-    phaseAngle,
-    timingDiffMs,
-    rotationRad,
-    gestureActive,
-    axisLock,
-  };
+  return useMemo(
+    () => ({
+      carrierHz,
+      beatHz,
+      phaseAngle,
+      timingDiffMs,
+      gain,
+      balance,
+      rotationRad,
+      gestureActive,
+      axisLock,
+    }),
+    [
+      carrierHz,
+      beatHz,
+      phaseAngle,
+      timingDiffMs,
+      gain,
+      balance,
+      rotationRad,
+      gestureActive,
+      axisLock,
+    ],
+  );
 }

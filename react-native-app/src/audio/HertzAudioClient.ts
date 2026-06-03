@@ -41,6 +41,10 @@ export const HertzAudioClient = {
     NativeHertzAudio.setNoise(safe.noiseType, safe.noiseLevel);
   },
 
+  setPhaseAndTiming(phaseAngle: number, timingDiffMs: number): void {
+    NativeHertzAudio.setPhaseAndTiming(phaseAngle, timingDiffMs);
+  },
+
   setNoise(type: BinauralParameters['noiseType'], level: number): void {
     NativeHertzAudio.setNoise(type, clampGain(level));
   },

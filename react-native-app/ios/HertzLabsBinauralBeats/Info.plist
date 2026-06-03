@@ -22,6 +22,8 @@
 	<true/>
 	<key>NSMotionUsageDescription</key>
 	<string>Hertz Labs uses motion data to adapt binaural entrainment to your movement and stillness.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Hertz Labs uses the microphone only to initialize audio routing on the simulator; audio is not recorded.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
+import {useHertzStore} from '../../state/store';
 
 interface PhaseDisplayProps {
   phaseAngle: SharedValue<number>;
@@ -14,9 +15,8 @@ interface PhaseDisplayProps {
  * JS thread where toFixed is always safe.
  */
 export function PhaseDisplay({phaseAngle}: PhaseDisplayProps) {
-  const [phaseText, setPhaseText] = useState(
-    () => phaseAngle.value.toFixed(1) + '°',
-  );
+  const phaseFromStore = useHertzStore(s => s.phaseAngle);
+  const [phaseText, setPhaseText] = useState(() => phaseFromStore.toFixed(1) + '°');
 
   const onPhase = useCallback((v: number) => {
     setPhaseText(v.toFixed(1) + '°');

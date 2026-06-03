@@ -4,12 +4,7 @@ import {PlayerScreen} from '../screens/PlayerScreen';
 import {MathModeScreen} from '../screens/MathModeScreen';
 import {BackgroundAudioScreen} from '../screens/BackgroundAudioScreen';
 import {useAudioBackgroundController} from '../hooks/useAudioBackgroundController';
-
-const BG = '#000000';
-const ACCENT = '#4ADE80';
-const MUTED = 'rgba(255,255,255,0.38)';
-const TAB_BG = 'rgba(10,10,10,0.96)';
-const TAB_BORDER = 'rgba(255,255,255,0.07)';
+import {HertzTheme} from '../theme/hertzTheme';
 
 type TabId = 'engines' | 'math' | 'background';
 
@@ -28,19 +23,16 @@ const TABS: TabConfig[] = [
 export function MainTabs() {
   const [activeTab, setActiveTab] = useState<TabId>('engines');
 
-  // Background audio controller always active while app is running
   useAudioBackgroundController();
 
   return (
     <View style={styles.root}>
-      {/* Screen container */}
       <View style={styles.screenContainer}>
         {activeTab === 'engines' && <PlayerScreen />}
         {activeTab === 'math' && <MathModeScreen />}
         {activeTab === 'background' && <BackgroundAudioScreen />}
       </View>
 
-      {/* Bottom tab bar */}
       <View style={styles.tabBar}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.id;
@@ -52,12 +44,8 @@ export function MainTabs() {
               accessibilityRole="tab"
               accessibilityState={{selected: isActive}}
               accessibilityLabel={tab.label}>
-              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>
-                {tab.icon}
-              </Text>
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
+              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>{tab.icon}</Text>
+              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
               {isActive && <View style={styles.tabIndicator} />}
             </Pressable>
           );
@@ -70,16 +58,16 @@ export function MainTabs() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: HertzTheme.bg,
   },
   screenContainer: {
     flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: TAB_BG,
+    backgroundColor: 'rgba(15,14,23,0.98)',
     borderTopWidth: 1,
-    borderTopColor: TAB_BORDER,
+    borderTopColor: HertzTheme.glassBorder,
     paddingBottom: 4,
   },
   tabItem: {
@@ -91,21 +79,21 @@ const styles = StyleSheet.create({
   },
   tabIcon: {
     fontSize: 20,
-    color: MUTED,
+    color: HertzTheme.text.muted,
     lineHeight: 24,
   },
   tabIconActive: {
-    color: ACCENT,
+    color: HertzTheme.neon.cyan,
   },
   tabLabel: {
     fontSize: 9,
     fontWeight: '600',
-    color: MUTED,
+    color: HertzTheme.text.muted,
     letterSpacing: 0.4,
     marginTop: 3,
   },
   tabLabelActive: {
-    color: ACCENT,
+    color: HertzTheme.neon.cyan,
   },
   tabIndicator: {
     position: 'absolute',
@@ -113,7 +101,7 @@ const styles = StyleSheet.create({
     left: '25%',
     right: '25%',
     height: 2,
-    backgroundColor: ACCENT,
+    backgroundColor: HertzTheme.neon.cyan,
     borderRadius: 1,
   },
 });

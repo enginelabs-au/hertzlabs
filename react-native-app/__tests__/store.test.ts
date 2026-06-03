@@ -1,4 +1,10 @@
-import {beforeEach, describe, expect, it} from 'vitest';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+
+vi.mock('../src/monetization/isPremiumUnlocked', () => ({
+  FORCED_V1_TEST_UNLOCK: false,
+  isPremiumUnlocked: (tier: string) => tier === 'premium',
+}));
+
 import {useHertzStore} from '../src/state/store';
 import {persistedStoreOptions} from '../src/state/middleware/persist';
 import {PEAK_CEILING_LINEAR} from '../src/audio/paramMapping';
@@ -16,7 +22,7 @@ describe('default audio params', () => {
     const s = get();
     expect(s.carrierHz).toBe(220);
     expect(s.beatHz).toBe(10);
-    expect(s.gain).toBe(0.2);
+    expect(s.gain).toBe(0.45);
     expect(s.balance).toBe(0);
     expect(s.waveform).toBe('sine');
     expect(s.noiseType).toBe('none');
@@ -32,23 +38,25 @@ describe('setParam clamps to the DSP-safe ranges', () => {
     expect(get().gain).toBe(0);
   });
 
-  it('clamps beatHz to 10..40', () => {
+  it('clamps beatHz to 0.5..40 on free tier (Plan 05)', () => {
     get().setParam('beatHz', 999);
     expect(get().beatHz).toBe(40);
-    get().setParam('beatHz', 1);
-    expect(get().beatHz).toBe(10);
+    get().setParam('beatHz', 0.01);
+    expect(get().beatHz).toBe(0.5);
+    get().setParam('beatHz', 0.2);
+    expect(get().beatHz).toBe(0.5);
   });
 
-  it('clamps balance to -1..1 and floors carrier at 40', () => {
+  it('clamps balance to -1..1 and floors carrier at 20 Hz', () => {
     get().setParam('balance', 9);
     expect(get().balance).toBe(1);
     get().setParam('carrierHz', 5);
-    expect(get().carrierHz).toBe(40);
+    expect(get().carrierHz).toBe(20);
   });
 
   it('recovers from non-finite input via the documented fallbacks', () => {
     get().setParam('beatHz', NaN);
-    expect(get().beatHz).toBe(10);
+    expect(get().beatHz).toBe(0.5);
     get().setParam('gain', Infinity);
     expect(get().gain).toBe(0);
   });
@@ -60,7 +68,7 @@ describe('applyPreset', () => {
       id: 'unsafe',
       name: 'Unsafe',
       params: {
-        carrierHz: 1, // below 40 floor
+        carrierHz: 1, // below 20 floor
         beatHz: 80, // above 40
         gain: 5, // above ceiling
         balance: -9, // below -1
@@ -74,7 +82,7 @@ describe('applyPreset', () => {
     };
     get().applyPreset(preset);
     const s = get();
-    expect(s.carrierHz).toBe(40);
+    expect(s.carrierHz).toBe(20);
     expect(s.beatHz).toBe(40);
     expect(s.gain).toBe(PEAK_CEILING_LINEAR);
     expect(s.balance).toBe(-1);

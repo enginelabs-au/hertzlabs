@@ -14,7 +14,7 @@
 // storage; the render thread reads this struct but never writes it.
 struct AudioParams {
     double carrierHz = 200.0;  // carrier frequency (Hz)
-    double beatHz    = 10.0;   // binaural beat frequency, clamped [10.0, 40.0] Hz
+    double beatHz    = 10.0;   // binaural beat frequency (Hz), clamped in store()
     float  gain      = 0.5f;   // linear gain, clamped [0.0, 0.501187]  (−6 dBFS ceiling)
     float  balance   = 0.0f;   // stereo balance, clamped [−1.0, +1.0]
 };
@@ -45,7 +45,7 @@ public:
 
         // Write clamped values into the inactive slot before publishing.
         inactive->carrierHz = p.carrierHz;
-        inactive->beatHz    = std::clamp(p.beatHz, 10.0, 40.0);
+        inactive->beatHz    = std::clamp(p.beatHz, 0.05, 500.0);
         inactive->gain      = std::clamp(p.gain,   0.0f, 0.501187f);
         inactive->balance   = std::clamp(p.balance, -1.0f, 1.0f);
 

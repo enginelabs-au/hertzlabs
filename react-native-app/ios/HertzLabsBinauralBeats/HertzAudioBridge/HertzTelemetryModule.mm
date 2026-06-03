@@ -1,60 +1,32 @@
-#import <React/RCTBridgeModule.h>
-#import <React/RCTEventEmitter.h>
+#import <ReactCommon/RCTTurboModule.h>
+#import <HertzLabsBinauralBeatsSpec/HertzLabsBinauralBeatsSpec.h>
 
-// Forward declaration — actual implementation provided by HertzAudioEngine.xcframework
-@protocol TelemetryBridgeDelegate
-- (void)telemetryDidUpdateWithGyroY:(float)gyroY
-                      accelMagnitude:(float)accelMagnitude
-                                roll:(float)roll
-                               pitch:(float)pitch
-                                 yaw:(float)yaw
-                             heading:(float)heading
-                        stepCadence:(float)stepCadence
-                       shakeDetected:(BOOL)shakeDetected
-                        sensorActive:(BOOL)sensorActive;
-- (void)telemetryDidEnterSleep;
+@interface HertzTelemetryModule : NativeHertzTelemetrySpecBase <NativeHertzTelemetrySpec>
 @end
 
-@interface HertzTelemetryModule : RCTEventEmitter <RCTBridgeModule>
-@end
-
-@implementation HertzTelemetryModule {
-    BOOL _hasListeners;
-}
+@implementation HertzTelemetryModule
 
 RCT_EXPORT_MODULE(HertzTelemetry)
 
-+ (BOOL)requiresMainQueueSetup { return NO; }
-
-- (NSArray<NSString *> *)supportedEvents {
-    return @[@"onTelemetryUpdate", @"onTelemetrySleep"];
++ (BOOL)requiresMainQueueSetup
+{
+  return NO;
 }
 
-- (void)startObserving { _hasListeners = YES; }
-- (void)stopObserving  { _hasListeners = NO; }
-
-RCT_EXPORT_METHOD(startSensors:(double)intervalMs) {
-    // Delegates to the HertzEngineFacade singleton (set at app init)
-    // HertzEngineFacade.shared.startTelemetry(intervalMs: intervalMs)
-    // Placeholder until xcframework is linked:
-    NSLog(@"[HertzTelemetry] startSensors intervalMs=%.0f", intervalMs);
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+    (const facebook::react::ObjCTurboModule::InitParams &)params
+{
+  return std::make_shared<facebook::react::NativeHertzTelemetrySpecJSI>(params);
 }
 
-RCT_EXPORT_METHOD(stopSensors) {
-    NSLog(@"[HertzTelemetry] stopSensors");
+- (void)startSensors:(double)intervalMs
+{
+  NSLog(@"[HertzTelemetry] startSensors intervalMs=%.0f", intervalMs);
 }
 
-// Called by TelemetryManagerDelegate (via HertzEngineFacade) on main thread
-- (void)emitTelemetryUpdate:(NSDictionary *)payload {
-    if (_hasListeners) {
-        [self sendEventWithName:@"onTelemetryUpdate" body:payload];
-    }
-}
-
-- (void)emitTelemetrySleep {
-    if (_hasListeners) {
-        [self sendEventWithName:@"onTelemetrySleep" body:@{}];
-    }
+- (void)stopSensors
+{
+  NSLog(@"[HertzTelemetry] stopSensors");
 }
 
 @end

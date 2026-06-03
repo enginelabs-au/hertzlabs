@@ -1,5 +1,5 @@
 import {useEffect, useRef} from 'react';
-import {Platform} from 'react-native';
+import {LogBox, Platform} from 'react-native';
 import Purchases from 'react-native-purchases';
 import {
   REVENUECAT_API_KEY_ANDROID,
@@ -33,6 +33,10 @@ export function useRevenueCatBoot(): void {
     const apiKey = resolveApiKey();
     if (!apiKey) {
       return;
+    }
+
+    if (__DEV__) {
+      LogBox.ignoreLogs(['[RevenueCat]']);
     }
 
     configured.current = true;

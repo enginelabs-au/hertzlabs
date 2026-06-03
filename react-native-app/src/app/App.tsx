@@ -1,6 +1,7 @@
 import React, {Component, type ErrorInfo, type ReactNode, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -14,8 +15,10 @@ import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {installAudioSync} from '../state/middleware/audioSync';
 import {HertzAudioClient} from '../audio/HertzAudioClient';
+import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
+import {HertzTheme} from '../theme/hertzTheme';
 
-const BG = '#050810';
+const BG = HertzTheme.bg;
 
 type BoundaryState = {error: Error | null};
 
@@ -84,6 +87,14 @@ function AppContent(): React.JSX.Element {
   const hydrated = useStoreHydrated();
   const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
 
+  useEffect(() => {
+    if (!hydrated || hasAcceptedSafetyTerms) {
+      return;
+    }
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [hydrated, hasAcceptedSafetyTerms]);
+
   // Wire Zustand state → native audio engine.  Runs once after hydration.
   useEffect(() => {
     if (!hydrated) { return; }
@@ -96,13 +107,26 @@ function AppContent(): React.JSX.Element {
   if (!hydrated) {
     return (
       <View style={styles.boot}>
-        <ActivityIndicator color="#4ADE80" size="large" />
+        <ActivityIndicator color={HertzTheme.neon.cyan} size="large" />
         <Text style={styles.bootText}>Loading Hertz Labs…</Text>
       </View>
     );
   }
 
-  return hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />;
+  const nativeAudioLinked = isHertzAudioTurboModuleLinked();
+
+  return (
+    <>
+      {__DEV__ && !nativeAudioLinked && (
+        <View style={styles.audioWarn}>
+          <Text style={styles.audioWarnText}>
+            Native HertzAudio module not linked — rebuild iOS app (pod install + xcodebuild).
+          </Text>
+        </View>
+      )}
+      {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
+    </>
+  );
 }
 
 export function App(): React.JSX.Element {
@@ -159,5 +183,15 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.55)',
     fontSize: 11,
     fontFamily: 'Menlo',
+  },
+  audioWarn: {
+    backgroundColor: '#7f1d1d',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  audioWarnText: {
+    color: '#fecaca',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

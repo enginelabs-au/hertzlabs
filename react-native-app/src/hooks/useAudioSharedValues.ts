@@ -21,14 +21,18 @@ export function useAudioSharedValues(dialValues: DialValues) {
         beatHz: state.beatHz,
         phaseAngle: state.phaseAngle,
         timingDiffMs: state.timingDiffMs,
+        gain: state.gain,
+        balance: state.balance,
       }),
-      ({carrierHz: cHz, beatHz: bHz, phaseAngle: pA, timingDiffMs: tD}) => {
+      ({carrierHz: cHz, beatHz: bHz, phaseAngle: pA, timingDiffMs: tD, gain, balance}) => {
         runOnUI(() => {
           'worklet';
           carrierHz.value = cHz;
           beatHz.value = bHz;
           phaseAngle.value = pA;
           timingDiffMs.value = tD;
+          dialValues.gain.value = gain;
+          dialValues.balance.value = balance;
         })();
       },
       {
@@ -37,9 +41,11 @@ export function useAudioSharedValues(dialValues: DialValues) {
           a.carrierHz === b.carrierHz &&
           a.beatHz === b.beatHz &&
           a.phaseAngle === b.phaseAngle &&
-          a.timingDiffMs === b.timingDiffMs,
+          a.timingDiffMs === b.timingDiffMs &&
+          a.gain === b.gain &&
+          a.balance === b.balance,
       },
     );
     return unsubscribe;
-  }, [carrierHz, beatHz, phaseAngle, timingDiffMs]);
+  }, [carrierHz, beatHz, phaseAngle, timingDiffMs, dialValues.gain, dialValues.balance]);
 }

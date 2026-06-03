@@ -34,13 +34,24 @@ final class AudioSessionController: NSObject {
     func configureForPlayback() {
         let session = AVAudioSession.sharedInstance()
         do {
+            #if targetEnvironment(simulator)
+            // Playback-only leaves RemoteIO input at 0 Hz on simulator (-10851).
             try session.setCategory(
-                .playback,
-                options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers]
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .mixWithOthers, .allowBluetooth]
             )
+            #else
+            try session.setCategory(.playback, options: [.allowBluetooth, .mixWithOthers])
+            #endif
             try session.setActive(true)
+            #if targetEnvironment(simulator)
+            if AVAudioApplication.shared.recordPermission == .undetermined {
+                AVAudioApplication.requestRecordPermission { _ in }
+            }
+            #endif
         } catch {
-            // Silently swallow; audio state will self-recover on next play attempt.
+            NSLog("[AudioSessionController] configureForPlayback failed: %@", String(describing: error))
         }
     }
 

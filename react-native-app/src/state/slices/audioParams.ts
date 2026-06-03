@@ -9,7 +9,7 @@ import type {AppStore, AudioParamsSlice, AudioParamsValues, Preset} from '../typ
 const defaultAudioParams: AudioParamsValues = {
   carrierHz: 220,
   beatHz: 10,
-  gain: 0.2,
+  gain: 0.45,
   balance: 0,
   waveform: 'sine',
   noiseType: 'none',
@@ -19,9 +19,9 @@ const defaultAudioParams: AudioParamsValues = {
   timingDiffMs: 0,
 };
 
-function sanitize(values: AudioParamsValues): AudioParamsValues {
+function sanitize(values: AudioParamsValues, tier: AppStore['tier']): AudioParamsValues {
   return {
-    ...sanitizeBinauralParameters(values as BinauralParameters),
+    ...sanitizeBinauralParameters(values as BinauralParameters, tier),
     waveform: values.waveform,
     phaseAngle: values.phaseAngle,
     timingDiffMs: values.timingDiffMs,
@@ -32,10 +32,10 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
   ...defaultAudioParams,
 
   setParam: (key, value) => {
-    set(state => sanitize({...state, [key]: value} as AudioParamsValues));
+    set(state => sanitize({...state, [key]: value} as AudioParamsValues, state.tier));
   },
 
   applyPreset: (preset: Preset) => {
-    set(() => sanitize(preset.params));
+    set(state => sanitize(preset.params, state.tier));
   },
 });
