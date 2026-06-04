@@ -1,21 +1,24 @@
 import React, {useCallback} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {channelFrequencies, clampDriftHz} from '../../audio/channelFrequencies';
-import {getBand} from '../ReadoutPanel/brainwaveBands';
-import {DriftSlider} from '../player/DriftSlider';
+import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
+import {HubVolumeKnob} from '../hub/HubVolumeKnob';
+import {DriftKnob} from '../player/DriftKnob';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 
-/** LEFT · TARGET · RIGHT readouts with per-ear drift sliders. */
+/** LEFT · TARGET · RIGHT readouts with drift knobs under L/R and volume under TARGET. */
 export function ChannelReadoutRow() {
   const carrier = useHertzStore(s => s.carrierHz);
   const beat = useHertzStore(s => s.beatHz);
+  const gain = useHertzStore(s => s.gain);
   const leftDriftHz = clampDriftHz(useHertzStore(s => s.leftDriftHz));
   const rightDriftHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
   const setParam = useHertzStore(s => s.setParam);
 
   const onLeftDrift = useCallback((hz: number) => setParam('leftDriftHz', hz), [setParam]);
   const onRightDrift = useCallback((hz: number) => setParam('rightDriftHz', hz), [setParam]);
+  const onGainChange = useCallback((g: number) => setParam('gain', g), [setParam]);
 
   const {leftHz, rightHz} = channelFrequencies(carrier, beat, leftDriftHz, rightDriftHz);
   const band = getBand(beat);
@@ -28,36 +31,39 @@ export function ChannelReadoutRow() {
           <View style={styles.sideCard}>
             <Text style={styles.sideLabel}>LEFT</Text>
             <Text style={styles.sideHz}>{leftHz.toFixed(1)}</Text>
-            <Text style={[styles.sideUnit, {color: HertzTheme.neon.cyan}]}>Hz</Text>
+            <Text style={[styles.sideUnit, {color: HertzTheme.channel.left}]}>Hz</Text>
           </View>
-          <DriftSlider
+          <DriftKnob
             label="DRIFT L"
             driftHz={leftDriftHz}
             onChange={onLeftDrift}
-            accent={HertzTheme.neon.cyan}
+            accent={HertzTheme.channel.left}
           />
         </View>
 
-        <View style={[styles.targetCard, {borderColor: `${bandColor}66`}]}>
-          <Text style={[styles.targetLabel, {color: bandColor}]}>TARGET</Text>
-          <Text style={[styles.targetHz, {color: bandColor}]}>{beat.toFixed(2)}</Text>
-          <Text style={[styles.targetUnit, {color: bandColor}]}>Hz</Text>
-          <View style={[styles.bandPill, {borderColor: `${bandColor}99`, backgroundColor: `${bandColor}22`}]}>
-            <Text style={[styles.bandPillText, {color: bandColor}]}>{band.label}</Text>
+        <View style={styles.targetCol}>
+          <View style={[styles.targetCard, {borderColor: `${bandColor}66`}]}>
+            <Text style={[styles.targetLabel, {color: bandColor}]}>TARGET</Text>
+            <Text style={[styles.targetHz, {color: bandColor}]}>{formatBeatDisplay(beat)}</Text>
+            <Text style={[styles.targetUnit, {color: bandColor}]}>Hz</Text>
+            <View style={[styles.bandPill, {borderColor: `${bandColor}99`, backgroundColor: `${bandColor}22`}]}>
+              <Text style={[styles.bandPillText, {color: bandColor}]}>{band.label}</Text>
+            </View>
           </View>
+          <HubVolumeKnob gain={gain} onChangeGain={onGainChange} />
         </View>
 
         <View style={styles.sideCol}>
           <View style={styles.sideCard}>
             <Text style={styles.sideLabel}>RIGHT</Text>
             <Text style={[styles.sideHz, styles.rightHz]}>{rightHz.toFixed(1)}</Text>
-            <Text style={styles.sideUnit}>Hz</Text>
+            <Text style={[styles.sideUnit, styles.rightUnit]}>Hz</Text>
           </View>
-          <DriftSlider
+          <DriftKnob
             label="DRIFT R"
             driftHz={rightDriftHz}
             onChange={onRightDrift}
-            accent={HertzTheme.neon.purple}
+            accent={HertzTheme.channel.right}
           />
         </View>
       </View>
@@ -78,6 +84,10 @@ const styles = StyleSheet.create({
   sideCol: {
     flex: 1,
   },
+  targetCol: {
+    flex: 1.15,
+    alignItems: 'center',
+  },
   sideCard: {
     backgroundColor: HertzTheme.glassFill,
     borderRadius: 12,
@@ -97,19 +107,22 @@ const styles = StyleSheet.create({
     fontFamily: HertzTheme.mono,
     fontSize: 22,
     fontWeight: '600',
-    color: HertzTheme.neon.cyan,
+    color: HertzTheme.channel.left,
     marginTop: 2,
   },
   rightHz: {
-    color: HertzTheme.text.secondary,
+    color: HertzTheme.channel.right,
   },
   sideUnit: {
     fontFamily: HertzTheme.mono,
     fontSize: 11,
     color: HertzTheme.text.muted,
   },
+  rightUnit: {
+    color: HertzTheme.channel.right,
+  },
   targetCard: {
-    flex: 1.15,
+    width: '100%',
     backgroundColor: 'rgba(0,0,0,0.25)',
     borderRadius: 12,
     borderWidth: 1,

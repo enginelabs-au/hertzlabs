@@ -10,6 +10,8 @@ import {
   clampNumber,
   clampRampMs,
 } from './paramMapping';
+import type {NoiseLayers} from '../state/types';
+import {noiseLayerGains} from './noiseLayers';
 
 export type NativeSubscription = {
   remove(): void;
@@ -35,10 +37,21 @@ export const HertzAudioClient = {
     NativeHertzAudio.stop();
   },
 
-  setBinauralParameters(params: BinauralParameters): void {
+  setBinauralParameters(
+    params: BinauralParameters,
+    noise?: {layers: NoiseLayers; mix: number},
+  ): void {
     const safe = sanitizeBinauralParameters(params);
-    NativeHertzAudio.setBinauralParameters(safe.carrierHz, safe.beatHz, safe.gain, safe.balance);
-    NativeHertzAudio.setNoise(safe.noiseType, safe.noiseLevel);
+    const g = noise ? noiseLayerGains(noise.layers, noise.mix) : {white: 0, pink: 0, brown: 0};
+    NativeHertzAudio.setBinauralParameters(
+      safe.carrierHz,
+      safe.beatHz,
+      safe.gain,
+      safe.balance,
+      clampGain(g.white),
+      clampGain(g.pink),
+      clampGain(g.brown),
+    );
   },
 
   setPhaseAndTiming(phaseAngle: number, timingDiffMs: number): void {
@@ -47,6 +60,19 @@ export const HertzAudioClient = {
 
   setNoise(type: BinauralParameters['noiseType'], level: number): void {
     NativeHertzAudio.setNoise(type, clampGain(level));
+  },
+
+  setNoiseLayers(white: number, pink: number, brown: number): void {
+    const w = clampGain(white);
+    const p = clampGain(pink);
+    const b = clampGain(brown);
+    if (typeof NativeHertzAudio.setNoiseLayers === 'function') {
+      NativeHertzAudio.setNoiseLayers(w, p, b);
+      return;
+    }
+    NativeHertzAudio.setNoise('white', w);
+    NativeHertzAudio.setNoise('pink', p);
+    NativeHertzAudio.setNoise('brown', b);
   },
 
   fade(toGain: number, durationMs: number): void {

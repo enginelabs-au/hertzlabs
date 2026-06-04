@@ -1,5 +1,6 @@
 import {HertzAudioClient} from '../../audio/HertzAudioClient';
 import {mapStateToNativeAudio} from '../../audio/engineModeMapping';
+import {pushNoiseToNative} from '../../audio/pushNoiseToNative';
 import type {AppStore, EngineState, OutputRoute} from '../types';
 
 let installed = false;
@@ -26,16 +27,27 @@ export function installAudioSync(store: SelectorStore): () => void {
   const unsubscribeBeat    = store.subscribe(s => s.beatHz,    () => pushParams());
   const unsubscribeGain    = store.subscribe(s => s.gain,      () => pushParams());
   const unsubscribeBalance = store.subscribe(s => s.balance,   () => pushParams());
-  const unsubscribeNoise   = store.subscribe(s => s.noiseType, () => pushParams());
-  const unsubscribeNoiseLv = store.subscribe(s => s.noiseLevel,() => pushParams());
+  const unsubscribeNoiseWhite = store.subscribe(s => s.noiseLayers.white, () => pushNoise());
+  const unsubscribeNoisePink = store.subscribe(s => s.noiseLayers.pink, () => pushNoise());
+  const unsubscribeNoiseBrown = store.subscribe(s => s.noiseLayers.brown, () => pushNoise());
+  const unsubscribeNoiseMix = store.subscribe(s => s.noiseMix, () => pushNoise());
   const unsubscribePhase   = store.subscribe(s => s.phaseAngle,() => pushParams());
   const unsubscribeLeftDrift  = store.subscribe(s => s.leftDriftHz, () => pushParams());
   const unsubscribeRightDrift = store.subscribe(s => s.rightDriftHz, () => pushParams());
   const unsubscribeEngine    = store.subscribe(s => s.engineType, () => pushParams());
 
+  function pushNoise() {
+    const s = store.getState();
+    pushNoiseToNative(s.noiseLayers, s.noiseMix);
+  }
+
   function pushParams() {
-    const mapped = mapStateToNativeAudio(store.getState());
-    HertzAudioClient.setBinauralParameters(mapped);
+    const s = store.getState();
+    const mapped = mapStateToNativeAudio(s);
+    HertzAudioClient.setBinauralParameters(mapped, {
+      layers: s.noiseLayers,
+      mix: s.noiseMix,
+    });
     HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
   }
 
@@ -61,7 +73,11 @@ export function installAudioSync(store: SelectorStore): () => void {
   // Proxy: combine all param-level unsubscribers
   const unsubscribeParams = () => {
     unsubscribeCarrier(); unsubscribeBeat(); unsubscribeGain();
-    unsubscribeBalance(); unsubscribeNoise(); unsubscribeNoiseLv();
+    unsubscribeBalance();
+    unsubscribeNoiseWhite();
+    unsubscribeNoisePink();
+    unsubscribeNoiseBrown();
+    unsubscribeNoiseMix();
     unsubscribePhase(); unsubscribeLeftDrift(); unsubscribeRightDrift();
     unsubscribeEngine();
   };

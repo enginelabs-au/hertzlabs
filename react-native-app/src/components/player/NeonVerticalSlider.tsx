@@ -2,19 +2,37 @@ import React, {useCallback, useEffect} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {runOnJS, runOnUI, useAnimatedStyle, useSharedValue} from 'react-native-reanimated';
-import {PHASE_COLUMN_W} from '../../hooks/useHubLayout';
+import type {SharedValue} from 'react-native-reanimated';
+import {SLIDER_COLUMN_W} from '../../hooks/useHubLayout';
 import {HertzTheme} from '../../theme/hertzTheme';
 
-type NeonVerticalSliderProps = {
-  /** 0–360 degrees */
-  valueDeg: number;
-  onChangeDeg: (deg: number) => void;
+type NeonVerticalSliderBase = {
   accent?: string;
-  /** Track height — must match hub canvas height when embedded. */
   height?: number;
-  /** Sits inside hub card; track fills space between 360°/0° labels. */
   embedded?: boolean;
 };
+
+export type NeonVerticalPhaseSliderProps = NeonVerticalSliderBase & {
+  variant?: 'phase';
+  valueDeg: number;
+  onChangeDeg?: (deg: number) => void;
+  onChangeDegComplete?: (deg: number) => void;
+  onDragBegin?: () => void;
+  onDragEnd?: () => void;
+  /** @deprecated Use onLivePhaseDeg */
+  linkedPhaseDeg?: SharedValue<number>;
+};
+
+export type NeonVerticalBeatSliderProps = NeonVerticalSliderBase & {
+  variant: 'beat';
+  valueNorm: number;
+  onChangeNorm: (norm: number) => void;
+  displayText: string;
+  topLabel: string;
+  bottomLabel: string;
+};
+
+export type NeonVerticalSliderProps = NeonVerticalPhaseSliderProps | NeonVerticalBeatSliderProps;
 
 const THUMB = 20;
 const TRACK_W = 4;
@@ -42,31 +60,58 @@ function thumbCenterFromDeg(deg: number, h: number): number {
   return THUMB / 2 + (1 - norm) * travel;
 }
 
-export function NeonVerticalSlider({
-  valueDeg,
-  onChangeDeg,
-  accent = HertzTheme.neon.purple,
-  height = 200,
-  embedded = false,
-}: NeonVerticalSliderProps) {
+export function NeonVerticalSlider(props: NeonVerticalSliderProps) {
+  const {
+    accent = props.variant === 'beat' ? HertzTheme.neon.magenta : HertzTheme.neon.purple,
+    height = 200,
+    embedded = false,
+  } = props;
+
+  const isBeat = props.variant === 'beat';
+  const valueNorm = isBeat
+    ? props.valueNorm
+    : Math.min(1, Math.max(0, props.valueDeg / 360));
+
   const trackH = useSharedValue(height);
   const thumbY = useSharedValue(THUMB / 2);
+
+  const phaseProps = !isBeat ? (props as NeonVerticalPhaseSliderProps) : null;
+  const linkedPhaseDeg = phaseProps?.linkedPhaseDeg;
+  const onDragBegin = phaseProps?.onDragBegin;
+  const onDragEnd = phaseProps?.onDragEnd;
+  const onPhaseComplete = phaseProps?.onChangeDegComplete ?? phaseProps?.onChangeDeg;
 
   const commit = useCallback(
     (norm: number) => {
       const n = Math.min(1, Math.max(0, norm));
-      onChangeDeg(n * 360);
+      if (isBeat) {
+        (props as NeonVerticalBeatSliderProps).onChangeNorm(n);
+      } else {
+        phaseProps?.onChangeDeg?.(n * 360);
+      }
     },
-    [onChangeDeg],
+    [isBeat, props, phaseProps],
   );
 
-  const syncThumbFromDeg = useCallback(
-    (deg: number) => {
+  const commitComplete = useCallback(
+    (norm: number) => {
+      const n = Math.min(1, Math.max(0, norm));
+      if (isBeat) {
+        (props as NeonVerticalBeatSliderProps).onChangeNorm(n);
+      } else {
+        onPhaseComplete?.(n * 360);
+      }
+    },
+    [isBeat, props, onPhaseComplete],
+  );
+
+  const syncThumbFromNorm = useCallback(
+    (norm: number) => {
       runOnUI(() => {
         'worklet';
         const h = trackH.value;
         if (h > THUMB) {
-          thumbY.value = thumbCenterFromDeg(deg, h);
+          thumbY.value = thumbCenterFromDeg(norm * 360, h);
         }
       })();
     },
@@ -74,22 +119,47 @@ export function NeonVerticalSlider({
   );
 
   useEffect(() => {
-    syncThumbFromDeg(valueDeg);
-  }, [valueDeg, syncThumbFromDeg]);
+    syncThumbFromNorm(valueNorm);
+  }, [valueNorm, syncThumbFromNorm]);
+
+  const beginDrag = useCallback(() => onDragBegin?.(), [onDragBegin]);
+  const endDrag = useCallback(() => onDragEnd?.(), [onDragEnd]);
 
   const pan = Gesture.Pan()
+    .onBegin(() => {
+      'worklet';
+      if (onDragBegin) {
+        runOnJS(beginDrag)();
+      }
+    })
     .onUpdate(e => {
       'worklet';
       const h = trackH.value;
       const center = clampThumbCenter(e.y, h);
       thumbY.value = center;
-      runOnJS(commit)(normFromThumbCenter(center, h));
+      const norm = normFromThumbCenter(center, h);
+      if (!isBeat && linkedPhaseDeg) {
+        linkedPhaseDeg.value = norm * 360;
+      } else if (isBeat) {
+        runOnJS(commit)(norm);
+      }
     })
     .onEnd(e => {
       'worklet';
       const h = trackH.value;
       const center = clampThumbCenter(e.y, h);
-      runOnJS(commit)(normFromThumbCenter(center, h));
+      const norm = normFromThumbCenter(center, h);
+      if (!isBeat && linkedPhaseDeg) {
+        linkedPhaseDeg.value = norm * 360;
+      }
+      if (onDragEnd) {
+        runOnJS(endDrag)();
+      }
+      runOnJS(commitComplete)(norm);
+    })
+    .onFinalize(() => {
+      'worklet';
+      runOnJS(endDrag)();
     });
 
   const tap = Gesture.Tap().onEnd(e => {
@@ -97,7 +167,11 @@ export function NeonVerticalSlider({
     const h = trackH.value;
     const center = clampThumbCenter(e.y, h);
     thumbY.value = center;
-    runOnJS(commit)(normFromThumbCenter(center, h));
+    const norm = normFromThumbCenter(center, h);
+    if (!isBeat && linkedPhaseDeg) {
+      linkedPhaseDeg.value = norm * 360;
+    }
+    runOnJS(commitComplete)(norm);
   });
 
   const thumbStyle = useAnimatedStyle(() => ({
@@ -113,10 +187,14 @@ export function NeonVerticalSlider({
       runOnUI(() => {
         'worklet';
         trackH.value = h;
-        thumbY.value = thumbCenterFromDeg(valueDeg, h);
+        thumbY.value = thumbCenterFromDeg(valueNorm * 360, h);
       })();
     }
   };
+
+  const topLabel = isBeat ? props.topLabel : '360°';
+  const bottomLabel = isBeat ? props.bottomLabel : '0°';
+  const valueLabel = isBeat ? props.displayText : `${Math.round((props as NeonVerticalPhaseSliderProps).valueDeg)}°`;
 
   const trackBlock = (
     <GestureDetector gesture={Gesture.Race(pan, tap)}>
@@ -135,21 +213,26 @@ export function NeonVerticalSlider({
 
   if (embedded) {
     return (
-      <View style={[styles.embedCol, {height, width: PHASE_COLUMN_W}]}>
-        <Text style={styles.embedLabel}>360°</Text>
+      <View
+        style={[
+          styles.embedCol,
+          {height, width: SLIDER_COLUMN_W},
+          isBeat ? styles.embedColBeat : styles.embedColPhase,
+        ]}>
+        <Text style={styles.embedLabel}>{topLabel}</Text>
         <View style={styles.embedTrackFlex}>{trackBlock}</View>
-        <Text style={styles.embedLabel}>0°</Text>
-        <Text style={[styles.embedValue, {color: accent}]}>{Math.round(valueDeg)}°</Text>
+        <Text style={styles.embedLabel}>{bottomLabel}</Text>
+        <Text style={[styles.embedValue, {color: accent}]}>{valueLabel}</Text>
       </View>
     );
   }
 
   return (
     <View style={[styles.wrap, {height}]}>
-      <Text style={styles.edgeTop}>360°</Text>
+      <Text style={styles.edgeTop}>{topLabel}</Text>
       {trackBlock}
-      <Text style={styles.edgeBottom}>0°</Text>
-      <Text style={[styles.value, {color: accent}]}>{Math.round(valueDeg)}°</Text>
+      <Text style={styles.edgeBottom}>{bottomLabel}</Text>
+      <Text style={[styles.value, {color: accent}]}>{valueLabel}</Text>
     </View>
   );
 }
@@ -161,9 +244,15 @@ const styles = StyleSheet.create({
   },
   embedCol: {
     alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  embedColPhase: {
     borderLeftWidth: 1,
     borderLeftColor: HertzTheme.glassBorder,
-    paddingHorizontal: 2,
+  },
+  embedColBeat: {
+    borderRightWidth: 1,
+    borderRightColor: HertzTheme.glassBorder,
   },
   embedLabel: {
     fontFamily: HertzTheme.mono,

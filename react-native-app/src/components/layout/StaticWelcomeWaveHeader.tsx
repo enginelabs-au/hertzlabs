@@ -1,6 +1,6 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {StyleSheet, Text, useWindowDimensions, View} from 'react-native';
-import {Canvas} from '@shopify/react-native-skia';
+import {Canvas, useCanvasRef} from '@shopify/react-native-skia';
 import {GlassCard} from '../player/GlassCard';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {NeonRadiantPath} from '../waveforms/NeonRadiantPath';
@@ -19,6 +19,7 @@ const STATIC_WAVES = [
 export function StaticWelcomeWaveHeader({height = 72}: {height?: number}) {
   const {width} = useWindowDimensions();
   const canvasW = width - 32;
+  const canvasRef = useCanvasRef();
 
   const layers = useMemo(() => {
     return STATIC_WAVES.map((w, idx) => {
@@ -37,13 +38,21 @@ export function StaticWelcomeWaveHeader({height = 72}: {height?: number}) {
     });
   }, [canvasW, height]);
 
+  useEffect(() => {
+    canvasRef.current?.redraw();
+  }, [layers, canvasRef]);
+
   return (
     <GlassCard style={styles.wrap} padding={0}>
       <View style={styles.axisRow}>
         <Text style={styles.axisLabel}>Y Amp</Text>
         <Text style={styles.axisLabelRight}>Frequency →</Text>
       </View>
-      <Canvas style={{width: canvasW, height, alignSelf: 'center'}} pointerEvents="none">
+      <Canvas
+        ref={canvasRef}
+        style={{width: canvasW, height, alignSelf: 'center'}}
+        colorSpace="srgb"
+        pointerEvents="none">
         {layers.map((layer, i) => (
           <NeonRadiantPath key={i} path={layer.path} stroke={layer.stroke} strokeWidth={1.2} />
         ))}

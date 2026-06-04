@@ -2,6 +2,7 @@ import React, {Component, type ErrorInfo, type ReactNode, useEffect, useState} f
 import {
   ActivityIndicator,
   BackHandler,
+  Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -99,7 +100,9 @@ function AppContent(): React.JSX.Element {
   useEffect(() => {
     if (!hydrated) { return; }
     // Configure native engine with default settings before subscribing.
-    HertzAudioClient.configure(48000, 5);
+    // 5 ms I/O on Simulator often crackles; use a safer buffer (still low-latency on device).
+    const bufferMs = __DEV__ && Platform.OS === 'ios' ? 23 : 10;
+    HertzAudioClient.configure(48000, bufferMs);
     const uninstall = installAudioSync(useHertzStore);
     return uninstall;
   }, [hydrated]);

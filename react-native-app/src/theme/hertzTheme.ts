@@ -12,6 +12,14 @@ export const HertzTheme = {
     lime: '#BEF264',
     green: '#4ADE80',
   },
+  /** L/R readouts, drift knobs, phase slider — kept off brainwave band swatches. */
+  channel: {
+    left: '#FBBF24',
+    right: '#34D399',
+    phase: '#7DD3FC',
+    /** Fixed volume knob accent — not tied to brainwave bands. */
+    volume: '#E879F9',
+  },
   text: {
     primary: '#FFFFFF',
     secondary: 'rgba(255,255,255,0.55)',
@@ -28,14 +36,13 @@ export const HertzTheme = {
 
 export function bandActionLabel(bandLabel: string): string {
   const map: Record<string, string> = {
-    Epsilon: 'HEAL',
-    Delta: 'REST',
-    Theta: 'MEDITATE',
-    Alpha: 'RELAX',
-    SMR: 'FOCUS',
-    Beta: 'DRIVE',
-    Gamma: 'FLOW',
-    Lambda: 'PEAK',
+    HEALING: 'HEAL',
+    DREAM: 'REST',
+    MEDITATE: 'MEDITATE',
+    CALM: 'CALM',
+    FOCUS: 'FOCUS',
+    ENGAGED: 'ENGAGE',
+    COGNITION: 'THINK',
   };
   return map[bandLabel] ?? 'TUNE';
 }

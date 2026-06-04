@@ -3,7 +3,13 @@ import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {engineModeUsesModulation, mapStateToNativeAudio} from '../audio/engineModeMapping';
 import {useHertzStore} from '../state/store';
 
-const TICK_MS = 32;
+function pushMappedWithNoise(mapped: ReturnType<typeof mapStateToNativeAudio>): void {
+  const s = useHertzStore.getState();
+  HertzAudioClient.setBinauralParameters(mapped, {layers: s.noiseLayers, mix: s.noiseMix});
+}
+
+/** Native gain smoothing is ~80 ms; avoid updating faster than that. */
+const TICK_MS = 48;
 
 /**
  * While playing, applies time-varying gain / phase / balance for non-binaural modes.
@@ -22,7 +28,7 @@ export function useEngineModeModulation(): void {
     if (!isPlaying || !engineModeUsesModulation(engineType)) {
       const state = useHertzStore.getState();
       const mapped = mapStateToNativeAudio(state);
-      HertzAudioClient.setBinauralParameters(mapped);
+      pushMappedWithNoise(mapped);
       HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
       return;
     }
@@ -41,23 +47,24 @@ export function useEngineModeModulation(): void {
       switch (state.engineType) {
         case 'monaural': {
           const am = 0.5 + 0.5 * Math.sin(2 * Math.PI * b * t);
-          HertzAudioClient.setBinauralParameters({...mapped, beatHz: 0, gain: g0 * am});
+          pushMappedWithNoise({...mapped, beatHz: 0, gain: g0 * am});
           break;
         }
         case 'isochronic': {
-          const on = Math.sin(2 * Math.PI * b * t) > 0 ? 1 : 0;
-          HertzAudioClient.setBinauralParameters({...mapped, beatHz: 0, gain: g0 * on});
+          // Half-wave rectified sine — avoids hard on/off clicks from a square envelope.
+          const env = Math.max(0, Math.sin(2 * Math.PI * b * t));
+          pushMappedWithNoise({...mapped, beatHz: 0, gain: g0 * env});
           break;
         }
         case 'phaseModulated': {
           const phase = (t * b * 360) % 360;
-          HertzAudioClient.setBinauralParameters(mapped);
+          pushMappedWithNoise(mapped);
           HertzAudioClient.setPhaseAndTiming(phase, mapped.timingDiffMs);
           break;
         }
         case 'pitchPanning': {
           const balance = Math.sin(2 * Math.PI * b * t);
-          HertzAudioClient.setBinauralParameters({...mapped, balance});
+          pushMappedWithNoise({...mapped, balance});
           break;
         }
         default:

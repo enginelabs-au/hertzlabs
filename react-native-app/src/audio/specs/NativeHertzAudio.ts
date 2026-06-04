@@ -19,8 +19,12 @@ export interface Spec extends TurboModule {
     beatHz: number,
     gain: number,
     balance: number,
+    noiseWhite: number,
+    noisePink: number,
+    noiseBrown: number,
   ): void;
   setNoise(type: string, level: number): void;
+  setNoiseLayers(white: number, pink: number, brown: number): void;
   fade(toGain: number, durationMs: number): void;
   loadPreset(presetJson: string): void;
 
@@ -54,6 +58,7 @@ const NativeHertzAudio: Spec = _module ?? ({
   stop: noop,
   setBinauralParameters: noop,
   setNoise: noop,
+  setNoiseLayers: noop,
   fade: noop,
   loadPreset: noop,
   setPhaseAndTiming: noop,

@@ -60,6 +60,8 @@ public final class HertzAudioEngine {
     // Position timer
     private var positionTimer: DispatchSourceTimer?
     private var sessionStartDate: Date?
+    private var routeRebuildWorkItem: DispatchWorkItem?
+    private var lastGraphSampleRate: Double = 0
 
     public init(config: EngineConfig, parameterBox: ParameterBox = ParameterBox()) {
         self.preferredSampleRate = config.preferredSampleRate
@@ -156,12 +158,28 @@ public final class HertzAudioEngine {
         }
     }
 
-    public func setBinauralParameters(carrierHz: Double, beatHz: Double, gain: Float, balance: Float) {
+    public func setBinauralParameters(
+        carrierHz: Double,
+        beatHz: Double,
+        gain: Float,
+        balance: Float,
+        noiseWhite: Float = 0,
+        noisePink: Float = 0,
+        noiseBrown: Float = 0
+    ) {
         guard carrierHz.isFinite, beatHz.isFinite, gain.isFinite, balance.isFinite else {
             fail(code: "invalid_audio_parameters", message: "Non-finite audio parameter rejected.")
             return
         }
-        parameterBox.setBinaural(carrierHz: carrierHz, beatHz: beatHz, gain: gain, balance: balance)
+        parameterBox.setBinaural(
+            carrierHz: carrierHz,
+            beatHz: beatHz,
+            gain: gain,
+            balance: balance,
+            noiseWhite: noiseWhite,
+            noisePink: noisePink,
+            noiseBrown: noiseBrown
+        )
     }
 
     public func setPhaseAndTiming(phaseAngle: Double, timingDiffMs: Double) {
@@ -169,8 +187,12 @@ public final class HertzAudioEngine {
     }
 
     public func setNoise(type: String, level: Float) {
-        // Noise generation is deferred; stub accepts call without effect.
-        _ = type; _ = level
+        let noiseType = NoiseType(rawValue: type) ?? .none
+        parameterBox.setNoise(type: noiseType, level: level)
+    }
+
+    public func setNoiseLayers(white: Float, pink: Float, brown: Float) {
+        parameterBox.setNoiseLayers(white: white, pink: pink, brown: brown)
     }
 
     public func fade(toGain: Float, durationMs: Int) {
@@ -191,7 +213,10 @@ public final class HertzAudioEngine {
             carrierHz: preset.carrierHz,
             beatHz: preset.beatHz,
             gain: preset.noiseLevel == 0 ? 0.5 : preset.noiseLevel,
-            balance: 0
+            balance: 0,
+            noiseWhite: 0,
+            noisePink: 0,
+            noiseBrown: 0
         )
     }
 
@@ -213,26 +238,37 @@ public final class HertzAudioEngine {
     #endif
 
     private func rebuildGraph() {
-        engine.stop()
-        engine = AVAudioEngine()
-
+        let probeEngine = AVAudioEngine()
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         let sessionRate = session.sampleRate
-        let outputRate = engine.outputNode.inputFormat(forBus: 0).sampleRate
-        sampleRate = [sessionRate, outputRate, preferredSampleRate].first { $0 > 0 && $0.isFinite } ?? 44_100
+        let outputRate = probeEngine.outputNode.inputFormat(forBus: 0).sampleRate
+        let resolvedRate = [sessionRate, outputRate, preferredSampleRate].first { $0 > 0 && $0.isFinite } ?? 44_100
         #else
-        sampleRate = preferredSampleRate
+        let resolvedRate = preferredSampleRate
         #endif
-        if sampleRate <= 0 || !sampleRate.isFinite {
-            sampleRate = 44_100
+        let newRate = (resolvedRate > 0 && resolvedRate.isFinite) ? resolvedRate : 44_100
+
+        // Route notifications can fire often; rebuilding the graph causes audible crackle.
+        if oscillatorNode != nil,
+           abs(newRate - lastGraphSampleRate) < 1.0,
+           engine.isRunning || engineState == .playing || engineState == .ready {
+            sampleRate = newRate
+            return
         }
+
+        engine.stop()
+        engine = AVAudioEngine()
+        sampleRate = newRate
+        lastGraphSampleRate = newRate
+
         let sourceFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
         let oscillator = BinauralOscillatorNode(parameterBox: parameterBox, format: sourceFormat)
         oscillatorNode = oscillator
 
         engine.attach(oscillator.sourceNode)
         #if targetEnvironment(simulator)
+        // Peak limiter can pump/click on Simulator; soft limiting is already in the source node.
         engine.connect(oscillator.sourceNode, to: engine.mainMixerNode, format: sourceFormat)
         #else
         limiter = Self.makeLimiterNode()
@@ -268,17 +304,26 @@ public final class HertzAudioEngine {
         sessionController.onRouteChanged = { [weak self] in
             self?.controlQueue.async {
                 guard let self else { return }
-                self.rebuildGraph()
-                if self.userPlayIntent {
+                self.routeRebuildWorkItem?.cancel()
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self else { return }
+                    let wasRunning = self.engine.isRunning
+                    self.rebuildGraph()
+                    guard self.userPlayIntent, wasRunning else {
+                        if !self.userPlayIntent {
+                            self.transition(to: .ready)
+                        }
+                        return
+                    }
                     do {
                         try self.engine.start()
                         self.transition(to: .playing)
                     } catch {
                         self.fail(code: "ios_engine_route_restart_failed", message: String(describing: error))
                     }
-                } else {
-                    self.transition(to: .ready)
                 }
+                self.routeRebuildWorkItem = work
+                self.controlQueue.asyncAfter(deadline: .now() + .milliseconds(500), execute: work)
             }
         }
         sessionController.onMediaServicesReset = { [weak self] in

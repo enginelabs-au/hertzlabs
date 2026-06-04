@@ -1,7 +1,15 @@
 /**
- * RN entry — side-effect imports MUST stay first (gesture handler + reanimated).
+ * RN entry — side-effect imports MUST stay first (gesture handler + reanimated + skia JSI).
  */
 import 'react-native-gesture-handler';
+import {configureReanimatedLogger, ReanimatedLogLevel} from 'react-native-reanimated';
+import '@shopify/react-native-skia';
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
+
 import 'react-native-reanimated';
 
 import {AppRegistry} from 'react-native';

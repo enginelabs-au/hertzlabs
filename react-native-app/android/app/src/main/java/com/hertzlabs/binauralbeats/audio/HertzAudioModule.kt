@@ -32,8 +32,20 @@ class HertzAudioModule(
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
-    fun setBinauralParameters(carrierHz: Double, beatHz: Double, gain: Double, balance: Double) {
+    fun setBinauralParameters(
+        carrierHz: Double,
+        beatHz: Double,
+        gain: Double,
+        balance: Double,
+        noiseWhite: Double,
+        noisePink: Double,
+        noiseBrown: Double,
+    ) {
         nativeSetBinauralParameters(carrierHz, beatHz, gain, balance)
+        val noiseLevel = maxOf(noiseWhite, noisePink, noiseBrown)
+        if (noiseLevel > 0) {
+            nativeSetNoiseLevel(noiseLevel)
+        }
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
@@ -42,8 +54,21 @@ class HertzAudioModule(
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
+    fun setNoiseLayers(white: Double, pink: Double, brown: Double) {
+        val noiseLevel = maxOf(white, pink, brown)
+        if (noiseLevel > 0) {
+            nativeSetNoiseLevel(noiseLevel)
+        }
+    }
+
+    @ReactMethod(isBlockingSynchronousMethod = true)
     fun fade(toGain: Double, durationMs: Double) {
         nativeFade(toGain, durationMs.toInt())
+    }
+
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun setPhaseAndTiming(phase: Double, timingMs: Double) {
+        // Phase/timing native path is iOS-first; Android Oboe engine uses balance/beat only for now.
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)

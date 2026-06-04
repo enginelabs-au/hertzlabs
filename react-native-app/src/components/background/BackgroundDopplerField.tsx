@@ -1,6 +1,6 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {StyleSheet, Text, useWindowDimensions, View} from 'react-native';
-import {Canvas, Circle, Line, Path, Skia} from '@shopify/react-native-skia';
+import {Canvas, Circle, Line, Path, Skia, useCanvasRef} from '@shopify/react-native-skia';
 import {GestureDetector} from 'react-native-gesture-handler';
 import {clampDriftHz, channelFrequencies} from '../../audio/channelFrequencies';
 import {useMathVisualClock} from '../../hooks/useMathVisualClock';
@@ -83,6 +83,11 @@ export function BackgroundDopplerField() {
   const grid = useMemo(() => buildDopplerGrid(plotW, plotH), [plotW, plotH]);
 
   const handleR = 14;
+  const canvasRef = useCanvasRef();
+
+  useEffect(() => {
+    canvasRef.current?.redraw();
+  }, [drawables, grid, canvasRef]);
 
   return (
     <GlassCard style={styles.wrap} padding={0}>
@@ -96,7 +101,7 @@ export function BackgroundDopplerField() {
       </View>
 
       <View style={[styles.plotBox, {width: plotW, height: plotH}]}>
-        <Canvas style={{width: plotW, height: plotH}} pointerEvents="none">
+        <Canvas ref={canvasRef} style={{width: plotW, height: plotH}} colorSpace="srgb" pointerEvents="none">
           {grid.vertical.map((ln, i) => (
             <Line
               key={`v${i}`}

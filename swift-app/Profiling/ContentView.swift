@@ -226,7 +226,10 @@ final class AudioProfiler: ObservableObject {
             carrierHz: carrierHz,
             beatHz: beatHz,
             gain: Float(gain),
-            balance: Float(balance)
+            balance: Float(balance),
+            noiseWhite: 0,
+            noisePink: 0,
+            noiseBrown: 0
         )
     }
 

@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Canvas} from '@shopify/react-native-skia';
+import {Canvas, useCanvasRef} from '@shopify/react-native-skia';
 import {useWindowDimensions} from 'react-native';
 import {NeonRadiantPath} from './NeonRadiantPath';
 import {STRIP_WAVE_STROKES, type RadiantStrokeStyle} from './radiantWavePalette';
@@ -83,9 +83,14 @@ export function RadiantWaveStrip({
   const timeSec = externalTime ?? internalTime;
   const phase = timeSec * (1.15 + Math.min(beatHz, 40) * 0.085);
   const cycleScale = 1.6 + Math.sqrt(Math.max(0.05, beatHz)) * 0.35;
+  const canvasRef = useCanvasRef();
+
+  useEffect(() => {
+    canvasRef.current?.redraw();
+  }, [phase, cycleScale, width, height, variant, canvasRef]);
 
   return (
-    <Canvas style={{width, height}} pointerEvents="none">
+    <Canvas ref={canvasRef} style={{width, height}} colorSpace="srgb" pointerEvents="none">
       {WAVES.map((w, idx) => {
         const cy = variant === 'stacked' ? height * (0.28 + idx * 0.22) : height * 0.55;
         const amp = variant === 'stacked' ? w.amp * 0.65 : w.amp;

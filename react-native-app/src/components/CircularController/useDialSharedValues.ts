@@ -33,7 +33,6 @@ export function useDialSharedValues(): DialValues {
   const rotationRad = useSharedValue(0);
   const gestureActive = useSharedValue(false);
   const axisLock = useSharedValue<'vertical' | 'horizontal' | 'none'>('none');
-
   return useMemo(
     () => ({
       carrierHz,

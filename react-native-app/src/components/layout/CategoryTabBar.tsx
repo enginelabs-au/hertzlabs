@@ -2,12 +2,13 @@ import React from 'react';
 import {Pressable, ScrollView, StyleSheet, Text} from 'react-native';
 import {HertzTheme} from '../../theme/hertzTheme';
 
-export type EngineCategoryId = 'entrainment' | 'acoustic' | 'modulated';
+export type EngineCategoryId = 'entrainment' | 'acoustic' | 'modulated' | 'ambient';
 
 export const ENGINE_CATEGORIES: {id: EngineCategoryId; label: string; groups: string[]}[] = [
   {id: 'entrainment', label: 'ENTRAINMENT', groups: ['Entrainment Engine']},
   {id: 'acoustic', label: 'ACOUSTIC', groups: ['Acoustic Interference Engine']},
   {id: 'modulated', label: 'MODULATED', groups: ['Modulated & Dynamic Engine']},
+  {id: 'ambient', label: 'AMBIENT', groups: ['Ambient Noise']},
 ];
 
 type CategoryTabBarProps = {

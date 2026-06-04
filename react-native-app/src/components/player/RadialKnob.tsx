@@ -4,6 +4,14 @@ import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-reanimated';
 import {HertzTheme} from '../../theme/hertzTheme';
 
+type KnobSize = 'compact' | 'default' | 'large';
+
+const KNOB_DIMS: Record<KnobSize, {wrap: number; ring: number; border: number; valueSize: number}> = {
+  compact: {wrap: 56, ring: 44, border: 2, valueSize: 8},
+  default: {wrap: 68, ring: 56, border: 2, valueSize: 9},
+  large: {wrap: 84, ring: 72, border: 2, valueSize: 11},
+};
+
 type RadialKnobProps = {
   label: string;
   value: number;
@@ -12,9 +20,11 @@ type RadialKnobProps = {
   onChange: (v: number) => void;
   color: string;
   format?: (v: number) => string;
+  size?: KnobSize;
 };
 
-export function RadialKnob({label, value, min, max, onChange, color, format}: RadialKnobProps) {
+export function RadialKnob({label, value, min, max, onChange, color, format, size = 'default'}: RadialKnobProps) {
+  const dims = KNOB_DIMS[size];
   const display = format ? format(value) : value.toFixed(1);
   const pct = (value - min) / (max - min);
   const startRef = useRef(value);
@@ -42,18 +52,31 @@ export function RadialKnob({label, value, min, max, onChange, color, format}: Ra
 
   return (
     <GestureDetector gesture={pan}>
-      <View style={styles.wrap}>
-        <View style={[styles.ring, {borderColor: color}]}>
+      <View style={[styles.wrap, {width: dims.wrap}]}>
+        <View
+          style={[
+            styles.ring,
+            {
+              borderColor: color,
+              width: dims.ring,
+              height: dims.ring,
+              borderRadius: dims.ring / 2,
+              borderWidth: dims.border,
+            },
+          ]}>
           <View
             style={[
               styles.arc,
               {
                 borderColor: color,
+                width: dims.ring,
+                height: dims.ring,
+                borderRadius: dims.ring / 2,
                 transform: [{rotate: `${pct * 270 - 135}deg`}],
               },
             ]}
           />
-          <Text style={styles.value}>{display}</Text>
+          <Text style={[styles.value, {fontSize: dims.valueSize}]}>{display}</Text>
         </View>
         <Text style={styles.label} numberOfLines={2}>
           {label}
@@ -66,29 +89,20 @@ export function RadialKnob({label, value, min, max, onChange, color, format}: Ra
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    width: 68,
   },
   ring: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   arc: {
     position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
     borderWidth: 3,
     borderTopColor: 'transparent',
     borderRightColor: 'transparent',
   },
   value: {
     fontFamily: HertzTheme.mono,
-    fontSize: 9,
     color: HertzTheme.text.primary,
     textAlign: 'center',
   },

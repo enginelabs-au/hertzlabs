@@ -1,0 +1,19 @@
+{
+  "typescript.tsconfig": "react-native-app/tsconfig.json",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "search.exclude": {
+    "**/node_modules": true,
+    "react-native-app/ios/build": true,
+    "react-native-app/build": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "react-native-app/ios/build/**": true,
+    "react-native-app/build/**": true
+  },
+  "files.exclude": {
+    "react-native-app/ios/build": true,
+    "react-native-app/build": true
+  }
+}

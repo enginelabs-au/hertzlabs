@@ -44,6 +44,14 @@ target 'HertzLabsBinauralBeats' do
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath])
 
+    # Stale RN codegen under Pods/build/ (e.g. 4-arg setBinauralParameters) must not
+    # shadow ios/build/generated/ios/ReactCodegen used by the ReactCodegen pod.
+    stale_pods_codegen = File.join(installer.sandbox.root, 'build', 'generated')
+    if File.directory?(stale_pods_codegen)
+      FileUtils.rm_rf(stale_pods_codegen)
+      puts '  [Podfile post_install] Removed stale Pods/build/generated'
+    end
+
     # RN 0.85 New Architecture: react-native-worklets 0.9.x does not declare
     # codegenConfig.ios.modulesProvider, so generateRCTModuleProviders.js never
     # adds "WorkletsModule" to the RCTModuleProviders mapping.  Without this
@@ -249,41 +257,90 @@ target 'HertzLabsBinauralBeats' do
       end
     end
 
-    # react-native-gesture-handler 3.x uses Fabric components (RNGestureHandlerButton,
-    # RNGestureHandlerDetector). CocoaPods generates their Props.cpp / EventEmitters.cpp /
-    # ShadowNodes.cpp / ComponentDescriptors.cpp / States.cpp into
-    # build/generated/ios/ReactCodegen/react/renderer/components/rngesturehandler_codegen/
-    # but (unlike rnskia) does NOT add them to the ReactCodegen target's Compile Sources
-    # phase, producing undefined-symbol linker errors. Add them here.
-    rngh_generated_dir = File.join(
-      installer.sandbox.root, '..', 'build', 'generated', 'ios',
-      'ReactCodegen', 'react', 'renderer', 'components', 'rngesturehandler_codegen'
-    )
-    if Dir.exist?(rngh_generated_dir)
-      reactcodegen_target = installer.pods_project.targets.find { |t| t.name == 'ReactCodegen' }
-      if reactcodegen_target
-        sources_phase = reactcodegen_target.build_phases.find { |bp|
-          bp.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase)
-        }
-        if sources_phase
-          cpp_flags = '-DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 ' \
-                      '-DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32 ' \
-                      '-Wno-documentation -Wno-nullability-completeness -std=c++20'
-          %w[Props.cpp EventEmitters.cpp ShadowNodes.cpp ComponentDescriptors.cpp States.cpp].each do |fname|
-            fpath = File.join(rngh_generated_dir, fname)
-            next unless File.exist?(fpath)
-            already = sources_phase.files.any? { |f|
-              f.file_ref&.real_path&.to_s == fpath rescue false
-            }
-            unless already
-              file_ref = installer.pods_project.new_file(fpath)
-              build_file = sources_phase.add_file_reference(file_ref)
-              build_file.settings = { 'COMPILER_FLAGS' => cpp_flags }
-              puts "  [Podfile post_install] Added #{fname} (rngesturehandler_codegen) to ReactCodegen"
-            end
+    # ReactCodegen may register the same generated path twice (rnskia Fabric + manual
+    # rnworklets.mm). Xcode surfaces these as yellow/red "Skipping duplicate build file".
+    reactcodegen_target = installer.pods_project.targets.find { |t| t.name == 'ReactCodegen' }
+    codegen_cpp_flags = '-DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 ' \
+                        '-DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32 ' \
+                        '-Wno-documentation -Wno-nullability-completeness -std=c++20'
+
+    if reactcodegen_target
+      reactcodegen_target.build_phases.each do |phase|
+        next unless phase.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase) ||
+                    phase.is_a?(Xcodeproj::Project::Object::PBXHeadersBuildPhase)
+        seen = {}
+        phase.files.to_a.each do |build_file|
+          path = build_file.file_ref&.real_path&.to_s
+          next if path.nil? || path.empty?
+          if seen[path]
+            phase.files.delete(build_file)
+            puts "  [Podfile post_install] Deduped #{File.basename(path)} in ReactCodegen #{phase.display_name}"
+          else
+            seen[path] = true
           end
         end
       end
+
+      # Fabric component codegen (rngesturehandler_codegen, rnskia): CocoaPods often omits
+      # Props/EventEmitters/… from Compile Sources → undefined linker symbols. Run after dedupe.
+      sources_phase = reactcodegen_target.build_phases.find { |bp|
+        bp.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase)
+      }
+      if sources_phase
+        components_root = File.expand_path(
+          File.join(
+            installer.sandbox.root, '..', 'build', 'generated', 'ios',
+            'ReactCodegen', 'react', 'renderer', 'components'
+          )
+        )
+        react_codegen_has_source = lambda do |phase, canonical|
+          phase.files.any? do |bf|
+            p = bf.file_ref&.real_path&.to_s
+            next false if p.nil? || p.empty?
+            File.realpath(p) == canonical
+          rescue StandardError
+            false
+          end
+        end
+
+        %w[rngesturehandler_codegen rnskia].each do |component|
+          component_dir = File.join(components_root, component)
+          unless Dir.exist?(component_dir)
+            puts "  [Podfile post_install] WARN: missing #{component_dir} (run codegen before pod install)"
+            next
+          end
+
+          %w[Props.cpp EventEmitters.cpp ShadowNodes.cpp ComponentDescriptors.cpp States.cpp].each do |fname|
+            fpath = File.join(component_dir, fname)
+            next unless File.exist?(fpath)
+            canonical = File.realpath(fpath)
+            next if react_codegen_has_source.call(sources_phase, canonical)
+
+            file_ref = installer.pods_project.files.find do |f|
+              p = f.real_path&.to_s
+              next false if p.nil? || p.empty?
+              File.realpath(p) == canonical
+            rescue StandardError
+              false
+            end
+            file_ref ||= installer.pods_project.new_file(fpath)
+            build_file = sources_phase.add_file_reference(file_ref)
+            build_file.settings = { 'COMPILER_FLAGS' => codegen_cpp_flags }
+            puts "  [Podfile post_install] ReactCodegen compile + #{component}/#{fname}"
+          end
+        end
+      end
+
+      installer.pods_project.save
     end
+  end
+
+  # post_install hooks can run before the Pods project is fully written; re-apply RNGH Fabric
+  # sources after integration so linker always sees rngesturehandler_codegen/*.cpp.
+  post_integrate do |_installer|
+    fix_script = File.expand_path('scripts/ensure_rngesturehandler_codegen_sources.rb', __dir__)
+    next unless File.exist?(fix_script)
+
+    system('ruby', fix_script) || raise('ensure_rngesturehandler_codegen_sources.rb failed')
   end
 end

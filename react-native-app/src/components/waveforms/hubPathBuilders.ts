@@ -17,24 +17,37 @@ export type HubAudioParams = {
 };
 
 export type HubScopePaths = {
-  top: SkPath;
-  left: SkPath;
+  /** Horizontal trace along the top — left ear Hz. */
+  leftChannel: SkPath;
+  /** Vertical trace along the left edge — right ear Hz. */
+  rightChannel: SkPath;
   lissajousBack: SkPath;
   lissajousMid: SkPath;
   lissajousFront: SkPath;
 };
 
 function finite(n: number, fallback: number): number {
+  'worklet';
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** Build all hub scope paths on the JS thread (no Reanimated mappers). */
+/** Wider trace window → slower edge scroll; leading sample still at `timeSec` (audio-aligned). */
+export const HUB_TRACE_SPAN_MUL = 1.38;
+
+/** Lissajous samples per layer — lower = less work per frame. */
+export const HUB_LISSAJOU_POINTS = 48;
+
+/** Cap oscilloscope trace steps for hub border waves. */
+export const HUB_TRACE_MAX_STEPS = 48;
+
+/** Build all hub scope paths (UI-thread safe via worklet callees). */
 export function buildHubScopePaths(
   width: number,
   height: number,
   timeSec: number,
   audio: HubAudioParams,
 ): HubScopePaths {
+  'worklet';
   const w = Math.max(64, width);
   const h = Math.max(64, height);
   const carrierHz = finite(audio.carrierHz, 200);
@@ -56,8 +69,8 @@ export function buildHubScopePaths(
   const leftLen = Math.max(24, h - 16);
   const phaseRad = (phaseAngle * Math.PI) / 180;
 
-  const topB = Skia.PathBuilder.Make();
-  appendOscilloscopeTrace(topB, {
+  const leftChannelB = Skia.PathBuilder.Make();
+  appendOscilloscopeTrace(leftChannelB, {
     length: topLen,
     center: size * 0.055,
     amplitude: borderAmp,
@@ -65,10 +78,12 @@ export function buildHubScopePaths(
     timeSec: t,
     orientation: 'horizontal',
     gain,
+    traceSpanMul: HUB_TRACE_SPAN_MUL,
+    maxSteps: HUB_TRACE_MAX_STEPS,
   });
 
-  const leftB = Skia.PathBuilder.Make();
-  appendOscilloscopeTrace(leftB, {
+  const rightChannelB = Skia.PathBuilder.Make();
+  appendOscilloscopeTrace(rightChannelB, {
     length: leftLen,
     center: size * 0.05,
     amplitude: borderAmp * 0.92,
@@ -77,6 +92,8 @@ export function buildHubScopePaths(
     orientation: 'vertical',
     phaseRad,
     gain,
+    traceSpanMul: HUB_TRACE_SPAN_MUL,
+    maxSteps: HUB_TRACE_MAX_STEPS,
   });
 
   const backB = Skia.PathBuilder.Make();
@@ -94,13 +111,13 @@ export function buildHubScopePaths(
       gain,
       balance,
       timeSec: t,
-      pointCount: 130,
+      pointCount: HUB_LISSAJOU_POINTS,
     },
   );
 
   return {
-    top: topB.build(),
-    left: leftB.build(),
+    leftChannel: leftChannelB.build(),
+    rightChannel: rightChannelB.build(),
     lissajousBack: backB.build(),
     lissajousMid: midB.build(),
     lissajousFront: frontB.build(),

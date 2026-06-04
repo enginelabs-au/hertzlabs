@@ -5,10 +5,7 @@ import type {SharedValue} from 'react-native-reanimated';
 import {BRAINWAVE_BANDS} from './brainwaveBands';
 
 const BAND_LABEL_STRINGS: string[] = BRAINWAVE_BANDS.map(b => b.label);
-const BAND_HZ_RANGES: string[] = BRAINWAVE_BANDS.map(b => {
-  const max = b.maxHz === Infinity ? '∞' : String(b.maxHz);
-  return `${b.minHz} – ${max} Hz`;
-});
+const BAND_HZ_RANGES: string[] = BRAINWAVE_BANDS.map(b => b.rangeLabel);
 const BAND_COLORS: string[] = BRAINWAVE_BANDS.map(b => b.hexColor);
 
 interface BandLabelProps {

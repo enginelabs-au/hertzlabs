@@ -2,9 +2,17 @@
   "typescript.tsconfig": "tsconfig.json",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "search.exclude": {
-    "**/node_modules": true
+    "**/node_modules": true,
+    "ios/build": true,
+    "build": true
   },
   "files.watcherExclude": {
-    "**/node_modules/**": true
+    "**/node_modules/**": true,
+    "ios/build/**": true,
+    "build/**": true
+  },
+  "files.exclude": {
+    "ios/build": true,
+    "build": true
   }
 }

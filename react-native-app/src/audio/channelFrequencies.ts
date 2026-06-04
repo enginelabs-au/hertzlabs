@@ -5,6 +5,7 @@ export const MAX_DRIFT_HZ = 12;
 export type ChannelHz = {leftHz: number; rightHz: number};
 
 export function clampDriftHz(hz: number): number {
+  'worklet';
   if (!Number.isFinite(hz)) {
     return 0;
   }
@@ -18,6 +19,7 @@ export function channelFrequencies(
   leftDriftHz: number,
   rightDriftHz: number,
 ): ChannelHz {
+  'worklet';
   const c = Math.max(20, carrierHz);
   const b = Math.max(0, beatHz);
   const dl = clampDriftHz(leftDriftHz);

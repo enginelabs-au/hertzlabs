@@ -59,9 +59,25 @@ public final class HertzEngineFacade: NSObject {
         telemetry.stop()
     }
 
-    @objc(setBinauralParametersWithCarrierHz:beatHz:gain:balance:)
-    public func setBinauralParameters(carrierHz: Double, beatHz: Double, gain: Float, balance: Float) {
-        engine.setBinauralParameters(carrierHz: carrierHz, beatHz: beatHz, gain: gain, balance: balance)
+    @objc(setBinauralParametersWithCarrierHz:beatHz:gain:balance:noiseWhite:noisePink:noiseBrown:)
+    public func setBinauralParameters(
+        carrierHz: Double,
+        beatHz: Double,
+        gain: Float,
+        balance: Float,
+        noiseWhite: Float,
+        noisePink: Float,
+        noiseBrown: Float
+    ) {
+        engine.setBinauralParameters(
+            carrierHz: carrierHz,
+            beatHz: beatHz,
+            gain: gain,
+            balance: balance,
+            noiseWhite: noiseWhite,
+            noisePink: noisePink,
+            noiseBrown: noiseBrown
+        )
     }
 
     @objc(setPhaseAngle:timingDiffMs:)
@@ -72,6 +88,11 @@ public final class HertzEngineFacade: NSObject {
     @objc(setNoiseWithType:level:)
     public func setNoise(type: String, level: Float) {
         engine.setNoise(type: type, level: level)
+    }
+
+    @objc(setNoiseLayersWithWhite:pink:brown:)
+    public func setNoiseLayers(white: Float, pink: Float, brown: Float) {
+        engine.setNoiseLayers(white: white, pink: pink, brown: brown)
     }
 
     @objc(fadeToGain:durationMs:)

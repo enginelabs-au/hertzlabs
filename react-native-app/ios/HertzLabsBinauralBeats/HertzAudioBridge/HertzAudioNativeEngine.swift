@@ -35,18 +35,28 @@ final class HertzAudioNativeEngine: NSObject {
     carrierHz: Double,
     beatHz: Double,
     gain: Float,
-    balance: Float
+    balance: Float,
+    noiseWhite: Float,
+    noisePink: Float,
+    noiseBrown: Float
   ) {
     facade.setBinauralParameters(
       carrierHz: carrierHz,
       beatHz: beatHz,
       gain: gain,
-      balance: balance
+      balance: balance,
+      noiseWhite: noiseWhite,
+      noisePink: noisePink,
+      noiseBrown: noiseBrown
     )
   }
 
   @objc func setNoise(type: String, level: Float) {
     facade.setNoise(type: type, level: level)
+  }
+
+  @objc func setNoiseLayers(white: Float, pink: Float, brown: Float) {
+    facade.setNoiseLayers(white: white, pink: pink, brown: brown)
   }
 
   @objc func fade(toGain: Float, durationMs: Int) {

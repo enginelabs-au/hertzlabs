@@ -15,14 +15,24 @@ export type OutputRoute = 'speaker' | 'headphones' | 'bluetooth' | 'airplay' | '
 export type AiStatus = 'idle' | 'loading' | 'streaming' | 'done' | 'error';
 export type SubscriptionTier = 'free' | 'premium';
 
+export type NoiseLayers = {
+  white: boolean;
+  pink: boolean;
+  brown: boolean;
+};
+
 export type AudioParamsValues = {
   carrierHz: number;
   beatHz: number;
   gain: number;
   balance: number;
   waveform: Waveform;
+  /** @deprecated Use noiseLayers + noiseMix; kept for presets / AI payloads */
   noiseType: NoiseType;
   noiseLevel: number;
+  noiseLayers: NoiseLayers;
+  /** Master noise amount (0–1 linear) when any layer is on */
+  noiseMix: number;
   fadeMs: number;
   phaseAngle: number;
   /** Per-ear frequency offset (Hz), −12…+12. L/R readouts; native via back-solved carrier/beat. */
@@ -44,6 +54,8 @@ export type SessionPlan = {
 
 export type AudioParamsSlice = AudioParamsValues & {
   setParam<K extends keyof AudioParamsValues>(key: K, value: AudioParamsValues[K]): void;
+  toggleNoiseLayer(layer: keyof NoiseLayers): void;
+  setNoiseMix(mix: number): void;
   applyPreset(preset: Preset): void;
 };
 

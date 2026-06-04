@@ -28,7 +28,7 @@ export function PlayerSettingsCard() {
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Effect</Text>
         <Text style={styles.effect}>
-          {band.label} ({band.label === 'Theta' ? 'Relax' : 'Entrain'})
+          {band.label} ({band.rangeLabel})
         </Text>
       </View>
       <Pressable style={styles.presetsBtn}>

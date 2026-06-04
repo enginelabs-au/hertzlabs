@@ -1,83 +1,144 @@
-import React, {memo, useEffect, useMemo, useState} from 'react';
+import React, {memo, useEffect, useMemo} from 'react';
+import {StyleSheet, Text, View} from 'react-native';
 import {Canvas, Group} from '@shopify/react-native-skia';
-import {useHertzStore} from '../../state/store';
-import {NeonRadiantPath} from './NeonRadiantPath';
-import {STROKE_CYAN, STROKE_VIOLET} from './radiantWavePalette';
-import {buildHubScopePaths} from './hubPathBuilders';
+import {
+  Easing,
+  cancelAnimation,
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import type {DialValues} from '../CircularController/useDialSharedValues';
+import {buildHubScopePaths} from './hubPathBuilders';
+import {HertzTheme} from '../../theme/hertzTheme';
+import {bandStrokeFromHex} from './bandStrokeColors';
+import {NeonRadiantPath} from './NeonRadiantPath';
+
+const CHANNEL_LEFT = HertzTheme.channel.left;
+const CHANNEL_RIGHT = HertzTheme.channel.right;
 
 type HubOscilloscopeCanvasProps = {
   width: number;
   height: number;
-  /** Kept for gesture wiring; audio params read from store each frame on JS thread. */
+  /** Live UI-thread audio params — paths follow these every frame (slider + dial). */
   dialValues: DialValues;
-};
-
-const STROKE_BACK = {
-  core: 'rgba(167,139,250,0.35)',
-  glow: 'rgba(167,139,250,0.2)',
-  halo: 'rgba(167,139,250,0.08)',
-};
-
-const STROKE_MID = {
-  core: 'rgba(92,225,255,0.55)',
-  glow: 'rgba(92,225,255,0.35)',
-  halo: 'rgba(92,225,255,0.12)',
+  leftDriftHz: number;
+  rightDriftHz: number;
+  /** Band hue + intensity inputs (store-backed; update on commit). */
+  bandHex: string;
+  beatHz: number;
+  gain: number;
 };
 
 /**
- * Engine hub oscilloscope — paths rebuilt on the JS thread via rAF.
- * Center: pseudo-3D Lissajous (phase rotates depth); borders: L/R traces.
+ * Hub oscilloscope — paths rebuilt on the UI thread each frame from `dialValues`
+ * shared values, so the waveform follows the beat slider / dial live (no JS bridge
+ * traffic during drag). Mirrors LissajousCanvas / FramedBorderWaves.
  */
-function HubOscilloscopeCanvasInner({width, height}: HubOscilloscopeCanvasProps) {
-  const [timeSec, setTimeSec] = useState(0);
-  const carrierHz = useHertzStore(s => s.carrierHz);
-  const beatHz = useHertzStore(s => s.beatHz);
-  const phaseAngle = useHertzStore(s => s.phaseAngle);
-  const gain = useHertzStore(s => s.gain);
-  const balance = useHertzStore(s => s.balance);
-  const leftDriftHz = useHertzStore(s => s.leftDriftHz);
-  const rightDriftHz = useHertzStore(s => s.rightDriftHz);
-
-  useEffect(() => {
-    let raf = 0;
-    const t0 = Date.now();
-    const tick = () => {
-      setTimeSec((Date.now() - t0) / 1000);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  const paths = useMemo(
-    () =>
-      buildHubScopePaths(width, height, timeSec, {
-        carrierHz,
-        beatHz,
-        phaseAngle,
-        gain,
-        balance,
-        leftDriftHz,
-        rightDriftHz,
-      }),
-    [width, height, timeSec, carrierHz, beatHz, phaseAngle, gain, balance, leftDriftHz, rightDriftHz],
-  );
-
+function HubOscilloscopeCanvasInner({
+  width,
+  height,
+  dialValues,
+  leftDriftHz,
+  rightDriftHz,
+  bandHex,
+  beatHz,
+  gain,
+}: HubOscilloscopeCanvasProps) {
   const w = Math.max(64, width);
   const h = Math.max(64, height);
 
+  // Continuous UI-thread clock via a core Reanimated animation — render-independent
+  // and not tied to useFrameCallback (which stalled here). time.value ≈ seconds.
+  const time = useSharedValue(0);
+  useEffect(() => {
+    time.value = withRepeat(
+      withTiming(100000, {duration: 100_000_000, easing: Easing.linear}),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(time);
+  }, [time]);
+
+  const scope = useDerivedValue(
+    () => {
+      'worklet';
+      return buildHubScopePaths(w, h, time.value, {
+        carrierHz: dialValues.carrierHz.value,
+        beatHz: dialValues.beatHz.value,
+        phaseAngle: dialValues.phaseAngle.value,
+        gain: dialValues.gain.value,
+        balance: dialValues.balance.value,
+        leftDriftHz,
+        rightDriftHz,
+      });
+    },
+    [w, h, leftDriftHz, rightDriftHz, dialValues],
+  );
+
+  const leftPath = useDerivedValue(() => scope.value.leftChannel, [scope]);
+  const rightPath = useDerivedValue(() => scope.value.rightChannel, [scope]);
+  const backPath = useDerivedValue(() => scope.value.lissajousBack, [scope]);
+  const midPath = useDerivedValue(() => scope.value.lissajousMid, [scope]);
+  const frontPath = useDerivedValue(() => scope.value.lissajousFront, [scope]);
+
+  const styles_pack = useMemo(() => {
+    const gainPart = Math.min(1, Math.max(0.4, gain * 1.2));
+    const beatPart = Math.min(1, Math.max(0.45, Math.log10(beatHz + 1) / 1.55));
+    const intensity = Math.min(1, gainPart * (0.65 + beatPart * 0.55));
+    const chIntensity = Math.min(1, intensity * 1.05);
+    const t = Math.min(1, Math.max(0, Math.log10(beatHz + 1) / 2));
+    const boost = 1 + t * 0.85;
+    return {
+      left: bandStrokeFromHex(CHANNEL_LEFT, chIntensity),
+      right: bandStrokeFromHex(CHANNEL_RIGHT, chIntensity),
+      back: bandStrokeFromHex(bandHex, intensity * 0.48),
+      mid: bandStrokeFromHex(bandHex, intensity * 0.72),
+      front: bandStrokeFromHex(bandHex, intensity),
+      channelW: 1.55 * boost,
+      backW: 1.35 * boost,
+      midW: 1.65 * boost,
+      frontW: 2.15 * boost,
+    };
+  }, [bandHex, beatHz, gain]);
+
   return (
-    <Canvas style={{width: w, height: h}} pointerEvents="none">
-      <NeonRadiantPath path={paths.top} stroke={STROKE_CYAN} strokeWidth={1.35} />
-      <NeonRadiantPath path={paths.left} stroke={STROKE_VIOLET} strokeWidth={1.3} />
-      <Group>
-        <NeonRadiantPath path={paths.lissajousBack} stroke={STROKE_BACK} strokeWidth={1.1} />
-        <NeonRadiantPath path={paths.lissajousMid} stroke={STROKE_MID} strokeWidth={1.25} />
-        <NeonRadiantPath path={paths.lissajousFront} stroke={STROKE_CYAN} strokeWidth={1.55} />
-      </Group>
-    </Canvas>
+    <View style={{width: w, height: h}} pointerEvents="none">
+      <Canvas style={{width: w, height: h}} colorSpace="srgb" pointerEvents="none">
+        <NeonRadiantPath path={leftPath} stroke={styles_pack.left} strokeWidth={styles_pack.channelW} />
+        <NeonRadiantPath path={rightPath} stroke={styles_pack.right} strokeWidth={styles_pack.channelW} />
+        <Group>
+          <NeonRadiantPath path={backPath} stroke={styles_pack.back} strokeWidth={styles_pack.backW} />
+          <NeonRadiantPath path={midPath} stroke={styles_pack.mid} strokeWidth={styles_pack.midW} />
+          <NeonRadiantPath path={frontPath} stroke={styles_pack.front} strokeWidth={styles_pack.frontW} />
+        </Group>
+      </Canvas>
+      <Text style={[styles.channelMark, styles.markL, {color: CHANNEL_LEFT}]}>L</Text>
+      <Text style={[styles.channelMark, styles.markR, {color: CHANNEL_RIGHT}]}>R</Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  channelMark: {
+    position: 'absolute',
+    fontFamily: HertzTheme.mono,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 4,
+  },
+  markL: {
+    left: 8,
+    bottom: 8,
+  },
+  markR: {
+    right: 8,
+    top: 6,
+  },
+});
 
 export const HubOscilloscopeCanvas = memo(HubOscilloscopeCanvasInner);

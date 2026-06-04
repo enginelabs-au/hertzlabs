@@ -27,6 +27,9 @@ public struct ParameterSnapshot: Sendable, Equatable {
     public var targetPhaseAngle: Double      // degrees 0–360
     public var targetTimingDiffMs: Double    // ±500 ms
     public var playIntent: Bool
+    public var noiseWhiteGain: Float
+    public var noisePinkGain: Float
+    public var noiseBrownGain: Float
     public var generationCounter: UInt64     // monotonically incrementing
 
     public static let initial = ParameterSnapshot(
@@ -37,6 +40,9 @@ public struct ParameterSnapshot: Sendable, Equatable {
         targetPhaseAngle: 0,
         targetTimingDiffMs: 0,
         playIntent: false,
+        noiseWhiteGain: 0,
+        noisePinkGain: 0,
+        noiseBrownGain: 0,
         generationCounter: 0
     )
 }
@@ -99,12 +105,24 @@ public final class ParameterBox: @unchecked Sendable {
 
     // MARK: Convenience partial-update helpers (control thread)
 
-    public func setBinaural(carrierHz: Double, beatHz: Double, gain: Float, balance: Float) {
+    public func setBinaural(
+        carrierHz: Double,
+        beatHz: Double,
+        gain: Float,
+        balance: Float,
+        noiseWhite: Float? = nil,
+        noisePink: Float? = nil,
+        noiseBrown: Float? = nil
+    ) {
         var s = read()
         s.targetCarrierHz = carrierHz
         s.targetBeatHz = beatHz
         s.targetGain = gain
         s.targetBalance = balance
+        let clamp: (Float) -> Float = { max(0, min(AudioConstants.kMaxAmplitude, $0)) }
+        if let noiseWhite { s.noiseWhiteGain = clamp(noiseWhite) }
+        if let noisePink { s.noisePinkGain = clamp(noisePink) }
+        if let noiseBrown { s.noiseBrownGain = clamp(noiseBrown) }
         write(s)
     }
 
@@ -124,9 +142,28 @@ public final class ParameterBox: @unchecked Sendable {
     }
 
     public func setNoise(type: NoiseType, level: Float) {
-        // Noise params are tracked outside ParameterBox (deferred feature).
-        // Stub kept for API surface parity.
-        _ = type; _ = level
+        var s = read()
+        let clamped = max(0, min(AudioConstants.kMaxAmplitude, level))
+        switch type {
+        case .white: s.noiseWhiteGain = clamped
+        case .pink:  s.noisePinkGain = clamped
+        case .brown: s.noiseBrownGain = clamped
+        case .none:
+            s.noiseWhiteGain = 0
+            s.noisePinkGain = 0
+            s.noiseBrownGain = 0
+        }
+        write(s)
+    }
+
+    /// Atomic update — avoids partial state between per-type bridge calls.
+    public func setNoiseLayers(white: Float, pink: Float, brown: Float) {
+        var s = read()
+        let clamp: (Float) -> Float = { max(0, min(AudioConstants.kMaxAmplitude, $0)) }
+        s.noiseWhiteGain = clamp(white)
+        s.noisePinkGain = clamp(pink)
+        s.noiseBrownGain = clamp(brown)
+        write(s)
     }
 
     // MARK: Legacy shim — publish() — used by existing engine call sites

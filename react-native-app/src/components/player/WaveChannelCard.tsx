@@ -64,7 +64,10 @@ export function WaveChannelCard({side}: WaveChannelCardProps) {
         <Text style={styles.gainLabel}>Gain</Text>
         <View style={styles.gainTrack}>
           {Array.from({length: 12}).map((_, i) => (
-            <View key={i} style={[styles.gainDot, i < Math.round(gain * 12) && styles.gainDotOn]} />
+            <View
+              key={i}
+              style={[styles.gainDot, Math.round(gain * 12) > i && styles.gainDotOn]}
+            />
           ))}
           <View style={[styles.gainThumb, {left: `${Math.round(gain * 100)}%`}]} />
         </View>

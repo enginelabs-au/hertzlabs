@@ -1,33 +1,19 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {getBand} from '../ReadoutPanel/brainwaveBands';
+import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
 import {HertzTheme, bandActionLabel} from '../../theme/hertzTheme';
 import {useHertzStore} from '../../state/store';
-
-const MOODS: Record<string, string> = {
-  Epsilon: 'Heal',
-  Delta: 'Rest',
-  Theta: 'Relax',
-  Alpha: 'Calm',
-  SMR: 'Focus',
-  Beta: 'Drive',
-  Gamma: 'Flow',
-  Lambda: 'Peak',
-};
 
 export function PrimaryFrequencyHero() {
   const beatHz = useHertzStore(s => s.beatHz);
   const band = getBand(beatHz);
-  const mood = MOODS[band.label] ?? 'Tune';
   const badge = bandActionLabel(band.label);
 
   return (
     <View style={styles.row}>
       <View style={styles.left}>
-        <Text style={[styles.hz, {color: band.hexColor}]}>{beatHz.toFixed(2)} Hz</Text>
-        <Text style={styles.subtitle}>
-          {band.label} • {mood}
-        </Text>
+        <Text style={[styles.hz, {color: band.hexColor}]}>{formatBeatDisplay(beatHz)} Hz</Text>
+        <Text style={styles.subtitle}>{band.label}</Text>
       </View>
       <View style={[styles.badge, {borderColor: `${band.hexColor}88`, backgroundColor: `${band.hexColor}22`}]}>
         <Text style={[styles.badgeText, {color: band.hexColor}]}>{badge}</Text>

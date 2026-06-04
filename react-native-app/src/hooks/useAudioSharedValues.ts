@@ -1,10 +1,10 @@
 import {useEffect} from 'react';
-import {runOnUI} from 'react-native-reanimated';
 import type {DialValues} from '../components/CircularController/useDialSharedValues';
 import {useHertzStore} from '../state/store';
 
 /**
- * Subscribes to Zustand audio params and syncs them into dial shared values on the UI thread.
+ * Syncs Zustand audio params into dial shared values.
+ * Assigns from the JS thread (no runOnUI — avoids bridge queue errors).
  */
 export function useAudioSharedValues(dialValues: DialValues) {
   const {carrierHz, beatHz, phaseAngle, timingDiffMs} = dialValues;
@@ -24,21 +24,15 @@ export function useAudioSharedValues(dialValues: DialValues) {
         carrierHz: cHz,
         beatHz: bHz,
         phaseAngle: pA,
-        leftDriftHz,
-        rightDriftHz,
         gain,
         balance,
       }) => {
-        runOnUI(() => {
-          'worklet';
-          carrierHz.value = cHz;
-          // Keep store TARGET beat on the dial — drift must not rewrite beatHz via gesture commit.
-          beatHz.value = bHz;
-          phaseAngle.value = pA;
-          timingDiffMs.value = 0;
-          dialValues.gain.value = gain;
-          dialValues.balance.value = balance;
-        })();
+        carrierHz.value = cHz;
+        beatHz.value = bHz;
+        phaseAngle.value = pA;
+        timingDiffMs.value = 0;
+        dialValues.gain.value = gain;
+        dialValues.balance.value = balance;
       },
       {
         fireImmediately: true,

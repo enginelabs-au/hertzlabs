@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {AmbientNoiseSelector} from '../components/EngineSelector/AmbientNoiseSelector';
 import {EngineSelector} from '../components/EngineSelector/EngineSelector';
 import {EngineDialSection} from '../components/engines/EngineDialSection';
 import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
@@ -58,7 +59,11 @@ export function PlayerScreen() {
         <ChannelReadoutRow />
         <EngineDialSection />
         <CategoryTabBar active={category} onChange={setCategory} />
-        <EngineSelector category={category} />
+        {category === 'ambient' ? (
+          <AmbientNoiseSelector />
+        ) : (
+          <EngineSelector category={category} />
+        )}
       </ScrollView>
 
       <View style={styles.footer}>

@@ -54,6 +54,8 @@ export function appendOscilloscopeTrace(
     phaseRad?: number;
     gain?: number;
     maxSteps?: number;
+    /** Widen the visible time window (leading edge stays at `timeSec` for audio sync). */
+    traceSpanMul?: number;
   },
 ): void {
   'worklet';
@@ -67,9 +69,10 @@ export function appendOscilloscopeTrace(
     phaseRad = 0,
     gain = 1,
     maxSteps,
+    traceSpanMul = 1,
   } = opts;
   const steps = maxSteps ?? Math.max(120, Math.floor(length / 2));
-  const windowSec = Math.max(1 / Math.max(hz, 0.05), 0.02);
+  const windowSec = Math.max(1 / Math.max(hz, 0.05), 0.02) * Math.max(1, traceSpanMul);
   const g = Math.min(Math.max(gain, 0), 1) * MAX_AMP;
 
   for (let i = 0; i <= steps; i++) {
@@ -170,6 +173,7 @@ export type Lissajous3DLayerOpts = {
  * Phase shifts the right-channel component and depth (Z), so the figure visibly twists.
  */
 export function appendLissajous3DLoop(builder: SkPathBuilder, opts: Lissajous3DLayerOpts): void {
+  'worklet';
   const {
     cx,
     cy,
@@ -215,6 +219,7 @@ export function appendLissajous3DStack(
   builders: {back: SkPathBuilder; mid: SkPathBuilder; front: SkPathBuilder},
   opts: Omit<Lissajous3DLayerOpts, 'yawRad'> & {phaseDeg: number},
 ): void {
+  'worklet';
   const phaseRad = (opts.phaseDeg * Math.PI) / 180;
   const stacks: Array<{target: SkPathBuilder; yawOff: number; scaleMul: number; phaseOff: number}> = [
     {target: builders.back, yawOff: -0.55, scaleMul: 0.68, phaseOff: -22},

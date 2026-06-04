@@ -84,16 +84,27 @@ RCT_EXPORT_MODULE(HertzAudio)
                        beatHz:(double)beatHz
                          gain:(double)gain
                       balance:(double)balance
+                   noiseWhite:(double)noiseWhite
+                    noisePink:(double)noisePink
+                   noiseBrown:(double)noiseBrown
 {
   [self.nativeEngine setBinauralParametersWithCarrierHz:carrierHz
                                                  beatHz:beatHz
                                                    gain:(float)gain
-                                                balance:(float)balance];
+                                                balance:(float)balance
+                                              noiseWhite:(float)noiseWhite
+                                               noisePink:(float)noisePink
+                                              noiseBrown:(float)noiseBrown];
 }
 
 - (void)setNoise:(NSString *)type level:(double)level
 {
   [self.nativeEngine setNoiseWithType:type level:(float)level];
+}
+
+- (void)setNoiseLayers:(double)white pink:(double)pink brown:(double)brown
+{
+  [self.nativeEngine setNoiseLayersWithWhite:(float)white pink:(float)pink brown:(float)brown];
 }
 
 - (void)fade:(double)toGain durationMs:(double)durationMs

@@ -26,6 +26,7 @@ describe('default audio params', () => {
     expect(s.balance).toBe(0);
     expect(s.waveform).toBe('sine');
     expect(s.noiseType).toBe('none');
+    expect(s.noiseLayers).toEqual({white: false, pink: false, brown: false});
     expect(s.tier).toBe('free');
   });
 });
@@ -90,7 +91,16 @@ describe('applyPreset', () => {
     expect(s.waveform).toBe('triangle');
     expect(s.noiseType).toBe('white');
     expect(s.noiseLevel).toBe(PEAK_CEILING_LINEAR);
+    expect(s.noiseLayers.white).toBe(true);
     expect(s.fadeMs).toBe(50);
+  });
+
+  it('toggles noise layers independently', () => {
+    get().toggleNoiseLayer('pink');
+    expect(get().noiseLayers.pink).toBe(true);
+    get().toggleNoiseLayer('white');
+    expect(get().noiseLayers.white).toBe(true);
+    expect(get().noiseLayers.pink).toBe(true);
   });
 });
 

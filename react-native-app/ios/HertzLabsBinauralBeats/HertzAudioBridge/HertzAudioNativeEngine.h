@@ -14,8 +14,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setBinauralParametersWithCarrierHz:(double)carrierHz
                                    beatHz:(double)beatHz
                                      gain:(float)gain
-                                  balance:(float)balance;
+                                  balance:(float)balance
+                                noiseWhite:(float)noiseWhite
+                                 noisePink:(float)noisePink
+                                noiseBrown:(float)noiseBrown;
 - (void)setNoiseWithType:(NSString *)type level:(float)level;
+- (void)setNoiseLayersWithWhite:(float)white pink:(float)pink brown:(float)brown;
 - (void)fadeToGain:(float)toGain durationMs:(NSInteger)durationMs;
 - (void)setPhaseAndTimingWithPhase:(double)phase timingMs:(double)timingMs;
 

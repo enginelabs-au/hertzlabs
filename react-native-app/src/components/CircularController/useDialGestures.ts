@@ -1,6 +1,6 @@
-import {useCallback, useRef} from 'react';
+import {useCallback} from 'react';
 import {Gesture} from 'react-native-gesture-handler';
-import {useAnimatedReaction, runOnJS} from 'react-native-reanimated';
+import {runOnJS} from 'react-native-reanimated';
 import type {DialValues} from './useDialSharedValues';
 import {useHertzStore} from '../../state/store';
 
@@ -22,49 +22,24 @@ export function useDialGestures(dialValues: DialValues) {
   const {carrierHz, beatHz, phaseAngle, rotationRad, gestureActive, axisLock} = dialValues;
 
   const setParam = useHertzStore(state => state.setParam);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const debouncedCommit = useCallback(
+  const flushToStore = useCallback(
     (params: CommitParams) => {
-      if (debounceTimerRef.current !== null) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      debounceTimerRef.current = setTimeout(() => {
-        setParam('carrierHz', params.carrierHz);
-        setParam('beatHz', params.beatHz);
-        setParam('phaseAngle', params.phaseAngle);
-        debounceTimerRef.current = null;
-      }, 16);
+      setParam('carrierHz', params.carrierHz);
+      setParam('beatHz', params.beatHz);
+      setParam('phaseAngle', params.phaseAngle);
     },
     [setParam],
   );
 
-  useAnimatedReaction(
-    () => ({
-      carrierHz: carrierHz.value,
-      beatHz: beatHz.value,
-      phaseAngle: phaseAngle.value,
-    }),
-    (cur, prev) => {
-      'worklet';
-      if (
-        cur.carrierHz !== prev?.carrierHz ||
-        cur.beatHz !== prev?.beatHz ||
-        cur.phaseAngle !== prev?.phaseAngle
-      ) {
-        runOnJS(debouncedCommit)(cur);
-      }
-    },
-  );
-
   const panGesture = Gesture.Pan()
-    .onBegin((e) => {
+    .onBegin(e => {
       'worklet';
       axisLock.value =
         Math.abs(e.velocityY) > Math.abs(e.velocityX) ? 'vertical' : 'horizontal';
       gestureActive.value = true;
     })
-    .onUpdate((e) => {
+    .onUpdate(e => {
       'worklet';
       if (axisLock.value === 'vertical') {
         phaseAngle.value = clamp(phaseAngle.value - e.translationY * PHASE_SCALE, 0, 360);
@@ -74,6 +49,11 @@ export function useDialGestures(dialValues: DialValues) {
       'worklet';
       axisLock.value = 'none';
       gestureActive.value = false;
+      runOnJS(flushToStore)({
+        carrierHz: carrierHz.value,
+        beatHz: beatHz.value,
+        phaseAngle: phaseAngle.value,
+      });
     });
 
   const rotationGesture = Gesture.Rotation()
@@ -81,7 +61,7 @@ export function useDialGestures(dialValues: DialValues) {
       'worklet';
       gestureActive.value = true;
     })
-    .onUpdate((e) => {
+    .onUpdate(e => {
       'worklet';
       const delta = e.rotation - rotationRad.value;
       rotationRad.value = e.rotation;
@@ -90,6 +70,11 @@ export function useDialGestures(dialValues: DialValues) {
     .onEnd(() => {
       'worklet';
       gestureActive.value = false;
+      runOnJS(flushToStore)({
+        carrierHz: carrierHz.value,
+        beatHz: beatHz.value,
+        phaseAngle: phaseAngle.value,
+      });
     });
 
   const composedGesture = Gesture.Simultaneous(rotationGesture, panGesture);

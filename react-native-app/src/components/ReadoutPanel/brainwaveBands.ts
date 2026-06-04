@@ -1,36 +1,54 @@
 /**
- * Single source of truth for brainwave band boundaries, labels, and colors.
- * Consumed by BandLabel.tsx, useBrainwaveBand.ts, and ShaderLayer color tinting.
- *
- * The `hexColor` values drive both the band label text color and the ShaderLayer
- * per-layer color tint, ensuring visual consistency across the dial and readout.
+ * Brainwave / entrainment bands — labels and colors match the in-hub frequency bar UI.
  */
 export const BRAINWAVE_BANDS = [
-  { label: 'Epsilon', minHz: 0, maxHz: 0.5, hexColor: '#6B7FD7' },
-  { label: 'Delta', minHz: 0.5, maxHz: 4, hexColor: '#8A6BBF' },
-  { label: 'Theta', minHz: 4, maxHz: 8, hexColor: '#5BA3C9' },
-  { label: 'Alpha', minHz: 8, maxHz: 12, hexColor: '#4DC9A0' },
-  { label: 'SMR', minHz: 12, maxHz: 15, hexColor: '#A0D94D' },
-  { label: 'Beta', minHz: 15, maxHz: 30, hexColor: '#F0C040' },
-  { label: 'Gamma', minHz: 30, maxHz: 100, hexColor: '#F07040' },
-  { label: 'Lambda', minHz: 100, maxHz: Infinity, hexColor: '#F04080' },
+  {label: 'HEALING', rangeLabel: '<0.5Hz', minHz: 0, maxHz: 0.5, hexColor: '#8B72C6'},
+  {label: 'DREAM', rangeLabel: '0.5–4Hz', minHz: 0.5, maxHz: 4, hexColor: '#4A6FA5'},
+  {label: 'MEDITATE', rangeLabel: '4–8Hz', minHz: 4, maxHz: 8, hexColor: '#3BA8C4'},
+  {label: 'CALM', rangeLabel: '8–12Hz', minHz: 8, maxHz: 12, hexColor: '#5CB87A'},
+  {label: 'FOCUS', rangeLabel: '12–15Hz', minHz: 12, maxHz: 15, hexColor: '#B8D45A'},
+  {label: 'ENGAGED', rangeLabel: '15–30Hz', minHz: 15, maxHz: 30, hexColor: '#C4864A'},
+  {label: 'COGNITION', rangeLabel: '30–100Hz', minHz: 30, maxHz: Infinity, hexColor: '#E0639A'},
 ] as const;
+
+/** Segments shown in the hub frequency bar (excludes premium-only tail above 100 Hz). */
+export const HUB_BAND_SEGMENTS = BRAINWAVE_BANDS.filter(b => b.maxHz <= 100 || b.minHz < 100);
 
 export type BandName = (typeof BRAINWAVE_BANDS)[number]['label'];
 
-/**
- * Returns the band whose [minHz, maxHz) range contains `hz`.
- * Falls back to Lambda (last entry) when `hz` exceeds all defined maxHz values.
- *
- * Note: worklet-safe only when used as a module-level constant accessed in a
- * loop — do not call this function directly inside useAnimatedReaction worklets.
- * Use the loop pattern from useBrainwaveBand.ts instead.
- */
 export function getBand(hz: number): (typeof BRAINWAVE_BANDS)[number] {
+  'worklet';
+  if (!Number.isFinite(hz)) {
+    return BRAINWAVE_BANDS[BRAINWAVE_BANDS.length - 1];
+  }
+  const safe = hz < 0 ? 0 : hz;
   for (const band of BRAINWAVE_BANDS) {
-    if (hz >= band.minHz && hz < band.maxHz) {
+    if (safe >= band.minHz && safe < band.maxHz) {
       return band;
     }
   }
   return BRAINWAVE_BANDS[BRAINWAVE_BANDS.length - 1];
+}
+
+export function getBandIndex(hz: number): number {
+  if (!Number.isFinite(hz)) {
+    return BRAINWAVE_BANDS.length - 1;
+  }
+  const safe = hz < 0 ? 0 : hz;
+  for (let i = 0; i < BRAINWAVE_BANDS.length; i++) {
+    if (safe >= BRAINWAVE_BANDS[i].minHz && safe < BRAINWAVE_BANDS[i].maxHz) {
+      return i;
+    }
+  }
+  return BRAINWAVE_BANDS.length - 1;
+}
+
+export function formatBeatDisplay(hz: number): string {
+  if (hz >= 100) {
+    return hz.toFixed(0);
+  }
+  if (hz >= 10) {
+    return hz.toFixed(1);
+  }
+  return hz.toFixed(2);
 }

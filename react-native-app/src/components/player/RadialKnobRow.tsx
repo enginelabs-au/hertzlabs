@@ -41,7 +41,7 @@ export function RadialKnobRow() {
         max={1}
         color={HertzTheme.neon.magenta}
         onChange={onBeatNormChange}
-        format={() => beatHz.toFixed(beatHz < 1 ? 2 : 1)}
+        format={() => beatHz.toFixed(beatHz >= 1 ? 1 : 2)}
       />
       <RadialKnob
         label="Phase Shift"
