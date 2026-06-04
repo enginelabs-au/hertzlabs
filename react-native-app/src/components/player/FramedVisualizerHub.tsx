@@ -1,7 +1,8 @@
-import React, {useCallback, useEffect, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {GestureDetector} from 'react-native-gesture-handler';
-import {useSharedValue} from 'react-native-reanimated';
+import {runOnJS, useAnimatedReaction, useSharedValue} from 'react-native-reanimated';
+import type {SharedValue} from 'react-native-reanimated';
 import {
   beatHzLimitsForTier,
   beatHzToSliderNorm,
@@ -24,6 +25,30 @@ type FramedVisualizerHubProps = {
   gesture: ReturnType<typeof useDialGestures>['composedGesture'];
 };
 
+/**
+ * Beat-Hz label under the slider that follows the live UI-thread value during a
+ * drag. Isolated into its own component so per-frame updates re-render only this
+ * text node — not the oscilloscope canvas or the sliders.
+ */
+function HubDockBeatLabel({beatSV, fallback}: {beatSV: SharedValue<number>; fallback: number}) {
+  const [beat, setBeat] = useState(fallback);
+  useEffect(() => setBeat(fallback), [fallback]);
+  useAnimatedReaction(
+    () => Math.round(beatSV.value * 10) / 10,
+    (curr, prev) => {
+      if (curr !== prev) {
+        runOnJS(setBeat)(curr);
+      }
+    },
+    [],
+  );
+  return (
+    <Text style={[styles.beatLabel, {color: getBand(beat).hexColor}]}>
+      {formatBeatDisplay(beat)} Hz
+    </Text>
+  );
+}
+
 export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubProps) {
   const {hubW, frameH, canvasH, canvasW, beatSliderW} = useHubLayout();
 
@@ -36,7 +61,6 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
   const rightDriftHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
 
   const bandHex = useMemo(() => getBand(storeBeat).hexColor, [storeBeat]);
-  const beatDisplay = useMemo(() => formatBeatDisplay(storeBeat), [storeBeat]);
   const beatNorm = beatHzToSliderNorm(storeBeat, tier);
 
   // Log-scale limits for the beat slider, mirrored onto the UI thread so the
@@ -83,7 +107,7 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
               </View>
             </GestureDetector>
             <View style={[styles.beatSliderDock, {width: canvasW, height: IN_FRAME_BEAT_SLIDER_H}]}>
-              <Text style={[styles.beatLabel, {color: bandHex}]}>{beatDisplay} Hz</Text>
+              <HubDockBeatLabel beatSV={dialValues.beatHz} fallback={storeBeat} />
               <View style={{width: beatSliderW}}>
                 <NeonSlider
                   value={beatNorm}

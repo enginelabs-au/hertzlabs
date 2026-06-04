@@ -1,20 +1,55 @@
-import React, {useCallback} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import {channelFrequencies, clampDriftHz} from '../../audio/channelFrequencies';
+import type {DialValues} from '../CircularController/useDialSharedValues';
 import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
 import {HubVolumeKnob} from '../hub/HubVolumeKnob';
 import {DriftKnob} from '../player/DriftKnob';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 
+type ChannelReadoutRowProps = {
+  /** When provided, TARGET / L / R follow the live UI-thread values during a drag. */
+  dialValues?: DialValues;
+};
+
 /** LEFT · TARGET · RIGHT readouts with drift knobs under L/R and volume under TARGET. */
-export function ChannelReadoutRow() {
-  const carrier = useHertzStore(s => s.carrierHz);
-  const beat = useHertzStore(s => s.beatHz);
+export function ChannelReadoutRow({dialValues}: ChannelReadoutRowProps = {}) {
+  const carrierStore = useHertzStore(s => s.carrierHz);
+  const beatStore = useHertzStore(s => s.beatHz);
   const gain = useHertzStore(s => s.gain);
   const leftDriftHz = clampDriftHz(useHertzStore(s => s.leftDriftHz));
   const rightDriftHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
   const setParam = useHertzStore(s => s.setParam);
+
+  // Live carrier/beat follow the shared values during a drag (UI thread, no
+  // bridge), and snap to the committed store value on release / when idle.
+  const [carrier, setCarrier] = useState(carrierStore);
+  const [beat, setBeat] = useState(beatStore);
+  useEffect(() => setCarrier(carrierStore), [carrierStore]);
+  useEffect(() => setBeat(beatStore), [beatStore]);
+
+  const carrierSV = dialValues?.carrierHz;
+  const beatSV = dialValues?.beatHz;
+  useAnimatedReaction(
+    () => (carrierSV ? Math.round(carrierSV.value * 10) / 10 : null),
+    (curr, prev) => {
+      if (curr != null && curr !== prev) {
+        runOnJS(setCarrier)(curr);
+      }
+    },
+    [carrierSV],
+  );
+  useAnimatedReaction(
+    () => (beatSV ? Math.round(beatSV.value * 10) / 10 : null),
+    (curr, prev) => {
+      if (curr != null && curr !== prev) {
+        runOnJS(setBeat)(curr);
+      }
+    },
+    [beatSV],
+  );
 
   const onLeftDrift = useCallback((hz: number) => setParam('leftDriftHz', hz), [setParam]);
   const onRightDrift = useCallback((hz: number) => setParam('rightDriftHz', hz), [setParam]);

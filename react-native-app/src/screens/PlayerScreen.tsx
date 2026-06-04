@@ -5,6 +5,7 @@ import {EngineSelector} from '../components/EngineSelector/EngineSelector';
 import {EngineDialSection} from '../components/engines/EngineDialSection';
 import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
 import {CategoryTabBar, type EngineCategoryId} from '../components/layout/CategoryTabBar';
+import {useDialSharedValues} from '../components/CircularController/useDialSharedValues';
 import {useHertzStore} from '../state/store';
 import {useEngineModeModulation} from '../hooks/useEngineModeModulation';
 import {useKineticModulation} from '../hooks/useKineticModulation';
@@ -44,6 +45,10 @@ export function PlayerScreen() {
   const requestPlay = useHertzStore(s => s.requestPlay);
   const requestPause = useHertzStore(s => s.requestPause);
 
+  // Own the dial shared values here so the TARGET / L / R readout row and the
+  // dial hub share the same UI-thread values (readouts follow the slider live).
+  const dialValues = useDialSharedValues();
+
   useKineticModulation();
   useEngineModeModulation();
 
@@ -56,8 +61,8 @@ export function PlayerScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled>
-        <ChannelReadoutRow />
-        <EngineDialSection />
+        <ChannelReadoutRow dialValues={dialValues} />
+        <EngineDialSection dialValues={dialValues} />
         <CategoryTabBar active={category} onChange={setCategory} />
         {category === 'ambient' ? (
           <AmbientNoiseSelector />
