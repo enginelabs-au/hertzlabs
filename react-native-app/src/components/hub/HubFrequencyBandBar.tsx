@@ -1,5 +1,7 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
+import type {SharedValue} from 'react-native-reanimated';
 import {BRAINWAVE_BANDS, getBandIndex} from '../ReadoutPanel/brainwaveBands';
 import {HertzTheme} from '../../theme/hertzTheme';
 
@@ -7,6 +9,8 @@ type HubFrequencyBandBarProps = {
   beatHz: number;
   width: number;
   onSelectBand?: (midHz: number) => void;
+  /** Live beat Hz (UI thread) — highlights the active band during a drag, not just on release. */
+  beatHzLive?: SharedValue<number>;
   /** Full-width strip below the visualizer (high contrast). */
   standalone?: boolean;
   /** @deprecated Use standalone */
@@ -27,11 +31,27 @@ export function HubFrequencyBandBar({
   beatHz,
   width,
   onSelectBand,
+  beatHzLive,
   standalone = false,
   compact = false,
 }: HubFrequencyBandBarProps) {
   const isStandalone = standalone || !compact;
-  const activeIndex = getBandIndex(beatHz);
+
+  // Active band follows the live UI-thread beat Hz during a drag (only re-renders
+  // on a band crossing — getBandIndex is discrete), and snaps to the committed
+  // store value when idle.
+  const [activeIndex, setActiveIndex] = useState(() => getBandIndex(beatHz));
+  useEffect(() => setActiveIndex(getBandIndex(beatHz)), [beatHz]);
+  useAnimatedReaction(
+    () => (beatHzLive ? getBandIndex(beatHzLive.value) : -1),
+    (idx, prev) => {
+      if (idx >= 0 && idx !== prev) {
+        runOnJS(setActiveIndex)(idx);
+      }
+    },
+    [beatHzLive],
+  );
+
   const segmentW = width / BRAINWAVE_BANDS.length;
 
   const segments = useMemo(

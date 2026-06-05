@@ -31,6 +31,7 @@ export function getBand(hz: number): (typeof BRAINWAVE_BANDS)[number] {
 }
 
 export function getBandIndex(hz: number): number {
+  'worklet';
   if (!Number.isFinite(hz)) {
     return BRAINWAVE_BANDS.length - 1;
   }

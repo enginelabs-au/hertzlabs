@@ -10,13 +10,17 @@ type NeonSliderProps = {
   value: number;
   onChange?: (v: number) => void;
   onChangeComplete?: (v: number) => void;
-  /** Log-scale beat slider: all pan math on UI thread, no runOnJS during drag. */
+  /** Beat slider: pan math on UI thread, no runOnJS during drag. */
   beatHzOut?: SharedValue<number>;
-  beatLogMin?: SharedValue<number>;
-  beatLogSpan?: SharedValue<number>;
+  beatSliderMinHz?: SharedValue<number>;
+  beatSliderMaxHz?: SharedValue<number>;
+  /** 0 = linear, 1 = exponential (log). */
+  beatSliderScale?: SharedValue<number>;
   onDragBegin?: () => void;
   onDragEnd?: () => void;
   accent?: string;
+  /** Live accent colour (UI thread) — follows the value during a drag. */
+  accentValue?: SharedValue<string>;
 };
 
 export function NeonSlider({
@@ -24,16 +28,22 @@ export function NeonSlider({
   onChange,
   onChangeComplete,
   beatHzOut,
-  beatLogMin,
-  beatLogSpan,
+  beatSliderMinHz,
+  beatSliderMaxHz,
+  beatSliderScale,
   onDragBegin,
   onDragEnd,
   accent = HertzTheme.neon.cyan,
+  accentValue,
 }: NeonSliderProps) {
   const trackW = useSharedValue(200);
   const thumbX = useSharedValue(value * 200);
   const dragging = useSharedValue(0);
-  const isBeatSlider = beatHzOut != null && beatLogMin != null && beatLogSpan != null;
+  const isBeatSlider =
+    beatHzOut != null &&
+    beatSliderMinHz != null &&
+    beatSliderMaxHz != null &&
+    beatSliderScale != null;
 
   const commit = useCallback((v: number) => onChange?.(Math.min(1, Math.max(0, v))), [onChange]);
 
@@ -72,7 +82,12 @@ export function NeonSlider({
       thumbX.value = x;
       const norm = x / trackW.value;
       if (isBeatSlider) {
-        beatHzOut!.value = beatHzFromSliderNormWorklet(norm, beatLogMin!.value, beatLogSpan!.value);
+        beatHzOut!.value = beatHzFromSliderNormWorklet(
+          norm,
+          beatSliderMinHz!.value,
+          beatSliderMaxHz!.value,
+          beatSliderScale!.value,
+        );
       } else if (onChange) {
         runOnJS(commit)(norm);
       }
@@ -83,7 +98,12 @@ export function NeonSlider({
       dragging.value = 0;
       const norm = x / trackW.value;
       if (isBeatSlider) {
-        beatHzOut!.value = beatHzFromSliderNormWorklet(norm, beatLogMin!.value, beatLogSpan!.value);
+        beatHzOut!.value = beatHzFromSliderNormWorklet(
+          norm,
+          beatSliderMinHz!.value,
+          beatSliderMaxHz!.value,
+          beatSliderScale!.value,
+        );
       }
       if (onDragEnd) {
         runOnJS(endDrag)();
@@ -104,17 +124,28 @@ export function NeonSlider({
     thumbX.value = x;
     const norm = x / trackW.value;
     if (isBeatSlider) {
-      beatHzOut!.value = beatHzFromSliderNormWorklet(norm, beatLogMin!.value, beatLogSpan!.value);
+      beatHzOut!.value = beatHzFromSliderNormWorklet(
+        norm,
+        beatSliderMinHz!.value,
+        beatSliderMaxHz!.value,
+        beatSliderScale!.value,
+      );
     }
     runOnJS(commitComplete)(norm);
   });
 
-  const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{translateX: thumbX.value - 10}],
-  }));
+  const thumbStyle = useAnimatedStyle(() => {
+    const c = accentValue ? accentValue.value : accent;
+    return {
+      transform: [{translateX: thumbX.value - 10}],
+      borderColor: c,
+      backgroundColor: c,
+    };
+  });
 
   const fillStyle = useAnimatedStyle(() => ({
     width: thumbX.value,
+    backgroundColor: accentValue ? accentValue.value : accent,
   }));
 
   return (
@@ -134,9 +165,9 @@ export function NeonSlider({
           }
         }}>
         <View style={styles.track}>
-          <Animated.View style={[styles.fill, {backgroundColor: accent}, fillStyle]} />
+          <Animated.View style={[styles.fill, fillStyle]} />
         </View>
-        <Animated.View style={[styles.thumb, {borderColor: accent, backgroundColor: accent}, thumbStyle]} />
+        <Animated.View style={[styles.thumb, thumbStyle]} />
       </View>
     </GestureDetector>
   );

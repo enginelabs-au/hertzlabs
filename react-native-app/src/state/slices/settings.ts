@@ -7,6 +7,7 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
   keepAwake: true,
   backgroundAudio: false,
   isKineticModeEnabled: false,
+  beatSliderScale: 'exponential',
   lastUsedParams: null,
 
   updateSettings: settings => set(settings),

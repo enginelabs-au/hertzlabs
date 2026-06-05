@@ -187,6 +187,7 @@ describe('persist policy (Plan 01 §6) — partialize', () => {
     expect(keys).toEqual(
       [
         'backgroundAudio',
+        'beatSliderScale',
         'custom',
         'defaultDurationSec',
         'engineType',

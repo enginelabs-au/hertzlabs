@@ -8,7 +8,7 @@ export const SLIDER_COLUMN_W = PHASE_COLUMN_W;
 export const PHASE_COL_W = PHASE_COLUMN_W;
 
 /** Horizontal beat slider docked at the bottom inside the glass frame. */
-export const IN_FRAME_BEAT_SLIDER_H = 40;
+export const IN_FRAME_BEAT_SLIDER_H = 52;
 
 /** Coloured brainwave band strip below the hub (above category tabs). */
 export const EXTERNAL_BAND_BAR_H = 56;

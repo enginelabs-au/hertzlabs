@@ -8,6 +8,7 @@ import {RadialKnob} from './RadialKnob';
 export function RadialKnobRow() {
   const setParam = useHertzStore(s => s.setParam);
   const tier = useHertzStore(s => s.tier);
+  const beatSliderScale = useHertzStore(s => s.beatSliderScale);
   const gain = useHertzStore(s => s.gain);
   const balance = useHertzStore(s => s.balance);
   const carrierHz = useHertzStore(s => s.carrierHz);
@@ -16,8 +17,8 @@ export function RadialKnobRow() {
 
   const onCarrierChange = useCallback((v: number) => setParam('carrierHz', v), [setParam]);
   const onBeatNormChange = useCallback(
-    (norm: number) => setParam('beatHz', sliderNormToBeatHz(norm, tier)),
-    [setParam, tier],
+    (norm: number) => setParam('beatHz', sliderNormToBeatHz(norm, tier, beatSliderScale)),
+    [setParam, tier, beatSliderScale],
   );
   const onPhaseChange = useCallback((v: number) => setParam('phaseAngle', v), [setParam]);
   const onBalanceChange = useCallback((v: number) => setParam('balance', v), [setParam]);
@@ -36,7 +37,7 @@ export function RadialKnobRow() {
       />
       <RadialKnob
         label="Beat Delta"
-        value={beatHzToSliderNorm(beatHz, tier)}
+        value={beatHzToSliderNorm(beatHz, tier, beatSliderScale)}
         min={0}
         max={1}
         color={HertzTheme.neon.magenta}

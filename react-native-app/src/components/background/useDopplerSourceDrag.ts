@@ -20,6 +20,7 @@ type UseDopplerSourceDragOpts = {
  */
 export function useDopplerSourceDrag({plotW, plotH}: UseDopplerSourceDragOpts) {
   const tier = useHertzStore(s => s.tier);
+  const beatSliderScale = useHertzStore(s => s.beatSliderScale);
   const beatHz = useHertzStore(s => s.beatHz);
   const phaseAngle = useHertzStore(s => s.phaseAngle);
   const setParam = useHertzStore(s => s.setParam);
@@ -31,10 +32,12 @@ export function useDopplerSourceDrag({plotW, plotH}: UseDopplerSourceDragOpts) {
 
   const tierRef = useRef(tier);
   tierRef.current = tier;
+  const scaleRef = useRef(beatSliderScale);
+  scaleRef.current = beatSliderScale;
 
   const anchor = useMemo(
-    () => beatPhaseToSourcePx(plotW, plotH, beatHz, phaseAngle, tier),
-    [plotW, plotH, beatHz, phaseAngle, tier],
+    () => beatPhaseToSourcePx(plotW, plotH, beatHz, phaseAngle, tier, beatSliderScale),
+    [plotW, plotH, beatHz, phaseAngle, tier, beatSliderScale],
   );
 
   const anchorRef = useRef(anchor);
@@ -58,7 +61,15 @@ export function useDopplerSourceDrag({plotW, plotH}: UseDopplerSourceDragOpts) {
 
     const w = plotWRef.current;
     const h = plotHRef.current;
-    const updates = sourcePxToAudioParams(cx, cy, w, h, tierRef.current as SubscriptionTier, axis);
+    const updates = sourcePxToAudioParams(
+      cx,
+      cy,
+      w,
+      h,
+      tierRef.current as SubscriptionTier,
+      axis,
+      scaleRef.current,
+    );
 
     if (updates.beatHz != null && Number.isFinite(updates.beatHz)) {
       setParam('beatHz', updates.beatHz);

@@ -83,6 +83,7 @@ export const persistedStoreOptions = {
     keepAwake: state.keepAwake,
     backgroundAudio: state.backgroundAudio,
     isKineticModeEnabled: state.isKineticModeEnabled,
+    beatSliderScale: state.beatSliderScale,
     lastUsedParams: state.lastUsedParams,
     custom: state.custom,
     tier: state.tier,

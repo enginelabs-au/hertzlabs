@@ -41,7 +41,13 @@ export function EngineDialSection({dialValues: dialValuesProp}: EngineDialSectio
     <View style={styles.wrap}>
       <FramedVisualizerHub dialValues={dialValues} gesture={composedGesture} />
       <View style={[styles.bandBarOuter, {width: hubW}]}>
-        <HubFrequencyBandBar beatHz={beat} width={hubW} onSelectBand={onBandSelect} standalone />
+        <HubFrequencyBandBar
+          beatHz={beat}
+          beatHzLive={dialValues.beatHz}
+          width={hubW}
+          onSelectBand={onBandSelect}
+          standalone
+        />
       </View>
     </View>
   );

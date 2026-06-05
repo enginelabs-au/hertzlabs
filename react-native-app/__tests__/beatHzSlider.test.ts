@@ -8,14 +8,27 @@ vi.mock('../src/monetization/isPremiumUnlocked', () => ({
 import {beatHzToSliderNorm, sliderNormToBeatHz} from '../src/audio/beatHzSlider';
 import {MAX_BEAT_HZ_PREMIUM, MIN_BEAT_HZ_PREMIUM} from '../src/audio/paramMapping';
 
-describe('beatHzSlider log mapping', () => {
+describe('beatHzSlider exponential (log) mapping', () => {
   it('maps epsilon and lambda within premium range', () => {
     const tier = 'premium' as const;
-    expect(sliderNormToBeatHz(0, tier)).toBeCloseTo(MIN_BEAT_HZ_PREMIUM, 2);
-    const eps = sliderNormToBeatHz(beatHzToSliderNorm(0.2, tier), tier);
+    expect(sliderNormToBeatHz(0, tier, 'exponential')).toBeCloseTo(MIN_BEAT_HZ_PREMIUM, 2);
+    const eps = sliderNormToBeatHz(beatHzToSliderNorm(0.2, tier, 'exponential'), tier, 'exponential');
     expect(eps).toBeCloseTo(0.2, 1);
-    const lambda = sliderNormToBeatHz(beatHzToSliderNorm(120, tier), tier);
+    const lambda = sliderNormToBeatHz(beatHzToSliderNorm(120, tier, 'exponential'), tier, 'exponential');
     expect(lambda).toBeCloseTo(120, 0);
-    expect(sliderNormToBeatHz(1, tier)).toBeCloseTo(MAX_BEAT_HZ_PREMIUM, 0);
+    expect(sliderNormToBeatHz(1, tier, 'exponential')).toBeCloseTo(MAX_BEAT_HZ_PREMIUM, 0);
+  });
+});
+
+describe('beatHzSlider linear mapping', () => {
+  it('maps endpoints and midpoints linearly', () => {
+    const tier = 'premium' as const;
+    const min = MIN_BEAT_HZ_PREMIUM;
+    const max = MAX_BEAT_HZ_PREMIUM;
+    expect(sliderNormToBeatHz(0, tier, 'linear')).toBeCloseTo(min, 2);
+    expect(sliderNormToBeatHz(1, tier, 'linear')).toBeCloseTo(max, 0);
+    const midHz = min + (max - min) * 0.5;
+    expect(sliderNormToBeatHz(0.5, tier, 'linear')).toBeCloseTo(midHz, 0);
+    expect(beatHzToSliderNorm(midHz, tier, 'linear')).toBeCloseTo(0.5, 3);
   });
 });

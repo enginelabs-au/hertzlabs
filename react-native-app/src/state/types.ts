@@ -122,6 +122,8 @@ export type SettingsSlice = {
   keepAwake: boolean;
   backgroundAudio: boolean;
   isKineticModeEnabled: boolean;
+  /** Beat frequency slider: linear Hz steps vs log (exponential) spacing. */
+  beatSliderScale: import('../audio/beatHzSlider').BeatSliderScale;
   lastUsedParams: AudioParamsValues | null;
   updateSettings(settings: Partial<Omit<SettingsSlice, 'updateSettings'>>): void;
 };
