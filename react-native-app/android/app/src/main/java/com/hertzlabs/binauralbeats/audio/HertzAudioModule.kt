@@ -43,9 +43,7 @@ class HertzAudioModule(
     ) {
         nativeSetBinauralParameters(carrierHz, beatHz, gain, balance)
         val noiseLevel = maxOf(noiseWhite, noisePink, noiseBrown)
-        if (noiseLevel > 0) {
-            nativeSetNoiseLevel(noiseLevel)
-        }
+        nativeSetNoiseLevel(noiseLevel)
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
@@ -56,9 +54,7 @@ class HertzAudioModule(
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun setNoiseLayers(white: Double, pink: Double, brown: Double) {
         val noiseLevel = maxOf(white, pink, brown)
-        if (noiseLevel > 0) {
-            nativeSetNoiseLevel(noiseLevel)
-        }
+        nativeSetNoiseLevel(noiseLevel)
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)

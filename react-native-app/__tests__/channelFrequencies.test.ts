@@ -11,7 +11,7 @@ import {
   visualStereoHz,
 } from '../src/audio/channelFrequencies';
 import {MAX_BEAT_HZ_PREMIUM} from '../src/audio/paramMapping';
-import {mapStateToNativeAudio} from '../src/audio/engineModeMapping';
+import {mapStateToNativeAudio, NATIVE_ENGINE_MODE_CODE} from '../src/audio/engineModeMapping';
 
 describe('channelFrequencies', () => {
   it('offsets L/R without changing stored beat', () => {
@@ -178,5 +178,49 @@ describe('mapStateToNativeAudio drift fold', () => {
     } as Parameters<typeof mapStateToNativeAudio>[0]);
     expect(mapped.beatHz).toBeCloseTo(7, 5);
     expect(mapped.carrierHz).toBeCloseTo(201.5, 5);
+  });
+});
+
+describe('mapStateToNativeAudio engine modes', () => {
+  const base = {
+    carrierHz: 220,
+    beatHz: 10,
+    gain: 0.5,
+    balance: 0.25,
+    leftDriftHz: 0,
+    rightDriftHz: 0,
+    phaseAngle: 0,
+    tier: 'premium',
+  } as const;
+
+  it('passes native mode codes through the phase/timing bridge slot', () => {
+    for (const [engineType, code] of Object.entries(NATIVE_ENGINE_MODE_CODE)) {
+      const mapped = mapStateToNativeAudio({
+        ...base,
+        engineType,
+      } as Parameters<typeof mapStateToNativeAudio>[0]);
+      expect(mapped.timingDiffMs).toBe(code);
+    }
+  });
+
+  it('preserves the beat for acoustic and dynamic modes that render modulation natively', () => {
+    for (const engineType of ['monaural', 'isochronic', 'phaseModulated', 'pitchPanning', 'musicModulation'] as const) {
+      const mapped = mapStateToNativeAudio({
+        ...base,
+        engineType,
+      } as Parameters<typeof mapStateToNativeAudio>[0]);
+      expect(mapped.beatHz).toBeCloseTo(10, 5);
+    }
+  });
+
+  it('keeps hemispheric sync as same-frequency phase offset', () => {
+    const mapped = mapStateToNativeAudio({
+      ...base,
+      engineType: 'hemisphericSync',
+      phaseAngle: 15,
+    } as Parameters<typeof mapStateToNativeAudio>[0]);
+    expect(mapped.beatHz).toBeCloseTo(0, 5);
+    expect(mapped.phaseAngle).toBe(105);
+    expect(mapped.timingDiffMs).toBe(NATIVE_ENGINE_MODE_CODE.hemisphericSync);
   });
 });

@@ -8,6 +8,18 @@ export type MappedNativeAudio = BinauralParameters & {
   timingDiffMs: number;
 };
 
+// Native currently receives mode through the existing timingMs bridge slot.
+// Keep codes in sync with NativeEngineModeCode in BinauralOscillatorNode.swift.
+export const NATIVE_ENGINE_MODE_CODE: Record<EngineMode, number> = {
+  binaural: 0,
+  monaural: 1,
+  isochronic: 2,
+  hemisphericSync: 3,
+  phaseModulated: 4,
+  pitchPanning: 5,
+  musicModulation: 6,
+};
+
 /**
  * Maps UI store + engine mode to parameters sent to the native oscillator.
  * TARGET beatHz stays in the store; per-ear drift folds into native carrier/beat.
@@ -34,11 +46,12 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
   let gain = base.gain;
   let balance = base.balance;
   let carrierHz = base.carrierHz;
+  let timingDiffMs = NATIVE_ENGINE_MODE_CODE[state.engineType] ?? NATIVE_ENGINE_MODE_CODE.binaural;
 
   switch (state.engineType) {
     case 'monaural':
     case 'isochronic':
-      beatHz = 0;
+      // Native needs the beat to render the interference / pulse envelope.
       balance = 0;
       break;
     case 'hemisphericSync':
@@ -79,7 +92,7 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
     gain,
     balance,
     phaseAngle,
-    timingDiffMs: 0,
+    timingDiffMs,
   };
 }
 
@@ -88,6 +101,7 @@ export function engineModeUsesModulation(mode: EngineMode): boolean {
     mode === 'monaural' ||
     mode === 'isochronic' ||
     mode === 'phaseModulated' ||
-    mode === 'pitchPanning'
+    mode === 'pitchPanning' ||
+    mode === 'musicModulation'
   );
 }

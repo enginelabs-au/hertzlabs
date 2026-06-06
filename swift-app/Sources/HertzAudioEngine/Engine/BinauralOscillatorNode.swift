@@ -1,6 +1,17 @@
 import AVFoundation
 import Darwin
 
+// Keep in sync with `NATIVE_ENGINE_MODE_CODE` in `engineModeMapping.ts`.
+private enum NativeEngineModeCode {
+    static let binaural = 0
+    static let monaural = 1
+    static let isochronic = 2
+    static let hemisphericSync = 3
+    static let phaseModulated = 4
+    static let pitchPanning = 5
+    static let musicModulation = 6
+}
+
 // MARK: - BinauralOscillatorNode
 
 /// Encapsulates AVAudioSourceNode for stereo binaural beat synthesis.
@@ -94,6 +105,7 @@ public final class BinauralOscillatorNode {
 
             // Target phase offset (degrees → rad); smoothed per-sample below.
             let targetPhaseAngleRad = snap.targetPhaseAngle * (.pi / 180.0)
+            let modeCode = Int(snap.targetTimingDiffMs.rounded())
 
             let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard !buffers.isEmpty else {
@@ -123,17 +135,83 @@ public final class BinauralOscillatorNode {
                 smNoiseBrown += noiseAlpha * (targetNoiseBrown - smNoiseBrown)
                 smPhaseAngleRad += Double(alpha) * (targetPhaseAngleRad - smPhaseAngleRad)
 
-                // Derived per-ear Hz
                 let leftHz  = max(0.001, smCarrier - smBeat * 0.5)
                 let rightHz = max(0.001, smCarrier + smBeat * 0.5)
+                let beatRateHz = max(0.001, abs(smBeat))
 
-                // Phase accumulation in Double, no modulo, no zero-snap
-                phaseL_ += twoPiLocal * leftHz / sr
+                var rawL: Float
+                var rawR: Float
+
+                switch modeCode {
+                case NativeEngineModeCode.monaural:
+                    // Two tones physically mixed before panning: both speakers/ears receive
+                    // the same interference envelope, matching the acoustic monaural model.
+                    phaseL_ += twoPiLocal * leftHz / sr
+                    phaseR_ += twoPiLocal * rightHz / sr
+                    rawL = Float((sin(phaseL_) + sin(phaseR_)) * 0.5)
+                    rawR = rawL
+
+                case NativeEngineModeCode.isochronic:
+                    // One carrier gated by a smooth beat-rate pulse. Raised-cosine avoids
+                    // hard switching clicks while preserving the strong rhythmic cue.
+                    phaseL_ += twoPiLocal * max(0.001, smCarrier) / sr
+                    phaseR_ += twoPiLocal * beatRateHz / sr
+                    let pulse = 0.12 + 0.88 * (0.5 - 0.5 * cos(phaseR_))
+                    let tone = Float(sin(phaseL_) * pulse)
+                    rawL = tone
+                    rawR = tone
+
+                case NativeEngineModeCode.hemisphericSync:
+                    // Same carrier to both ears; phase relationship carries the cue.
+                    phaseL_ += twoPiLocal * max(0.001, smCarrier) / sr
+                    phaseR_ += twoPiLocal * max(0.001, smCarrier) / sr
+                    rawL = Float(sin(phaseL_))
+                    rawR = Float(sin(phaseR_ + smPhaseAngleRad))
+
+                case NativeEngineModeCode.phaseModulated:
+                    // Carrier phase sweeps at the target beat rate. Default depth is audible
+                    // even with the phase slider at 0; the slider increases/sets sweep depth.
+                    phaseL_ += twoPiLocal * max(0.001, smCarrier) / sr
+                    phaseR_ += twoPiLocal * beatRateHz / sr
+                    let requestedDepth = abs(smPhaseAngleRad)
+                    let depth = min(Double.pi, max(Double.pi / 4.0, requestedDepth))
+                    let offset = sin(phaseR_) * depth
+                    rawL = Float(sin(phaseL_ - offset))
+                    rawR = Float(sin(phaseL_ + offset))
+
+                case NativeEngineModeCode.pitchPanning:
+                    // A carrier moves left↔right at the beat rate using constant-power gains.
+                    phaseL_ += twoPiLocal * max(0.001, smCarrier) / sr
+                    phaseR_ += twoPiLocal * beatRateHz / sr
+                    let pan = 0.5 + 0.5 * sin(phaseR_)
+                    let tone = sin(phaseL_)
+                    rawL = Float(tone * sqrt(max(0, 1 - pan)))
+                    rawR = Float(tone * sqrt(max(0, pan)))
+
+                case NativeEngineModeCode.musicModulation:
+                    // No music bed is present in the native scaffold yet, so embed the beat as
+                    // a gentler full-output AM envelope that also rides any active noise layer.
+                    phaseL_ += twoPiLocal * max(0.001, smCarrier) / sr
+                    phaseR_ += twoPiLocal * beatRateHz / sr
+                    let envelope = 0.72 + 0.28 * (0.5 + 0.5 * sin(phaseR_))
+                    let tone = Float(sin(phaseL_) * envelope)
+                    rawL = tone
+                    rawR = tone
+
+                case NativeEngineModeCode.binaural:
+                    fallthrough
+                default:
+                    // Default binaural path: separate tones, one per ear.
+                    phaseL_ += twoPiLocal * leftHz / sr
+                    phaseR_ += twoPiLocal * rightHz / sr
+                    rawL = Float(sin(phaseL_))
+                    rawR = Float(sin(phaseR_ + smPhaseAngleRad))
+                }
+
                 if phaseL_ >= twoPiLocal { phaseL_ -= twoPiLocal }
-
-                phaseR_ += twoPiLocal * rightHz / sr
                 if phaseR_ >= twoPiLocal { phaseR_ -= twoPiLocal }
-                if phaseR_ < 0           { phaseR_ += twoPiLocal }
+                if phaseL_ < 0 { phaseL_ += twoPiLocal }
+                if phaseR_ < 0 { phaseR_ += twoPiLocal }
 
                 // Balance: gainL = gain * max(0, 1 − balance), gainR = gain * max(0, 1 + balance)
                 let gainL = smGain * max(0, 1.0 - smBalance)
@@ -142,9 +220,8 @@ public final class BinauralOscillatorNode {
                 let clampedGainL = min(gainL, AudioConstants.kMaxAmplitude)
                 let clampedGainR = min(gainR, AudioConstants.kMaxAmplitude)
 
-                let toneL = Float(sin(phaseL_)) * clampedGainL
-                // Phase offset on right ear — smoothed to avoid clicks when UI updates phase.
-                let toneR = Float(sin(phaseR_ + smPhaseAngleRad)) * clampedGainR
+                let toneL = rawL * clampedGainL
+                let toneR = rawR * clampedGainR
 
                 var noiseMono: Float = 0
                 let noiseSum = smNoiseWhite + smNoisePink + smNoiseBrown
@@ -181,6 +258,12 @@ public final class BinauralOscillatorNode {
                 smToneDuck += alpha * (targetDuck - smToneDuck)
                 var outL = toneL * smToneDuck + noiseMono
                 var outR = toneR * smToneDuck + noiseMono
+
+                if modeCode == NativeEngineModeCode.musicModulation && noiseActive {
+                    let envelope = Float(0.72 + 0.28 * (0.5 + 0.5 * sin(phaseR_)))
+                    outL *= envelope
+                    outR *= envelope
+                }
 
                 outL = Self.softLimit(outL, ceiling: ceiling)
                 outR = Self.softLimit(outR, ceiling: ceiling)

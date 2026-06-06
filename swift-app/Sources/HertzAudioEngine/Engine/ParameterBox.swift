@@ -26,7 +26,10 @@ public struct ParameterSnapshot: Sendable, Equatable {
     public var targetGain: Float             // 0.0–1.0
     public var targetBalance: Float          // -1.0 to 1.0
     public var targetPhaseAngle: Double      // degrees 0–360
-    public var targetTimingDiffMs: Double    // ±500 ms
+    // RN currently uses this bridge slot as a compact engine-mode code. It stays
+    // clamped to the original ±500 ms safety range until a dedicated native
+    // mode field is added to the TurboModule contract.
+    public var targetTimingDiffMs: Double    // ±500 ms / native mode code
     public var playIntent: Bool
     public var noiseWhiteGain: Float
     public var noisePinkGain: Float
