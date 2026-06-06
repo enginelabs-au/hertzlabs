@@ -9,10 +9,11 @@ public enum AudioConstants {
     public static let defaultRampMs: Double = 75
     public static let minRampMs: Double = 50
     public static let maxRampMs: Double = 100
-    public static let minBeatHz: Double = 0.05
-    public static let maxBeatHz: Double = 500
-    public static let minCarrierHz: Double = 20
-    public static let maxCarrierHz: Double = 1500
+    /// Experimental mode spans infrasonic → ultrasonic; JS sanitizes normal ranges.
+    public static let minBeatHz: Double = 1e-18
+    public static let maxBeatHz: Double = 1_000_000
+    public static let minCarrierHz: Double = 0.001
+    public static let maxCarrierHz: Double = 1_000_000
 }
 
 // MARK: - Parameter snapshot

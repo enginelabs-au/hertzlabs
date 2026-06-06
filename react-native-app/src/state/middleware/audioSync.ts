@@ -35,6 +35,7 @@ export function installAudioSync(store: SelectorStore): () => void {
   const unsubscribeLeftDrift  = store.subscribe(s => s.leftDriftHz, () => pushParams());
   const unsubscribeRightDrift = store.subscribe(s => s.rightDriftHz, () => pushParams());
   const unsubscribeEngine    = store.subscribe(s => s.engineType, () => pushParams());
+  const unsubscribeExperimental = store.subscribe(s => s.experimentalMode, () => pushParams());
 
   function pushNoise() {
     const s = store.getState();
@@ -79,7 +80,7 @@ export function installAudioSync(store: SelectorStore): () => void {
     unsubscribeNoiseBrown();
     unsubscribeNoiseMix();
     unsubscribePhase(); unsubscribeLeftDrift(); unsubscribeRightDrift();
-    unsubscribeEngine();
+    unsubscribeEngine(); unsubscribeExperimental();
   };
   const unsubscribePlayback = () => {
     unsubscribeIsPlaying(); unsubscribeIsPaused();

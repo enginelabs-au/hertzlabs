@@ -1,6 +1,6 @@
 import {Skia} from '@shopify/react-native-skia';
 import type {SkPath} from '@shopify/react-native-skia';
-import {channelFrequencies} from '../../audio/channelFrequencies';
+import {scopeStereoHz} from '../../audio/channelFrequencies';
 import {
   appendLissajous3DStack,
   appendOscilloscopeTrace,
@@ -59,7 +59,9 @@ export function buildHubScopePaths(
   const rightDriftHz = finite(audio.rightDriftHz, 0);
   const t = finite(timeSec, 0);
 
-  const {leftHz, rightHz} = channelFrequencies(carrierHz, beatHz, leftDriftHz, rightDriftHz);
+  // Exact previous-commit scope, clamped to [0.5, 500] Hz so nothing outside the
+  // normal band is ever drawn (Experimental pitches hold the boundary pattern).
+  const {leftHz, rightHz} = scopeStereoHz(carrierHz, beatHz, leftDriftHz, rightDriftHz);
   const size = Math.min(w, h);
   const cx = w * 0.48;
   const cy = h * 0.5;

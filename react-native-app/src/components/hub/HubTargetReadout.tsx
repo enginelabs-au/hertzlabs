@@ -1,6 +1,6 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
+import {formatBeatDisplay, formatBeatUnit, getBand} from '../ReadoutPanel/brainwaveBands';
 import {HertzTheme} from '../../theme/hertzTheme';
 
 type HubTargetReadoutProps = {
@@ -15,7 +15,7 @@ export function HubTargetReadout({beatHz}: HubTargetReadoutProps) {
   return (
     <View style={styles.disc}>
       <Text style={[styles.hz, {color: band.hexColor}]}>{display}</Text>
-      <Text style={styles.hzUnit}>Hz</Text>
+      <Text style={styles.hzUnit}>{formatBeatUnit(beatHz)}</Text>
       <Text style={[styles.bandName, {color: band.hexColor}]}>{band.label}</Text>
     </View>
   );

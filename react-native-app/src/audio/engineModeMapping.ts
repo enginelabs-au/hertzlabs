@@ -1,8 +1,5 @@
 import type {AppStore, EngineMode} from '../state/types';
-import {
-  channelFrequencies,
-  nativeBinauralFromChannels,
-} from './channelFrequencies';
+import {channelFrequencies, nativeBinauralFromChannels} from './channelFrequencies';
 import type {BinauralParameters} from './paramMapping';
 import {sanitizeBinauralParameters} from './paramMapping';
 
@@ -17,6 +14,7 @@ export type MappedNativeAudio = BinauralParameters & {
  */
 export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
   const tier = state.tier;
+  const experimental = state.experimentalMode === true;
   const base = sanitizeBinauralParameters(
     {
       carrierHz: state.carrierHz,
@@ -28,6 +26,7 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
       fadeMs: state.fadeMs,
     },
     tier,
+    experimental,
   );
 
   let phaseAngle = state.phaseAngle;
@@ -59,18 +58,24 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
       break;
   }
 
+  // Both modes use the same binaural model: L/R = carrier ± beat/2 (drift folded
+  // in). Experimental only differs in that the carrier (pitch) can be set up to
+  // 20 kHz via the Ω−/Ω+ dials — already clamped by sanitizeBinauralParameters.
   const {leftHz, rightHz} = channelFrequencies(
     carrierHz,
     beatHz,
     state.leftDriftHz,
     state.rightDriftHz,
   );
-  const native = nativeBinauralFromChannels(leftHz, rightHz);
+  const {carrierHz: nativeCarrierHz, beatHz: nativeBeatHz} = nativeBinauralFromChannels(
+    leftHz,
+    rightHz,
+  );
 
   return {
     ...base,
-    carrierHz: native.carrierHz,
-    beatHz: native.beatHz,
+    carrierHz: nativeCarrierHz,
+    beatHz: nativeBeatHz,
     gain,
     balance,
     phaseAngle,

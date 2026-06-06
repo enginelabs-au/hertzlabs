@@ -102,7 +102,10 @@ function AppContent(): React.JSX.Element {
     // Configure native engine with default settings before subscribing.
     // 5 ms I/O on Simulator often crackles; use a safer buffer (still low-latency on device).
     const bufferMs = __DEV__ && Platform.OS === 'ios' ? 23 : 10;
-    HertzAudioClient.configure(48000, bufferMs);
+    // Request the highest sample rate the hardware will grant (Nyquist up to
+    // ~96 kHz) so Experimental-mode ultrasonic tones render instead of aliasing
+    // back down. The OS negotiates down to 48 kHz on devices that cap there.
+    HertzAudioClient.configure(192000, bufferMs);
     const uninstall = installAudioSync(useHertzStore);
     return uninstall;
   }, [hydrated]);

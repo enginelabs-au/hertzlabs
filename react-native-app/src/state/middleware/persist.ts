@@ -84,6 +84,7 @@ export const persistedStoreOptions = {
     backgroundAudio: state.backgroundAudio,
     isKineticModeEnabled: state.isKineticModeEnabled,
     beatSliderScale: state.beatSliderScale,
+    experimentalMode: state.experimentalMode,
     lastUsedParams: state.lastUsedParams,
     custom: state.custom,
     tier: state.tier,

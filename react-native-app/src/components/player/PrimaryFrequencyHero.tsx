@@ -1,6 +1,6 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
+import {formatBeatDisplay, formatBeatUnit, getBand} from '../ReadoutPanel/brainwaveBands';
 import {HertzTheme, bandActionLabel} from '../../theme/hertzTheme';
 import {useHertzStore} from '../../state/store';
 
@@ -12,7 +12,9 @@ export function PrimaryFrequencyHero() {
   return (
     <View style={styles.row}>
       <View style={styles.left}>
-        <Text style={[styles.hz, {color: band.hexColor}]}>{formatBeatDisplay(beatHz)} Hz</Text>
+        <Text style={[styles.hz, {color: band.hexColor}]}>
+          {formatBeatDisplay(beatHz)} {formatBeatUnit(beatHz)}
+        </Text>
         <Text style={styles.subtitle}>{band.label}</Text>
       </View>
       <View style={[styles.badge, {borderColor: `${band.hexColor}88`, backgroundColor: `${band.hexColor}22`}]}>

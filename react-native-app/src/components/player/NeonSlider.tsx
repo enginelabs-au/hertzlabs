@@ -21,6 +21,10 @@ type NeonSliderProps = {
   accent?: string;
   /** Live accent colour (UI thread) — follows the value during a drag. */
   accentValue?: SharedValue<string>;
+  /** Tapping the track without dragging resets to this beat Hz (beat slider). */
+  resetBeatHz?: number;
+  /** Called on a tap-to-reset so the store commits the default value. */
+  onReset?: () => void;
 };
 
 export function NeonSlider({
@@ -35,6 +39,8 @@ export function NeonSlider({
   onDragEnd,
   accent = HertzTheme.neon.cyan,
   accentValue,
+  resetBeatHz,
+  onReset,
 }: NeonSliderProps) {
   const trackW = useSharedValue(200);
   const thumbX = useSharedValue(value * 200);
@@ -58,6 +64,7 @@ export function NeonSlider({
 
   const beginDrag = useCallback(() => onDragBegin?.(), [onDragBegin]);
   const endDrag = useCallback(() => onDragEnd?.(), [onDragEnd]);
+  const reset = useCallback(() => onReset?.(), [onReset]);
 
   useEffect(() => {
     runOnUI(() => {
@@ -118,20 +125,17 @@ export function NeonSlider({
       }
     });
 
-  const tap = Gesture.Tap().onEnd(e => {
+  // Tap (no drag) resets to the default instead of jumping to the tapped point.
+  const tap = Gesture.Tap().onEnd(() => {
     'worklet';
-    const x = Math.min(trackW.value, Math.max(0, e.x));
-    thumbX.value = x;
-    const norm = x / trackW.value;
-    if (isBeatSlider) {
-      beatHzOut!.value = beatHzFromSliderNormWorklet(
-        norm,
-        beatSliderMinHz!.value,
-        beatSliderMaxHz!.value,
-        beatSliderScale!.value,
-      );
+    if (isBeatSlider && resetBeatHz != null) {
+      beatHzOut!.value = resetBeatHz;
     }
-    runOnJS(commitComplete)(norm);
+    if (onReset) {
+      runOnJS(reset)();
+    } else {
+      runOnJS(commitComplete)(0);
+    }
   });
 
   const thumbStyle = useAnimatedStyle(() => {

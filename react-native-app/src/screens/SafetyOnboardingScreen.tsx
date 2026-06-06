@@ -101,6 +101,20 @@ export function SafetyOnboardingScreen() {
           </Text>
         </View>
 
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Frequency Band Labels</Text>
+          <Text style={styles.blockBody}>
+            Band names follow common EEG terminology where it is scientifically established —{' '}
+            <Text style={styles.bold}>delta, theta, alpha, beta, gamma,</Text> and{' '}
+            <Text style={styles.bold}>high-gamma</Text>. Labels beyond high-gamma (very high-gamma,
+            supra-gamma, omega) and beat rates above roughly <Text style={styles.bold}>100 Hz</Text>{' '}
+            describe <Text style={styles.bold}>experimental</Text> audio modulation ranges, not
+            standard clinical EEG classifications. They are provided for personal wellness and
+            exploration only; entrainment effects at these higher rates are not well established in
+            peer-reviewed research.
+          </Text>
+        </View>
+
         <View style={styles.divider} />
 
         <Pressable

@@ -44,6 +44,7 @@ export function DriftKnob({
         onChange={onKnobChange}
         color={accent}
         format={formatDriftHz}
+        defaultValue={0}
       />
     </View>
   );

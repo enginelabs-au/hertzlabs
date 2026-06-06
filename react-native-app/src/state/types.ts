@@ -124,6 +124,12 @@ export type SettingsSlice = {
   isKineticModeEnabled: boolean;
   /** Beat frequency slider: linear Hz steps vs log (exponential) spacing. */
   beatSliderScale: import('../audio/beatHzSlider').BeatSliderScale;
+  /**
+   * Experimental mode — unlocks the beat/frequency control beyond the 500 Hz
+   * Omega ceiling across the audible range (and below the normal floor), with
+   * dedicated dials + text fields flanking the main frequency slider.
+   */
+  experimentalMode: boolean;
   lastUsedParams: AudioParamsValues | null;
   updateSettings(settings: Partial<Omit<SettingsSlice, 'updateSettings'>>): void;
 };

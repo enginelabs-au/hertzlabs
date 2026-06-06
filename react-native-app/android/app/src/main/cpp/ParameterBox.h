@@ -44,8 +44,8 @@ public:
         AudioParams* inactive = (active == &slots_[0]) ? &slots_[1] : &slots_[0];
 
         // Write clamped values into the inactive slot before publishing.
-        inactive->carrierHz = p.carrierHz;
-        inactive->beatHz    = std::clamp(p.beatHz, 0.05, 500.0);
+        inactive->carrierHz = std::clamp(p.carrierHz, 0.001, 1'000'000.0);
+        inactive->beatHz    = std::clamp(p.beatHz, 1e-18, 1'000'000.0);
         inactive->gain      = std::clamp(p.gain,   0.0f, 0.501187f);
         inactive->balance   = std::clamp(p.balance, -1.0f, 1.0f);
 

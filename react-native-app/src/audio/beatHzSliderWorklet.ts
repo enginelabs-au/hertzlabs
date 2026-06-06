@@ -35,3 +35,15 @@ export function sliderNormFromBeatHzWorklet(
   const logSpan = Math.log(maxHz) - logMin;
   return (Math.log(clamped) - logMin) / logSpan;
 }
+
+/** UI-thread quantize for live TARGET / dock labels (must be a worklet). */
+export function quantizeBeatForDisplayWorklet(hz: number): number {
+  'worklet';
+  if (hz >= 10_000) {
+    return Math.round(hz);
+  }
+  if (hz >= 1) {
+    return Math.round(hz * 10) / 10;
+  }
+  return Math.round(hz * 1e12) / 1e12;
+}

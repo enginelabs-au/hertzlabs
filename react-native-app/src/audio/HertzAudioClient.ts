@@ -5,10 +5,14 @@ import NativeHertzAudio, {
 } from './specs/NativeHertzAudio';
 import {
   type BinauralParameters,
-  sanitizeBinauralParameters,
+  ABS_MIN_BEAT_HZ,
+  clampBalance,
   clampGain,
   clampNumber,
   clampRampMs,
+  DEFAULT_BEAT_HZ,
+  MAX_BEAT_HZ_EXPERIMENTAL,
+  MAX_CARRIER_HZ_EXPERIMENTAL,
 } from './paramMapping';
 import type {NoiseLayers} from '../state/types';
 import {noiseLayerGains} from './noiseLayers';
@@ -41,13 +45,21 @@ export const HertzAudioClient = {
     params: BinauralParameters,
     noise?: {layers: NoiseLayers; mix: number},
   ): void {
-    const safe = sanitizeBinauralParameters(params);
+    // `params` is already tier/experimental-clamped by mapStateToNativeAudio.
+    // Re-running sanitizeBinauralParameters here (with its experimental=false
+    // default) was re-clamping the carrier to MAX_CARRIER_HZ (1500) — capping
+    // Experimental-mode pitch sweeps at 1.5 kHz (and the floor at 20 Hz killed
+    // infrasonic sweeps). Apply only wide, context-free safety clamps matching the
+    // native ParameterBox range [1e-18, 1e6] so legitimate infrasonic/ultrasonic
+    // values pass through untouched; tier/experimental gating already happened.
+    const carrierHz = clampNumber(params.carrierHz, ABS_MIN_BEAT_HZ, MAX_CARRIER_HZ_EXPERIMENTAL, 220);
+    const beatHz = clampNumber(params.beatHz, ABS_MIN_BEAT_HZ, MAX_BEAT_HZ_EXPERIMENTAL, DEFAULT_BEAT_HZ);
     const g = noise ? noiseLayerGains(noise.layers, noise.mix) : {white: 0, pink: 0, brown: 0};
     NativeHertzAudio.setBinauralParameters(
-      safe.carrierHz,
-      safe.beatHz,
-      safe.gain,
-      safe.balance,
+      carrierHz,
+      beatHz,
+      clampGain(params.gain),
+      clampBalance(params.balance),
       clampGain(g.white),
       clampGain(g.pink),
       clampGain(g.brown),

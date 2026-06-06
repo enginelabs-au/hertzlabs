@@ -65,10 +65,19 @@ export function useLiveAudioParamBridge(dialValues: DialValues): void {
 
   useAnimatedReaction(
     () => {
-      // Quantize so runOnJS only fires on an audibly meaningful change.
+      'worklet';
+      // Quantize so runOnJS only fires on an audibly meaningful change. Beat is
+      // adaptive across infrasonic → ultrasonic experimental spans.
+      const bv = dialValues.beatHz.value;
+      const b =
+        bv >= 10_000
+          ? Math.round(bv)
+          : bv >= 1
+            ? Math.round(bv * 10) / 10
+            : Math.round(bv * 1e12) / 1e12;
       return {
         c: Math.round(dialValues.carrierHz.value * 2) / 2,
-        b: Math.round(dialValues.beatHz.value * 10) / 10,
+        b,
         p: Math.round(dialValues.phaseAngle.value),
         g: Math.round(dialValues.gain.value * 100) / 100,
         bal: Math.round(dialValues.balance.value * 100) / 100,

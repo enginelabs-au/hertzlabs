@@ -9,9 +9,14 @@ react-native-app/ios/build/SourcePackages/
 react-native-app/android/.gradle/
 react-native-app/android/build/
 react-native-app/android/app/build/
+react-native-app/build/
 react-native-app/.env
 react-native-app/.env.local
 **/GenerativeAI-Info.plist
+
+# Cursor local QA artifacts
+.cursor/qa-screenshots/
+.cursor/tmp-sim*.png
 
 # Swift
 swift-app/.build/

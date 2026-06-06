@@ -9,6 +9,7 @@ import {useDialSharedValues} from '../components/CircularController/useDialShare
 import {useHertzStore} from '../state/store';
 import {useEngineModeModulation} from '../hooks/useEngineModeModulation';
 import {useKineticModulation} from '../hooks/useKineticModulation';
+import {DEFAULT_CARRIER_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
 
 function VolumeWarningBanner() {
@@ -40,10 +41,23 @@ export function PlayerScreen() {
   const [category, setCategory] = useState<EngineCategoryId>('entrainment');
   const highVolumeWarning = useHertzStore(s => s.highVolumeWarningTriggered);
   const isKineticModeEnabled = useHertzStore(s => s.isKineticModeEnabled);
+  const experimental = useHertzStore(s => s.experimentalMode);
   const updateSettings = useHertzStore(s => s.updateSettings);
+  const setParam = useHertzStore(s => s.setParam);
   const isPlaying = useHertzStore(s => s.isPlaying);
   const requestPlay = useHertzStore(s => s.requestPlay);
   const requestPause = useHertzStore(s => s.requestPause);
+
+  const toggleExperimental = () => {
+    const next = !experimental;
+    updateSettings({experimentalMode: next});
+    // In Experimental the Ω−/Ω+ dials control the PITCH (carrier); the slider keeps
+    // controlling the BEAT in both modes. Reset the pitch to a safe, audible default
+    // (220 Hz) on every toggle so the produced tone is predictable — and, when
+    // leaving, it re-clamps to the normal ≤1500 Hz ceiling. The beat (slider) is left
+    // untouched, so its speed stays at the user's current setting.
+    setParam('carrierHz', DEFAULT_CARRIER_HZ);
+  };
 
   // Own the dial shared values here so the TARGET / L / R readout row and the
   // dial hub share the same UI-thread values (readouts follow the slider live).
@@ -89,6 +103,16 @@ export function PlayerScreen() {
             accessibilityState={{checked: isKineticModeEnabled}}>
             <Text style={[styles.kineticToggleText, isKineticModeEnabled && styles.kineticToggleTextActive]}>
               {isKineticModeEnabled ? '◎ Kinetic ON' : '◎ Kinetic OFF'}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.kineticToggle, experimental && styles.expToggleActive]}
+            onPress={toggleExperimental}
+            accessibilityRole="switch"
+            accessibilityState={{checked: experimental}}
+            accessibilityLabel="Experimental mode">
+            <Text style={[styles.kineticToggleText, experimental && styles.expToggleTextActive]}>
+              {experimental ? '⚗ Experimental ON' : '⚗ Experimental OFF'}
             </Text>
           </Pressable>
         </View>
@@ -160,7 +184,9 @@ const styles = StyleSheet.create({
   bottomControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 8,
     paddingHorizontal: 16,
   },
@@ -200,5 +226,12 @@ const styles = StyleSheet.create({
   },
   kineticToggleTextActive: {
     color: HertzTheme.neon.cyan,
+  },
+  expToggleActive: {
+    backgroundColor: 'rgba(234,247,255,0.14)',
+    borderColor: 'rgba(234,247,255,0.55)',
+  },
+  expToggleTextActive: {
+    color: '#EAF7FF',
   },
 });

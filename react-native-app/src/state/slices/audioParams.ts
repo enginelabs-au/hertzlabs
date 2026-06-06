@@ -58,6 +58,7 @@ function normalizeNoiseLayers(
 function sanitize(
   values: AudioParamsValues & {leftDriftMs?: number; rightDriftMs?: number},
   tier: AppStore['tier'],
+  experimental = false,
 ): AudioParamsValues {
   const leftDriftHz =
     typeof values.leftDriftHz === 'number' ? values.leftDriftHz : 0;
@@ -68,7 +69,7 @@ function sanitize(
     typeof values.noiseMix === 'number' ? values.noiseMix : DEFAULT_NOISE_MIX,
   );
   return {
-    ...sanitizeBinauralParameters(values as BinauralParameters, tier),
+    ...sanitizeBinauralParameters(values as BinauralParameters, tier, experimental),
     waveform: values.waveform,
     phaseAngle: clampNumber(values.phaseAngle, 0, 360, 0),
     leftDriftHz: clampDriftHz(leftDriftHz),
@@ -84,7 +85,7 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
   ...defaultAudioParams,
 
   setParam: (key, value) => {
-    set(state => sanitize({...state, [key]: value} as AudioParamsValues, state.tier));
+    set(state => sanitize({...state, [key]: value} as AudioParamsValues, state.tier, state.experimentalMode));
   },
 
   toggleNoiseLayer: layer => {
@@ -93,19 +94,19 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
         ...state.noiseLayers,
         [layer]: !state.noiseLayers[layer],
       };
-      return sanitize({...state, noiseLayers}, state.tier);
+      return sanitize({...state, noiseLayers}, state.tier, state.experimentalMode);
     });
     const s = get();
     pushNoiseToNative(s.noiseLayers, s.noiseMix);
   },
 
   setNoiseMix: mix => {
-    set(state => sanitize({...state, noiseMix: mix}, state.tier));
+    set(state => sanitize({...state, noiseMix: mix}, state.tier, state.experimentalMode));
     const s = get();
     pushNoiseToNative(s.noiseLayers, s.noiseMix);
   },
 
   applyPreset: (preset: Preset) => {
-    set(state => sanitize(preset.params, state.tier));
+    set(state => sanitize(preset.params, state.tier, state.experimentalMode));
   },
 });

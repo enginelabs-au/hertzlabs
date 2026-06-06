@@ -162,16 +162,15 @@ export function NeonVerticalSlider(props: NeonVerticalSliderProps) {
       runOnJS(endDrag)();
     });
 
-  const tap = Gesture.Tap().onEnd(e => {
+  // Tap (no drag) resets to the default (0° / norm 0) instead of jumping.
+  const tap = Gesture.Tap().onEnd(() => {
     'worklet';
     const h = trackH.value;
-    const center = clampThumbCenter(e.y, h);
-    thumbY.value = center;
-    const norm = normFromThumbCenter(center, h);
+    thumbY.value = thumbCenterFromDeg(0, h);
     if (!isBeat && linkedPhaseDeg) {
-      linkedPhaseDeg.value = norm * 360;
+      linkedPhaseDeg.value = 0;
     }
-    runOnJS(commitComplete)(norm);
+    runOnJS(commitComplete)(0);
   });
 
   const thumbStyle = useAnimatedStyle(() => ({

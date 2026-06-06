@@ -192,6 +192,7 @@ describe('persist policy (Plan 01 §6) — partialize', () => {
         'defaultDurationSec',
         'engineType',
         'entitlements',
+        'experimentalMode',
         'haptics',
         'hasAcceptedSafetyTerms',
         'isKineticModeEnabled',

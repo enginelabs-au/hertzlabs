@@ -9,18 +9,38 @@ import {
   beatSliderScaleToWorklet,
   sliderNormToBeatHz,
 } from '../../audio/beatHzSlider';
+import {quantizeBeatForDisplayWorklet} from '../../audio/beatHzSliderWorklet';
 import {BeatSliderScaleToggle} from './BeatSliderScaleToggle';
 import {clampDriftHz} from '../../audio/channelFrequencies';
-import {useHubLayout, IN_FRAME_BEAT_SLIDER_H} from '../../hooks/useHubLayout';
+import {
+  AUDIBLE_CEILING_HZ,
+  AUDIBLE_FLOOR_HZ,
+  DEFAULT_BEAT_HZ,
+  DEFAULT_CARRIER_HZ,
+} from '../../audio/paramMapping';
+import {useHubLayout} from '../../hooks/useHubLayout';
 import type {DialValues} from '../CircularController/useDialSharedValues';
 import type {useDialGestures} from '../CircularController/useDialGestures';
-import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
+import {
+  BRAINWAVE_BANDS,
+  EXPERIMENTAL_BAND_INDEX,
+  formatBeatDisplay,
+  formatBeatUnit,
+  getBand,
+} from '../ReadoutPanel/brainwaveBands';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {HubOscilloscopeCanvas} from '../waveforms';
+import {HubBandRail} from '../hub/HubBandRail';
+import {ExperimentalDial} from './ExperimentalDial';
 import {GlassCard} from './GlassCard';
 import {NeonSlider} from './NeonSlider';
 import {NeonVerticalSlider} from './NeonVerticalSlider';
+
+const EXPERIMENTAL_COLOR = BRAINWAVE_BANDS[EXPERIMENTAL_BAND_INDEX].hexColor;
+
+/** Split point between the LOW Ω− (pitch) dial and the HIGH Ω+ (pitch) dial. */
+const EXP_PITCH_SPLIT_HZ = 500;
 
 type FramedVisualizerHubProps = {
   dialValues: DialValues;
@@ -32,11 +52,20 @@ type FramedVisualizerHubProps = {
  * drag. Isolated into its own component so per-frame updates re-render only this
  * text node — not the oscilloscope canvas or the sliders.
  */
-function HubDockBeatLabel({beatSV, fallback}: {beatSV: SharedValue<number>; fallback: number}) {
+function HubDockBeatLabel({
+  beatSV,
+  fallback,
+}: {
+  beatSV: SharedValue<number>;
+  fallback: number;
+}) {
   const [beat, setBeat] = useState(fallback);
   useEffect(() => setBeat(fallback), [fallback]);
   useAnimatedReaction(
-    () => Math.round(beatSV.value * 10) / 10,
+    () => {
+      'worklet';
+      return quantizeBeatForDisplayWorklet(beatSV.value);
+    },
     (curr, prev) => {
       if (curr !== prev) {
         runOnJS(setBeat)(curr);
@@ -46,18 +75,20 @@ function HubDockBeatLabel({beatSV, fallback}: {beatSV: SharedValue<number>; fall
   );
   return (
     <Text style={[styles.beatLabel, {color: getBand(beat).hexColor}]}>
-      {formatBeatDisplay(beat)} Hz
+      {formatBeatDisplay(beat)} {formatBeatUnit(beat)}
     </Text>
   );
 }
 
 export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubProps) {
-  const {hubW, frameH, canvasH, canvasW, beatSliderW} = useHubLayout();
+  const {hubW, frameH, canvasH, canvasW, beatSliderW, beatSliderH, bandRailW, experimental} =
+    useHubLayout();
 
   const setParam = useHertzStore(s => s.setParam);
   const tier = useHertzStore(s => s.tier);
   const beatSliderScale = useHertzStore(s => s.beatSliderScale);
   const storeBeat = useHertzStore(s => s.beatHz);
+  const storeCarrier = useHertzStore(s => s.carrierHz);
   const phaseAngle = useHertzStore(s => s.phaseAngle);
   const leftDriftHz = clampDriftHz(useHertzStore(s => s.leftDriftHz));
   const rightDriftHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
@@ -90,6 +121,19 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     [setParam, tier, beatSliderScale],
   );
 
+  // Tap-to-reset target for every beat control (slider + experimental dials).
+  const onBeatReset = useCallback(() => {
+    setParam('beatHz', DEFAULT_BEAT_HZ);
+  }, [setParam]);
+
+  // Experimental Ω−/Ω+ dials set the produced PITCH (carrier), not the beat.
+  const onCarrierCommit = useCallback(
+    (hz: number) => {
+      setParam('carrierHz', hz);
+    },
+    [setParam],
+  );
+
   const onPhaseComplete = useCallback(
     (deg: number) => {
       setParam('phaseAngle', deg);
@@ -97,10 +141,40 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     [setParam],
   );
 
+  const onBandSelect = useCallback(
+    (midHz: number) => {
+      setParam('beatHz', midHz);
+    },
+    [setParam],
+  );
+
+  const beatSlider = (
+    <NeonSlider
+      value={beatNorm}
+      beatHzOut={dialValues.beatHz}
+      beatSliderMinHz={beatSliderMinHz}
+      beatSliderMaxHz={beatSliderMaxHz}
+      beatSliderScale={beatSliderScaleSV}
+      onChangeComplete={onBeatSliderComplete}
+      accent={bandHex}
+      accentValue={liveAccent}
+      resetBeatHz={DEFAULT_BEAT_HZ}
+      onReset={onBeatReset}
+    />
+  );
+
   return (
     <View style={styles.outer}>
       <GlassCard style={[styles.frame, {width: hubW, height: frameH}]} padding={0}>
         <View style={[styles.hubInner, {width: hubW, height: frameH}]}>
+          <HubBandRail
+            beatHz={storeBeat}
+            beatHzLive={dialValues.beatHz}
+            height={frameH}
+            width={bandRailW}
+            onSelectBand={onBandSelect}
+            experimental={experimental}
+          />
           <View style={[styles.canvasColumn, {width: canvasW, height: frameH}]}>
             <GestureDetector gesture={gesture}>
               <View style={[styles.canvasBox, {width: canvasW, height: canvasH}]}>
@@ -111,26 +185,48 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
                   leftDriftHz={leftDriftHz}
                   rightDriftHz={rightDriftHz}
                   beatHz={storeBeat}
+                  experimental={experimental}
                 />
               </View>
             </GestureDetector>
-            <View style={[styles.beatSliderDock, {width: canvasW, height: IN_FRAME_BEAT_SLIDER_H}]}>
+            <View style={[styles.beatSliderDock, {width: canvasW, height: beatSliderH}]}>
               <View style={styles.beatDockHeader}>
                 <HubDockBeatLabel beatSV={dialValues.beatHz} fallback={storeBeat} />
                 <BeatSliderScaleToggle />
               </View>
-              <View style={{width: beatSliderW}}>
-                <NeonSlider
-                  value={beatNorm}
-                  beatHzOut={dialValues.beatHz}
-                  beatSliderMinHz={beatSliderMinHz}
-                  beatSliderMaxHz={beatSliderMaxHz}
-                  beatSliderScale={beatSliderScaleSV}
-                  onChangeComplete={onBeatSliderComplete}
-                  accent={bandHex}
-                  accentValue={liveAccent}
-                />
-              </View>
+              {experimental ? (
+                <View style={styles.expRow}>
+                  <ExperimentalDial
+                    label="LOW Ω−"
+                    caption="20–500 Hz"
+                    color={EXPERIMENTAL_COLOR}
+                    valueLive={dialValues.carrierHz}
+                    committedValue={storeCarrier}
+                    dialMin={AUDIBLE_FLOOR_HZ}
+                    dialMax={EXP_PITCH_SPLIT_HZ}
+                    absMin={AUDIBLE_FLOOR_HZ}
+                    absMax={AUDIBLE_CEILING_HZ}
+                    defaultValue={DEFAULT_CARRIER_HZ}
+                    onCommit={onCarrierCommit}
+                  />
+                  <View style={styles.expSliderFlex}>{beatSlider}</View>
+                  <ExperimentalDial
+                    label="HIGH Ω+"
+                    caption="0.5–20 kHz"
+                    color={EXPERIMENTAL_COLOR}
+                    valueLive={dialValues.carrierHz}
+                    committedValue={storeCarrier}
+                    dialMin={EXP_PITCH_SPLIT_HZ}
+                    dialMax={AUDIBLE_CEILING_HZ}
+                    absMin={AUDIBLE_FLOOR_HZ}
+                    absMax={AUDIBLE_CEILING_HZ}
+                    defaultValue={DEFAULT_CARRIER_HZ}
+                    onCommit={onCarrierCommit}
+                  />
+                </View>
+              ) : (
+                <View style={{width: beatSliderW}}>{beatSlider}</View>
+              )}
             </View>
           </View>
           <NeonVerticalSlider
@@ -183,6 +279,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: HertzTheme.glassBorder,
     backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  expRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 6,
+  },
+  expSliderFlex: {
+    flex: 1,
   },
   beatLabel: {
     fontFamily: HertzTheme.mono,

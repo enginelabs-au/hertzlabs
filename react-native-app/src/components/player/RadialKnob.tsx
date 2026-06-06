@@ -21,9 +21,11 @@ type RadialKnobProps = {
   color: string;
   format?: (v: number) => string;
   size?: KnobSize;
+  /** Tapping the knob without dragging snaps it back to this value. */
+  defaultValue?: number;
 };
 
-export function RadialKnob({label, value, min, max, onChange, color, format, size = 'default'}: RadialKnobProps) {
+export function RadialKnob({label, value, min, max, onChange, color, format, size = 'default', defaultValue}: RadialKnobProps) {
   const dims = KNOB_DIMS[size];
   const display = format ? format(value) : value.toFixed(1);
   const pct = (value - min) / (max - min);
@@ -42,6 +44,12 @@ export function RadialKnob({label, value, min, max, onChange, color, format, siz
     startRef.current = value;
   }, [value]);
 
+  const resetToDefault = useCallback(() => {
+    if (defaultValue != null) {
+      onChange(Math.min(max, Math.max(min, defaultValue)));
+    }
+  }, [defaultValue, max, min, onChange]);
+
   const pan = Gesture.Pan()
     .onBegin(() => {
       runOnJS(captureStart)();
@@ -50,8 +58,16 @@ export function RadialKnob({label, value, min, max, onChange, color, format, siz
       runOnJS(applyDrag)(e.translationY);
     });
 
+  const tap = Gesture.Tap().onEnd(() => {
+    if (defaultValue != null) {
+      runOnJS(resetToDefault)();
+    }
+  });
+
+  const gesture = defaultValue != null ? Gesture.Exclusive(pan, tap) : pan;
+
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={gesture}>
       <View style={[styles.wrap, {width: dims.wrap}]}>
         <View
           style={[

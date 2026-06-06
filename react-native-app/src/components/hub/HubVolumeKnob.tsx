@@ -1,5 +1,6 @@
 import React, {useCallback} from 'react';
 import {StyleSheet, View} from 'react-native';
+import {DEFAULT_VOLUME_GAIN} from '../../audio/paramMapping';
 import {RadialKnob} from '../player/RadialKnob';
 import {HertzTheme} from '../../theme/hertzTheme';
 
@@ -31,6 +32,7 @@ export function HubVolumeKnob({gain, onChangeGain}: HubVolumeKnobProps) {
         onChange={onKnobChange}
         color={HertzTheme.channel.volume}
         format={gainToDb}
+        defaultValue={DEFAULT_VOLUME_GAIN}
       />
     </View>
   );

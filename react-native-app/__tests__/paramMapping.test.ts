@@ -10,6 +10,9 @@ import {
   MIN_BEAT_HZ_PREMIUM,
   MAX_BEAT_HZ,
   MAX_BEAT_HZ_PREMIUM,
+  MIN_CARRIER_HZ,
+  MAX_CARRIER_HZ,
+  MAX_CARRIER_HZ_EXPERIMENTAL,
   PEAK_CEILING_LINEAR,
   MIN_RAMP_MS,
   MAX_RAMP_MS,
@@ -94,5 +97,44 @@ describe('getStereoFrequencies', () => {
     const {leftHz, rightHz} = getStereoFrequencies(220, 10);
     expect(leftHz).toBe(215);
     expect(rightHz).toBe(225);
+  });
+});
+
+describe('experimental mode raises the PITCH ceiling, not the beat', () => {
+  it('lets the carrier (pitch) reach 20 kHz in experimental mode', () => {
+    const out = sanitizeBinauralParameters({...baseParams, carrierHz: 20_000}, 'premium', true);
+    expect(out.carrierHz).toBe(MAX_CARRIER_HZ_EXPERIMENTAL);
+  });
+
+  it('clamps a pitch above 20 kHz down to the audible ceiling', () => {
+    const out = sanitizeBinauralParameters({...baseParams, carrierHz: 50_000}, 'premium', true);
+    expect(out.carrierHz).toBe(MAX_CARRIER_HZ_EXPERIMENTAL);
+  });
+
+  it('keeps the normal carrier ceiling (1500 Hz) when not experimental', () => {
+    const out = sanitizeBinauralParameters({...baseParams, carrierHz: 20_000}, 'premium', false);
+    expect(out.carrierHz).toBe(MAX_CARRIER_HZ);
+  });
+
+  it('never takes the pitch below the audible floor (20 Hz)', () => {
+    const out = sanitizeBinauralParameters({...baseParams, carrierHz: 1}, 'premium', true);
+    expect(out.carrierHz).toBe(MIN_CARRIER_HZ);
+  });
+
+  it('keeps the beat on the tier range regardless of experimental mode', () => {
+    // A huge requested beat still clamps to the premium max …
+    expect(
+      sanitizeBinauralParameters({...baseParams, beatHz: 50_000}, 'premium', true).beatHz,
+    ).toBe(MAX_BEAT_HZ_PREMIUM);
+    // … and the slider beat can still reach the premium floor (slow beat preserved).
+    expect(
+      sanitizeBinauralParameters({...baseParams, beatHz: 0.001}, 'premium', true).beatHz,
+    ).toBe(MIN_BEAT_HZ_PREMIUM);
+  });
+
+  it('produces an audible binaural pair at a high pitch (never a straight tone)', () => {
+    const {leftHz, rightHz} = getStereoFrequencies(20_000, 10, 'premium', true);
+    expect(rightHz - leftHz).toBeCloseTo(10, 5);
+    expect(leftHz).toBeGreaterThanOrEqual(20);
   });
 });

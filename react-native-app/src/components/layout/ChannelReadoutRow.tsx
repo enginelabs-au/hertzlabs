@@ -3,7 +3,8 @@ import {StyleSheet, Text, View} from 'react-native';
 import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import {channelFrequencies, clampDriftHz} from '../../audio/channelFrequencies';
 import type {DialValues} from '../CircularController/useDialSharedValues';
-import {formatBeatDisplay, getBand} from '../ReadoutPanel/brainwaveBands';
+import {formatBeatDisplay, formatBeatUnit, getBand} from '../ReadoutPanel/brainwaveBands';
+import {quantizeBeatForDisplayWorklet} from '../../audio/beatHzSliderWorklet';
 import {HubVolumeKnob} from '../hub/HubVolumeKnob';
 import {DriftKnob} from '../player/DriftKnob';
 import {useHertzStore} from '../../state/store';
@@ -42,7 +43,13 @@ export function ChannelReadoutRow({dialValues}: ChannelReadoutRowProps = {}) {
     [carrierSV],
   );
   useAnimatedReaction(
-    () => (beatSV ? Math.round(beatSV.value * 10) / 10 : null),
+    () => {
+      'worklet';
+      if (!beatSV) {
+        return null;
+      }
+      return quantizeBeatForDisplayWorklet(beatSV.value);
+    },
     (curr, prev) => {
       if (curr != null && curr !== prev) {
         runOnJS(setBeat)(curr);
@@ -55,6 +62,8 @@ export function ChannelReadoutRow({dialValues}: ChannelReadoutRowProps = {}) {
   const onRightDrift = useCallback((hz: number) => setParam('rightDriftHz', hz), [setParam]);
   const onGainChange = useCallback((g: number) => setParam('gain', g), [setParam]);
 
+  // L/R = carrier ± beat/2 in both modes. In Experimental the carrier is the
+  // user-set pitch (up to 20 kHz via the Ω−/Ω+ dials), so L/R show that pitch.
   const {leftHz, rightHz} = channelFrequencies(carrier, beat, leftDriftHz, rightDriftHz);
   const band = getBand(beat);
   const bandColor = band.hexColor;
@@ -65,8 +74,10 @@ export function ChannelReadoutRow({dialValues}: ChannelReadoutRowProps = {}) {
         <View style={styles.sideCol}>
           <View style={styles.sideCard}>
             <Text style={styles.sideLabel}>LEFT</Text>
-            <Text style={styles.sideHz}>{leftHz.toFixed(1)}</Text>
-            <Text style={[styles.sideUnit, {color: HertzTheme.channel.left}]}>Hz</Text>
+            <Text style={styles.sideHz} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+              {formatBeatDisplay(leftHz)}
+            </Text>
+            <Text style={[styles.sideUnit, {color: HertzTheme.channel.left}]}>{formatBeatUnit(leftHz)}</Text>
           </View>
           <DriftKnob
             label="DRIFT L"
@@ -80,9 +91,15 @@ export function ChannelReadoutRow({dialValues}: ChannelReadoutRowProps = {}) {
           <View style={[styles.targetCard, {borderColor: `${bandColor}66`}]}>
             <Text style={[styles.targetLabel, {color: bandColor}]}>TARGET</Text>
             <Text style={[styles.targetHz, {color: bandColor}]}>{formatBeatDisplay(beat)}</Text>
-            <Text style={[styles.targetUnit, {color: bandColor}]}>Hz</Text>
+            <Text style={[styles.targetUnit, {color: bandColor}]}>{formatBeatUnit(beat)}</Text>
             <View style={[styles.bandPill, {borderColor: `${bandColor}99`, backgroundColor: `${bandColor}22`}]}>
-              <Text style={[styles.bandPillText, {color: bandColor}]}>{band.label}</Text>
+              <Text
+                style={[styles.bandPillText, {color: bandColor}]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}>
+                {band.scientific.toUpperCase()}
+              </Text>
             </View>
           </View>
           <HubVolumeKnob gain={gain} onChangeGain={onGainChange} />
@@ -91,8 +108,10 @@ export function ChannelReadoutRow({dialValues}: ChannelReadoutRowProps = {}) {
         <View style={styles.sideCol}>
           <View style={styles.sideCard}>
             <Text style={styles.sideLabel}>RIGHT</Text>
-            <Text style={[styles.sideHz, styles.rightHz]}>{rightHz.toFixed(1)}</Text>
-            <Text style={[styles.sideUnit, styles.rightUnit]}>Hz</Text>
+            <Text style={[styles.sideHz, styles.rightHz]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+              {formatBeatDisplay(rightHz)}
+            </Text>
+            <Text style={[styles.sideUnit, styles.rightUnit]}>{formatBeatUnit(rightHz)}</Text>
           </View>
           <DriftKnob
             label="DRIFT R"
@@ -182,6 +201,7 @@ const styles = StyleSheet.create({
   },
   bandPill: {
     marginTop: 6,
+    alignSelf: 'stretch',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 10,
@@ -191,5 +211,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
 });

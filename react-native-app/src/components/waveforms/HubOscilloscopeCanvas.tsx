@@ -19,6 +19,14 @@ import {NeonRadiantPath} from './NeonRadiantPath';
 const CHANNEL_LEFT = HertzTheme.channel.left;
 const CHANNEL_RIGHT = HertzTheme.channel.right;
 
+/**
+ * Fixed carrier the scope draws at in Experimental mode. The audible PITCH there
+ * can reach 20 kHz (far too dense to draw), so the visuals hold this audible
+ * carrier and animate from the live BEAT instead — keeping the beautiful patterns
+ * unchanged regardless of the produced pitch. Audio still uses the real pitch.
+ */
+const VISUAL_SCOPE_CARRIER_HZ = 220;
+
 type HubOscilloscopeCanvasProps = {
   width: number;
   height: number;
@@ -28,6 +36,8 @@ type HubOscilloscopeCanvasProps = {
   rightDriftHz: number;
   /** Store-backed beat Hz — only drives stroke widths (snaps on commit; imperceptible). */
   beatHz: number;
+  /** Experimental mode: draw at the fixed visual carrier, not the live pitch. */
+  experimental?: boolean;
 };
 
 /**
@@ -43,6 +53,7 @@ function HubOscilloscopeCanvasInner({
   leftDriftHz,
   rightDriftHz,
   beatHz,
+  experimental = false,
 }: HubOscilloscopeCanvasProps) {
   const w = Math.max(64, width);
   const h = Math.max(64, height);
@@ -62,8 +73,13 @@ function HubOscilloscopeCanvasInner({
   const scope = useDerivedValue(
     () => {
       'worklet';
+      // Experimental pitch can reach 20 kHz — too dense to draw — so hold the
+      // fixed visual carrier and let the live BEAT animate the patterns instead.
+      const scopeCarrierHz = experimental
+        ? VISUAL_SCOPE_CARRIER_HZ
+        : dialValues.carrierHz.value;
       return buildHubScopePaths(w, h, time.value, {
-        carrierHz: dialValues.carrierHz.value,
+        carrierHz: scopeCarrierHz,
         beatHz: dialValues.beatHz.value,
         phaseAngle: dialValues.phaseAngle.value,
         gain: dialValues.gain.value,
@@ -72,7 +88,7 @@ function HubOscilloscopeCanvasInner({
         rightDriftHz,
       });
     },
-    [w, h, leftDriftHz, rightDriftHz, dialValues],
+    [w, h, leftDriftHz, rightDriftHz, dialValues, experimental],
   );
 
   const leftPath = useDerivedValue(() => scope.value.leftChannel, [scope]);
