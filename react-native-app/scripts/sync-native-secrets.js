@@ -7,13 +7,11 @@ const fs = require('fs');
 const path = require('path');
 
 const appRoot = path.join(__dirname, '..');
-const repoRoot = path.join(appRoot, '..');
 const envPath = path.join(appRoot, '.env');
 
 const PLIST_TARGETS = [
   path.join(appRoot, 'ios/HertzLabsBinauralBeats/GenerativeAI-Info.plist'),
-  path.join(repoRoot, 'swift-app/Config/GenerativeAI-Info.plist'),
-  path.join(repoRoot, 'swift-app/Profiling/GenerativeAI-Info.plist'),
+  path.join(appRoot, 'HertzAudioEngine/Config/GenerativeAI-Info.plist'),
 ];
 
 function parseEnv(filePath) {

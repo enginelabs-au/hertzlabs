@@ -14,6 +14,7 @@ components_root = File.join(
 FABRIC_COMPONENTS = %w[
   rngesturehandler_codegen
   rnskia
+  ReactNativeBlurViewSpec
 ].freeze
 
 FABRIC_CPPS = %w[

@@ -225,18 +225,8 @@ def main() -> None:
 
     write_android_adaptive_xml()
 
-    profiler_set = ROOT.parent / "swift-app/Profiling/Assets.xcassets/AppIcon.appiconset"
-    profiler_set.mkdir(parents=True, exist_ok=True)
-    for filename, size, *_rest in IOS_SIZES:
-        save_ios_png(resize_square(marketing, size), profiler_set / filename)
-    (profiler_set / "Contents.json").write_text(
-        (IOS_SET / "Contents.json").read_text(encoding="utf-8"),
-        encoding="utf-8",
-    )
-
     print(f"Generated iOS icons in {IOS_SET}")
     print(f"Generated Android mipmaps in {ANDROID_RES}")
-    print(f"Generated Swift profiler icons in {profiler_set}")
 
 
 if __name__ == "__main__":

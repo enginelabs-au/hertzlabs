@@ -3,10 +3,11 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {PlayerScreen} from '../screens/PlayerScreen';
 import {MathModeScreen} from '../screens/MathModeScreen';
 import {BackgroundAudioScreen} from '../screens/BackgroundAudioScreen';
+import {AIParserScreen} from '../screens/AIParserScreen';
 import {useAudioBackgroundController} from '../hooks/useAudioBackgroundController';
 import {HertzTheme} from '../theme/hertzTheme';
 
-type TabId = 'engines' | 'math' | 'background';
+type TabId = 'engines' | 'math' | 'background' | 'ai';
 
 interface TabConfig {
   id: TabId;
@@ -18,6 +19,7 @@ const TABS: TabConfig[] = [
   {id: 'engines', label: 'Engines', icon: '◉'},
   {id: 'math', label: 'Math Mode', icon: '∑'},
   {id: 'background', label: 'Background', icon: '♪'},
+  {id: 'ai', label: 'AI', icon: '✦'},
 ];
 
 export function MainTabs() {
@@ -31,6 +33,7 @@ export function MainTabs() {
         {activeTab === 'engines' && <PlayerScreen />}
         {activeTab === 'math' && <MathModeScreen />}
         {activeTab === 'background' && <BackgroundAudioScreen />}
+        {activeTab === 'ai' && <AIParserScreen />}
       </View>
 
       <View style={styles.tabBar}>

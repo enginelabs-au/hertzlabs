@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@react-native/codegen": "latest",
+    "@sbaiahmed1/react-native-blur": "^4.6.3",
     "@shopify/react-native-skia": "^2.6.4",
     "patch-package": "^8.0.1",
     "react": "19.2.3",

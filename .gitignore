@@ -19,6 +19,6 @@ react-native-app/.env.local
 .cursor/tmp-sim*.png
 
 # Swift
-swift-app/.build/
-swift-app/DerivedData/
+react-native-app/HertzAudioEngine/.build/
+react-native-app/HertzAudioEngine/DerivedData/
 *.xcframework

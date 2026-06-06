@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {BlurView} from '@sbaiahmed1/react-native-blur';
 import {AmbientNoiseSelector} from '../components/EngineSelector/AmbientNoiseSelector';
 import {EngineSelector} from '../components/EngineSelector/EngineSelector';
 import {EngineDialSection} from '../components/engines/EngineDialSection';
@@ -84,12 +85,26 @@ export function PlayerScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          blurType="systemChromeMaterialDark"
+          blurAmount={22}
+          overlayColor="rgba(8,10,18,0.28)"
+          reducedTransparencyFallbackColor="#0A0C12"
+        />
         <Pressable
           style={[styles.playBtn, isPlaying && styles.playBtnActive]}
           onPress={() => (isPlaying ? requestPause() : requestPlay())}
           accessibilityRole="button"
           accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-          <Text style={styles.playBtnIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+          {isPlaying ? (
+            <View style={styles.pauseIcon}>
+              <View style={styles.pauseBar} />
+              <View style={styles.pauseBar} />
+            </View>
+          ) : (
+            <Text style={styles.playBtnIcon}>▶</Text>
+          )}
           <Text style={styles.playBtnLabel}>{isPlaying ? 'PAUSE' : 'PLAY'}</Text>
         </Pressable>
         <View style={styles.bottomControls}>
@@ -129,7 +144,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 124,
   },
   volWarningBanner: {
     backgroundColor: 'rgba(251,191,36,0.1)',
@@ -146,12 +161,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderTopWidth: 1,
     borderTopColor: HertzTheme.glassBorder,
     paddingTop: 10,
     paddingBottom: 8,
     alignItems: 'center',
-    backgroundColor: HertzTheme.bg,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   playBtn: {
     flexDirection: 'row',
@@ -171,6 +191,17 @@ const styles = StyleSheet.create({
   playBtnIcon: {
     fontSize: 18,
     color: HertzTheme.neon.lime,
+  },
+  pauseIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pauseBar: {
+    width: 4,
+    height: 15,
+    borderRadius: 2,
+    backgroundColor: HertzTheme.neon.lime,
   },
   playBtnLabel: {
     fontFamily: HertzTheme.mono,
