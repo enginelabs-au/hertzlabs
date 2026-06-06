@@ -204,7 +204,7 @@ describe('mapStateToNativeAudio engine modes', () => {
   });
 
   it('preserves the beat for acoustic and dynamic modes that render modulation natively', () => {
-    for (const engineType of ['monaural', 'isochronic', 'phaseModulated', 'pitchPanning', 'musicModulation'] as const) {
+    for (const engineType of ['monaural', 'isochronic', 'hemisphericSync', 'phaseModulated', 'pitchPanning', 'musicModulation'] as const) {
       const mapped = mapStateToNativeAudio({
         ...base,
         engineType,
@@ -213,13 +213,29 @@ describe('mapStateToNativeAudio engine modes', () => {
     }
   });
 
-  it('keeps hemispheric sync as same-frequency phase offset', () => {
+  it('does not let per-ear drift mutate single-carrier modulation modes', () => {
+    for (const engineType of ['monaural', 'isochronic', 'hemisphericSync', 'phaseModulated', 'pitchPanning', 'musicModulation'] as const) {
+      const mapped = mapStateToNativeAudio({
+        ...base,
+        engineType,
+        leftDriftHz: 12,
+        rightDriftHz: -12,
+      } as Parameters<typeof mapStateToNativeAudio>[0]);
+      expect(mapped.carrierHz).toBeCloseTo(220, 5);
+      expect(mapped.beatHz).toBeCloseTo(10, 5);
+    }
+  });
+
+  it('keeps hemispheric sync at one carrier and uses the beat as the phase-sway rate', () => {
     const mapped = mapStateToNativeAudio({
       ...base,
       engineType: 'hemisphericSync',
       phaseAngle: 15,
     } as Parameters<typeof mapStateToNativeAudio>[0]);
-    expect(mapped.beatHz).toBeCloseTo(0, 5);
+    // Same carrier in both ears (no L/R pitch split); beat passes through as the
+    // rate at which the inter-aural phase offset sways natively.
+    expect(mapped.carrierHz).toBeCloseTo(220, 5);
+    expect(mapped.beatHz).toBeCloseTo(10, 5);
     expect(mapped.phaseAngle).toBe(105);
     expect(mapped.timingDiffMs).toBe(NATIVE_ENGINE_MODE_CODE.hemisphericSync);
   });

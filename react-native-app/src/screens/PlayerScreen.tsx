@@ -7,7 +7,6 @@ import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
 import {CategoryTabBar, type EngineCategoryId} from '../components/layout/CategoryTabBar';
 import {useDialSharedValues} from '../components/CircularController/useDialSharedValues';
 import {useHertzStore} from '../state/store';
-import {useEngineModeModulation} from '../hooks/useEngineModeModulation';
 import {useKineticModulation} from '../hooks/useKineticModulation';
 import {DEFAULT_CARRIER_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
@@ -64,7 +63,6 @@ export function PlayerScreen() {
   const dialValues = useDialSharedValues();
 
   useKineticModulation();
-  useEngineModeModulation();
 
   return (
     <View style={styles.screen}>

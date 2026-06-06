@@ -46,7 +46,7 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
   let gain = base.gain;
   let balance = base.balance;
   let carrierHz = base.carrierHz;
-  let timingDiffMs = NATIVE_ENGINE_MODE_CODE[state.engineType] ?? NATIVE_ENGINE_MODE_CODE.binaural;
+  const timingDiffMs = NATIVE_ENGINE_MODE_CODE[state.engineType] ?? NATIVE_ENGINE_MODE_CODE.binaural;
 
   switch (state.engineType) {
     case 'monaural':
@@ -55,7 +55,9 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
       balance = 0;
       break;
     case 'hemisphericSync':
-      beatHz = 0;
+      // Same carrier in both ears (no L/R pitch split). The beat is preserved as
+      // the rate at which the native inter-aural phase offset sways, so the freq
+      // slider drives a perceptible moving phase relationship (not a static tone).
       balance = 0;
       phaseAngle = (state.phaseAngle + 90) % 360;
       break;
@@ -71,19 +73,23 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
       break;
   }
 
-  // Both modes use the same binaural model: L/R = carrier ± beat/2 (drift folded
-  // in). Experimental only differs in that the carrier (pitch) can be set up to
-  // 20 kHz via the Ω−/Ω+ dials — already clamped by sanitizeBinauralParameters.
-  const {leftHz, rightHz} = channelFrequencies(
-    carrierHz,
-    beatHz,
-    state.leftDriftHz,
-    state.rightDriftHz,
-  );
-  const {carrierHz: nativeCarrierHz, beatHz: nativeBeatHz} = nativeBinauralFromChannels(
-    leftHz,
-    rightHz,
-  );
+  let nativeCarrierHz = carrierHz;
+  let nativeBeatHz = beatHz;
+
+  if (state.engineType === 'binaural') {
+    // Binaural is the only mode where per-ear drift should alter the native
+    // L/R frequency split. Mono/dynamic modes render their own envelope,
+    // phase, or panning from the canonical carrier + target beat.
+    const {leftHz, rightHz} = channelFrequencies(
+      carrierHz,
+      beatHz,
+      state.leftDriftHz,
+      state.rightDriftHz,
+    );
+    const native = nativeBinauralFromChannels(leftHz, rightHz);
+    nativeCarrierHz = native.carrierHz;
+    nativeBeatHz = native.beatHz;
+  }
 
   return {
     ...base,
@@ -94,14 +100,4 @@ export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
     phaseAngle,
     timingDiffMs,
   };
-}
-
-export function engineModeUsesModulation(mode: EngineMode): boolean {
-  return (
-    mode === 'monaural' ||
-    mode === 'isochronic' ||
-    mode === 'phaseModulated' ||
-    mode === 'pitchPanning' ||
-    mode === 'musicModulation'
-  );
 }

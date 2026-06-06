@@ -45,11 +45,11 @@ export function installAudioSync(store: SelectorStore): () => void {
   function pushParams() {
     const s = store.getState();
     const mapped = mapStateToNativeAudio(s);
+    HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
     HertzAudioClient.setBinauralParameters(mapped, {
       layers: s.noiseLayers,
       mix: s.noiseMix,
     });
-    HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
   }
 
   const unsubscribeIsPlaying = store.subscribe(

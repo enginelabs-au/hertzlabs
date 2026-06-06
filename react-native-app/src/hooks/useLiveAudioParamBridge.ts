@@ -43,11 +43,11 @@ export function useLiveAudioParamBridge(dialValues: DialValues): void {
       gain: v.g,
       balance: v.bal,
     });
+    HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
     HertzAudioClient.setBinauralParameters(mapped, {
       layers: s.noiseLayers,
       mix: s.noiseMix,
     });
-    HertzAudioClient.setPhaseAndTiming(mapped.phaseAngle, mapped.timingDiffMs);
   }, []);
 
   const schedulePush = useCallback(
