@@ -14,6 +14,7 @@ import {useHertzStore} from '../state/store';
 import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
 import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {MainTabs} from '../navigation/MainTabs';
+import {PaywallScreen} from '../screens/PaywallScreen';
 import {installAudioSync} from '../state/middleware/audioSync';
 import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
@@ -120,6 +121,7 @@ function AppContent(): React.JSX.Element {
   }
 
   const nativeAudioLinked = isHertzAudioTurboModuleLinked();
+  const activeModal = useHertzStore(s => s.activeModal);
 
   return (
     <>
@@ -131,6 +133,7 @@ function AppContent(): React.JSX.Element {
         </View>
       )}
       {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
+      {activeModal === 'paywall' && <PaywallScreen />}
     </>
   );
 }

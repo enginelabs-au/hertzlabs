@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useMemo} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {ScrollView} from 'react-native-gesture-handler';
 import {useHertzStore} from '../state/store';
@@ -57,7 +57,7 @@ function getBandLabel(hz: number): string {
   return BRAINWAVE_BANDS[BRAINWAVE_BANDS.length - 1].label;
 }
 
-function PremiumFormulaCard({unlocked}: {unlocked: boolean}) {
+function PremiumFormulaCard({unlocked, onUpgrade}: {unlocked: boolean; onUpgrade: () => void}) {
   const [formula, setFormula] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const setParam = useHertzStore(s => s.setParam);
@@ -83,7 +83,13 @@ function PremiumFormulaCard({unlocked}: {unlocked: boolean}) {
   }, [formula, setParam]);
 
   if (!unlocked) {
-    return null;
+    return (
+      <Pressable style={styles.formulaCardLocked} onPress={onUpgrade} accessibilityRole="button">
+        <Text style={styles.formulaLockedText}>
+          🔒 Custom Formula Input — Premium feature. Tap to upgrade.
+        </Text>
+      </Pressable>
+    );
   }
 
   return (
@@ -110,10 +116,13 @@ function PremiumFormulaCard({unlocked}: {unlocked: boolean}) {
 
 export function MathModeScreen() {
   const tier = useHertzStore(s => s.tier);
+  const setActiveModal = useHertzStore(s => s.setActiveModal);
   const unlocked = isPremiumUnlocked(tier);
   const setParam = useHertzStore(s => s.setParam);
   const beatHz = useHertzStore(s => s.beatHz);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+
+  const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
   const handleSelect = useCallback(
     (preset: MathPresetItem) => {
@@ -137,7 +146,7 @@ export function MathModeScreen() {
         <Text style={[styles.activeHz, {color: getBandColor(beatHz)}]}>{beatHz.toFixed(2)} Hz</Text>
       </View>
 
-      <PremiumFormulaCard unlocked={unlocked} />
+      <PremiumFormulaCard unlocked={unlocked} onUpgrade={openPaywall} />
 
       <Text style={styles.sectionTitle}>Math Modes</Text>
 
@@ -149,6 +158,7 @@ export function MathModeScreen() {
           activePresetId={activePresetId}
           unlocked={unlocked}
           onSelect={handleSelect}
+          onUpgrade={openPaywall}
         />
       ))}
 
@@ -206,6 +216,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: HertzTheme.glassBorder,
     backgroundColor: HertzTheme.glassFill,
+  },
+  formulaCardLocked: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.25)',
+    backgroundColor: 'rgba(251,191,36,0.05)',
+    alignItems: 'center',
+  },
+  formulaLockedText: {
+    fontSize: 13,
+    color: 'rgba(251,191,36,0.8)',
+    textAlign: 'center',
   },
   mathInput: {
     fontFamily: HertzTheme.mono,

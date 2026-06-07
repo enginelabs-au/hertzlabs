@@ -8,7 +8,7 @@ export const createSubscriptionSlice: StateCreator<AppStore, [], [], Subscriptio
 
   setSubscription: (tier, entitlements) => set({tier, entitlements}),
 
-  _hydrateFromRC: (info: CustomerInfo, entitlementId = 'pro') => {
+  _hydrateFromRC: (info: CustomerInfo, entitlementId = 'premium') => {
     const active = Object.keys(info.entitlements.active);
     set({
       entitlements: active,

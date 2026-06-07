@@ -3,6 +3,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ScrollView} from 'react-native-gesture-handler';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
+import {useCallback} from 'react';
 import {BackgroundDopplerField} from '../components/background/BackgroundDopplerField';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -14,7 +15,7 @@ const MUTED = 'rgba(255,255,255,0.38)';
 const LOCK_COLOR = 'rgba(251,191,36,0.7)';
 const WARN = '#FBBF24';
 
-function SpotifyPanel({unlocked}: {unlocked: boolean}) {
+function SpotifyPanel({unlocked, onUpgrade}: {unlocked: boolean; onUpgrade: () => void}) {
   const [connected, setConnected] = useState(false);
 
   if (!unlocked) {
@@ -39,9 +40,9 @@ function SpotifyPanel({unlocked}: {unlocked: boolean}) {
             Connect Spotify Premium to blend music with entrainment frequencies.
             Background playback is maintained automatically.
           </Text>
-          <View style={styles.upgradeBtn}>
+          <Pressable style={styles.upgradeBtn} onPress={onUpgrade} accessibilityRole="button">
             <Text style={styles.upgradeBtnText}>🔒 Upgrade to Unlock</Text>
-          </View>
+          </Pressable>
         </View>
       </View>
     );
@@ -98,18 +99,18 @@ function SpotifyPanel({unlocked}: {unlocked: boolean}) {
   );
 }
 
-function MixingControls({unlocked}: {unlocked: boolean}) {
+function MixingControls({unlocked, onUpgrade}: {unlocked: boolean; onUpgrade: () => void}) {
   const [beatVolume, setBeatVolume] = useState(0.7);
   const [musicVolume, setMusicVolume] = useState(0.4);
 
   if (!unlocked) {
     return (
-      <View style={[styles.mixingCard, styles.lockedCard]}>
+      <Pressable style={[styles.mixingCard, styles.lockedCard]} onPress={onUpgrade} accessibilityRole="button">
         <Text style={styles.sectionTitle}>Mixing Controls</Text>
         <Text style={styles.lockedText}>
           🔒 Premium — Adjust the balance between binaural beats and background audio.
         </Text>
-      </View>
+      </Pressable>
     );
   }
 
@@ -154,7 +155,7 @@ function MixingControls({unlocked}: {unlocked: boolean}) {
   );
 }
 
-function BackgroundBehaviorSection({unlocked}: {unlocked: boolean}) {
+function BackgroundBehaviorSection({unlocked, onUpgrade}: {unlocked: boolean; onUpgrade: () => void}) {
   const backgroundAudio = useHertzStore(s => s.backgroundAudio);
   const updateSettings = useHertzStore(s => s.updateSettings);
 
@@ -182,11 +183,11 @@ function BackgroundBehaviorSection({unlocked}: {unlocked: boolean}) {
         </Pressable>
       </View>
       {!unlocked && (
-        <View style={styles.bgWarnRow}>
+        <Pressable style={styles.bgWarnRow} onPress={onUpgrade} accessibilityRole="button">
           <Text style={styles.bgWarnText}>
-            🔒 Background playback requires Premium.
+            🔒 Background playback requires Premium — tap to upgrade.
           </Text>
-        </View>
+        </Pressable>
       )}
     </View>
   );
@@ -194,7 +195,10 @@ function BackgroundBehaviorSection({unlocked}: {unlocked: boolean}) {
 
 export function BackgroundAudioScreen() {
   const tier = useHertzStore(s => s.tier);
+  const setActiveModal = useHertzStore(s => s.setActiveModal);
   const unlocked = isPremiumUnlocked(tier);
+
+  const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
   return (
     <ScrollView
@@ -210,13 +214,13 @@ export function BackgroundAudioScreen() {
       </View>
 
       {/* Spotify Panel */}
-      <SpotifyPanel unlocked={unlocked} />
+      <SpotifyPanel unlocked={unlocked} onUpgrade={openPaywall} />
 
       {/* Mixing Controls */}
-      <MixingControls unlocked={unlocked} />
+      <MixingControls unlocked={unlocked} onUpgrade={openPaywall} />
 
       {/* Background Behavior */}
-      <BackgroundBehaviorSection unlocked={unlocked} />
+      <BackgroundBehaviorSection unlocked={unlocked} onUpgrade={openPaywall} />
 
       {/* Info card */}
       <View style={styles.infoCard}>

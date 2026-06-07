@@ -8,7 +8,7 @@ import {
 } from '@env';
 import {useHertzStore} from '../../state/store';
 
-const DEFAULT_ENTITLEMENT = 'pro';
+const DEFAULT_ENTITLEMENT = 'premium';
 
 function resolveApiKey(): string {
   const ios = REVENUECAT_API_KEY_IOS?.trim() ?? '';

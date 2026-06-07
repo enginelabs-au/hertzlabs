@@ -21,9 +21,10 @@ interface EngineRowProps {
   isActive: boolean;
   isLocked: boolean;
   onSelect: (mode: EngineMode) => void;
+  onUpgrade: () => void;
 }
 
-function EngineRow({meta, isActive, isLocked, onSelect}: EngineRowProps) {
+function EngineRow({meta, isActive, isLocked, onSelect, onUpgrade}: EngineRowProps) {
   const [expanded, setExpanded] = React.useState(isActive);
 
   return (
@@ -58,9 +59,9 @@ function EngineRow({meta, isActive, isLocked, onSelect}: EngineRowProps) {
         </Pressable>
       )}
       {isLocked && (
-        <View style={styles.lockedCta}>
-          <Text style={styles.lockedCtaText}>🔒 LOCKED PRESETS — Upgrade to Premium</Text>
-        </View>
+        <Pressable style={styles.lockedCta} onPress={onUpgrade} accessibilityRole="button">
+          <Text style={styles.lockedCtaText}>🔒 LOCKED — Upgrade to Premium</Text>
+        </Pressable>
       )}
     </View>
   );
@@ -72,9 +73,12 @@ type EngineSelectorProps = {
 
 export function EngineSelector({category}: EngineSelectorProps) {
   const tier = useHertzStore(s => s.tier);
+  const setActiveModal = useHertzStore(s => s.setActiveModal);
   const engineType = useHertzStore(s => s.engineType);
   const setEngineType = useHertzStore(s => s.setEngineType);
   const unlocked = isPremiumUnlocked(tier);
+
+  const openPaywall = React.useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
   const catConfig = ENGINE_CATEGORIES.find(c => c.id === category);
   const groupNames = catConfig?.groups ?? [];
@@ -89,6 +93,7 @@ export function EngineSelector({category}: EngineSelectorProps) {
           isActive={engineType === meta.mode}
           isLocked={meta.isPremium && !unlocked}
           onSelect={setEngineType}
+          onUpgrade={openPaywall}
         />
       ))}
     </View>

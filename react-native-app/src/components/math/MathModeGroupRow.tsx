@@ -18,6 +18,7 @@ type MathModeGroupRowProps = {
   activePresetId: string | null;
   unlocked: boolean;
   onSelect: (preset: MathPresetItem) => void;
+  onUpgrade?: () => void;
 };
 
 export function MathModeGroupRow({
@@ -26,6 +27,7 @@ export function MathModeGroupRow({
   activePresetId,
   unlocked,
   onSelect,
+  onUpgrade,
 }: MathModeGroupRowProps) {
   const [expanded, setExpanded] = useState(false);
   const meta = MATH_GROUP_META[group] ?? {
@@ -59,8 +61,13 @@ export function MathModeGroupRow({
               <Pressable
                 key={preset.id}
                 style={[styles.presetRow, active && styles.presetRowActive, locked && styles.presetLocked]}
-                onPress={() => !locked && onSelect(preset)}
-                disabled={locked}>
+                onPress={() => {
+                  if (locked) {
+                    onUpgrade?.();
+                  } else {
+                    onSelect(preset);
+                  }
+                }}>
                 <Text style={[styles.presetHz, active && styles.presetHzActive]}>{preset.label}</Text>
                 <Text style={styles.presetDesc} numberOfLines={2}>
                   {preset.description}

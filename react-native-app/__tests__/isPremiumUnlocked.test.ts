@@ -15,8 +15,10 @@ describe('isPremiumUnlocked — single canonical feature gate (Plan 05 §2.1)', 
     expect(isPremiumUnlocked('free')).toBe(FORCED_V1_TEST_UNLOCK);
   });
 
-  it('documents the current pre-release development state', () => {
-    // Plan 05 §0: FORCED_V1_TEST_UNLOCK MUST be false before any store submission.
-    expect(FORCED_V1_TEST_UNLOCK).toBe(true);
+  it('documents the current production state — gate is OFF, real entitlement required', () => {
+    // Plan 05 §0: FORCED_V1_TEST_UNLOCK is false; features are properly gated.
+    // A free-tier user must NOT see premium content.
+    expect(FORCED_V1_TEST_UNLOCK).toBe(false);
+    expect(isPremiumUnlocked('free')).toBe(false);
   });
 });
