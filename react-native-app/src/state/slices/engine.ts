@@ -1,5 +1,5 @@
 import type {StateCreator} from 'zustand';
-import {resolveEngineMode} from '../../audio/engineModes';
+import {isEngineModeSelectable, resolveEngineMode} from '../../audio/engineModes';
 import type {AppStore, EngineSlice, EngineMode} from '../types';
 
 export const createEngineSlice: StateCreator<AppStore, [], [], EngineSlice> = (set, get) => ({
@@ -16,6 +16,9 @@ export const createEngineSlice: StateCreator<AppStore, [], [], EngineSlice> = (s
 
   setEngineType: (engineType: EngineMode) => {
     const tier = get().tier;
+    if (!isEngineModeSelectable(engineType, tier)) {
+      return;
+    }
     set({engineType: resolveEngineMode(engineType, tier)});
   },
 

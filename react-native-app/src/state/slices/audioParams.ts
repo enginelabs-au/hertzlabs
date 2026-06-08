@@ -8,6 +8,7 @@ import {
   type BinauralParameters,
   sanitizeBinauralParameters,
 } from '../../audio/paramMapping';
+import {isExperimentalModeActive} from '../../monetization/isPremiumUnlocked';
 import type {AppStore, AudioParamsSlice, AudioParamsValues, NoiseLayers, Preset} from '../types';
 
 const defaultNoiseLayers: NoiseLayers = {
@@ -85,28 +86,53 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
   ...defaultAudioParams,
 
   setParam: (key, value) => {
-    set(state => sanitize({...state, [key]: value} as AudioParamsValues, state.tier, state.experimentalMode));
+    set(state =>
+      sanitize(
+        {...state, [key]: value} as AudioParamsValues,
+        state.tier,
+        isExperimentalModeActive(state.tier, state.experimentalMode),
+      ),
+    );
   },
 
   toggleNoiseLayer: layer => {
     set(state => {
-      const noiseLayers = {
-        ...state.noiseLayers,
-        [layer]: !state.noiseLayers[layer],
-      };
-      return sanitize({...state, noiseLayers}, state.tier, state.experimentalMode);
+      const isActive = state.noiseLayers[layer];
+      const noiseLayers = isActive
+        ? defaultNoiseLayers
+        : {white: layer === 'white', pink: layer === 'pink', brown: layer === 'brown'};
+      const noiseMix = isActive
+        ? state.noiseMix
+        : DEFAULT_NOISE_MIX;
+      return sanitize(
+        {...state, noiseLayers, noiseMix},
+        state.tier,
+        isExperimentalModeActive(state.tier, state.experimentalMode),
+      );
     });
     const s = get();
     pushNoiseToNative(s.noiseLayers, s.noiseMix);
   },
 
   setNoiseMix: mix => {
-    set(state => sanitize({...state, noiseMix: mix}, state.tier, state.experimentalMode));
+    set(state =>
+      sanitize(
+        {...state, noiseMix: mix},
+        state.tier,
+        isExperimentalModeActive(state.tier, state.experimentalMode),
+      ),
+    );
     const s = get();
     pushNoiseToNative(s.noiseLayers, s.noiseMix);
   },
 
   applyPreset: (preset: Preset) => {
-    set(state => sanitize(preset.params, state.tier, state.experimentalMode));
+    set(state =>
+      sanitize(
+        preset.params,
+        state.tier,
+        isExperimentalModeActive(state.tier, state.experimentalMode),
+      ),
+    );
   },
 });

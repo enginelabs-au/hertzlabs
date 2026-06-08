@@ -82,23 +82,20 @@ export const NOISE_LAYER_CATALOG: NoiseLayerMeta[] = [
   },
 ];
 
-/** Per-layer linear gain (0 when off). Master mix is 0–1 UI → full-scale ceiling. */
+/** Per-layer linear gain (0 when off). Only one layer is active at a time. */
 export function noiseLayerGains(layers: NoiseLayers, mixNorm: number): {
   white: number;
   pink: number;
   brown: number;
 } {
-  const active = (['white', 'pink', 'brown'] as const).filter(id => layers[id]);
-  const master = Math.max(0, Math.min(1, mixNorm)) * PEAK_CEILING_LINEAR;
-  if (active.length === 0 || master <= 0) {
+  const master = Math.max(0, Math.min(1, mixNorm)) * PEAK_CEILING_LINEAR * 0.95;
+  if (!anyNoiseActive(layers) || master <= 0) {
     return {white: 0, pink: 0, brown: 0};
   }
-  const per =
-    active.length === 1 ? master * 0.95 : (master / Math.sqrt(active.length)) * 0.92;
   return {
-    white: layers.white ? per : 0,
-    pink: layers.pink ? per : 0,
-    brown: layers.brown ? per : 0,
+    white: layers.white ? master : 0,
+    pink: layers.pink ? master : 0,
+    brown: layers.brown ? master : 0,
   };
 }
 
@@ -126,5 +123,5 @@ export function legacyNoiseTypeFromLayers(layers: NoiseLayers): NoiseType {
   return 'white';
 }
 
-/** Normalized 0–1 master noise amount (mapped to linear gain before native push). */
-export const DEFAULT_NOISE_MIX = 0.72;
+/** Default noise level when a layer is first selected (25%). */
+export const DEFAULT_NOISE_MIX = 0.25;

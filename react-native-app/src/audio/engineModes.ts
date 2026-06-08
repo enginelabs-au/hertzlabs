@@ -26,12 +26,25 @@ export function isModeAllowed(mode: EngineMode, tier: SubscriptionTier): boolean
   return (allowedModes(tier) as EngineMode[]).includes(mode);
 }
 
+/** Modes visible in the catalog but not yet selectable (premium preview). */
+export function isEngineModeComingSoon(mode: EngineMode): boolean {
+  const meta = ENGINE_CATALOG.find(e => e.mode === mode);
+  return meta?.comingSoon === true;
+}
+
+export function isEngineModeSelectable(mode: EngineMode, tier: SubscriptionTier): boolean {
+  if (isEngineModeComingSoon(mode)) {
+    return false;
+  }
+  return isModeAllowed(mode, tier);
+}
+
 /**
  * Returns the requested mode if allowed for the tier, or falls back to 'binaural'
  * on subscription-lapse downgrade.
  */
 export function resolveEngineMode(requested: EngineMode, tier: SubscriptionTier): EngineMode {
-  return isModeAllowed(requested, tier) ? requested : 'binaural';
+  return isEngineModeSelectable(requested, tier) ? requested : 'binaural';
 }
 
 export interface EngineMeta {
@@ -41,6 +54,8 @@ export interface EngineMeta {
   group: string;
   requiresHeadphones: boolean;
   isPremium: boolean;
+  /** Shown to premium users instead of a select control until the mode ships. */
+  comingSoon?: boolean;
   shortDesc: string;
   deepDive: string;
 }
@@ -119,6 +134,7 @@ export const ENGINE_CATALOG: EngineMeta[] = [
     group: 'Modulated & Dynamic Engine',
     requiresHeadphones: true,
     isPremium: true,
+    comingSoon: true,
     shortDesc: 'Beat embedded into ambient music — more natural, less fatiguing.',
     deepDive:
       "The target beat frequency is embedded as a subtle amplitude modulation across the full audio spectrum of a background music track. Rather than an obvious synthetic tone, the entrainment cue rides the natural timbre of music — guitars, pads, or orchestral textures carry the beat in a transparent, non-intrusive way. This approach is significantly less fatiguing for extended sessions and may improve entrainment compliance in users who find pure tone entrainment uncomfortable. Requires stereo headphones. Premium feature.",

@@ -1,14 +1,7 @@
-import React, {memo, useEffect, useMemo} from 'react';
+import React, {memo, useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Canvas, Group} from '@shopify/react-native-skia';
-import {
-  Easing,
-  cancelAnimation,
-  useDerivedValue,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import {useDerivedValue, useFrameCallback, useSharedValue} from 'react-native-reanimated';
 import type {DialValues} from '../CircularController/useDialSharedValues';
 import {buildHubScopePaths} from './hubPathBuilders';
 import {HertzTheme} from '../../theme/hertzTheme';
@@ -58,17 +51,15 @@ function HubOscilloscopeCanvasInner({
   const w = Math.max(64, width);
   const h = Math.max(64, height);
 
-  // Continuous UI-thread clock via a core Reanimated animation — render-independent
-  // and not tied to useFrameCallback (which stalled here). time.value ≈ seconds.
+  // Monotonic UI-thread clock — same pattern as LissajousCanvas (reliable on device).
   const time = useSharedValue(0);
-  useEffect(() => {
-    time.value = withRepeat(
-      withTiming(100000, {duration: 100_000_000, easing: Easing.linear}),
-      -1,
-      false,
-    );
-    return () => cancelAnimation(time);
-  }, [time]);
+  useFrameCallback(
+    frame => {
+      'worklet';
+      time.value = frame.timestamp / 1000;
+    },
+    true,
+  );
 
   const scope = useDerivedValue(
     () => {

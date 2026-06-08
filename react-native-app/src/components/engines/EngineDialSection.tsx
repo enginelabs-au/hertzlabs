@@ -5,6 +5,7 @@ import type {DialValues} from '../CircularController/useDialSharedValues';
 import {useDialGestures} from '../CircularController/useDialGestures';
 import {useAudioSharedValues} from '../../hooks/useAudioSharedValues';
 import {useLiveAudioParamBridge} from '../../hooks/useLiveAudioParamBridge';
+import {useKineticModulation} from '../../hooks/useKineticModulation';
 import {FramedVisualizerHub} from '../player/FramedVisualizerHub';
 
 type EngineDialSectionProps = {
@@ -25,6 +26,7 @@ export function EngineDialSection({dialValues: dialValuesProp}: EngineDialSectio
   const {composedGesture} = useDialGestures(dialValues);
   useAudioSharedValues(dialValues);
   useLiveAudioParamBridge(dialValues);
+  useKineticModulation(dialValues);
 
   return (
     <View style={styles.wrap}>

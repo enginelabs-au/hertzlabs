@@ -140,16 +140,24 @@ function PackageCard({
           </Text>
         </View>
         <Pressable
-          style={[styles.buyBtn, item.highlighted && styles.buyBtnHighlighted, purchasing && styles.buyBtnDisabled]}
+          style={[
+            styles.buyBtn,
+            item.highlighted && item.pkg != null && styles.buyBtnHighlighted,
+            (purchasing || item.pkg == null) && styles.buyBtnDisabled,
+          ]}
           onPress={() => onPurchase(item.pkg)}
-          disabled={purchasing}
+          disabled={purchasing || item.pkg == null}
           accessibilityRole="button"
           accessibilityLabel={`Purchase ${item.label} plan`}>
           {purchasing ? (
             <ActivityIndicator size="small" color={item.highlighted ? '#000' : GOLD} />
           ) : (
-            <Text style={[styles.buyBtnText, item.highlighted && styles.buyBtnTextHighlighted]}>
-              {item.label === 'Monthly' || item.label === 'Annual' ? 'Start Free Trial' : 'Buy Now'}
+            <Text style={[styles.buyBtnText, item.highlighted && item.pkg != null && styles.buyBtnTextHighlighted]}>
+              {item.pkg == null
+                ? 'Not Ready'
+                : item.label === 'Monthly' || item.label === 'Annual'
+                  ? 'Start Free Trial'
+                  : 'Buy Now'}
             </Text>
           )}
         </Pressable>
@@ -172,22 +180,39 @@ export function PaywallScreen() {
     void (async () => {
       try {
         const offerings = await Purchases.getOfferings();
+        const resolved =
+          offerings.current ??
+          offerings.all?.default ??
+          Object.values(offerings.all ?? {}).find(o => o.availablePackages.length > 0) ??
+          null;
+
         if (__DEV__) {
           console.log('[Paywall] offerings.current:', offerings.current?.identifier ?? null);
           console.log('[Paywall] offerings.all keys:', Object.keys(offerings.all ?? {}));
+          console.log('[Paywall] resolved offering:', resolved?.identifier ?? null);
+          console.log(
+            '[Paywall] packages:',
+            resolved?.availablePackages.map(p => p.identifier).join(', ') ?? 'none',
+          );
         }
-        setOffering(offerings.current);
-        if (!offerings.current) {
+
+        setOffering(resolved);
+        if (!resolved) {
           setFetchError(
-            'No current offering found. In RevenueCat, set offering "default" as Current.',
+            'RevenueCat has no live offering. In the RC dashboard: import your 3 App Store products, attach them to entitlement "premium", add packages to offering "default", then mark "default" as Current.',
+          );
+        } else if (parsePackages(resolved).every(p => p.pkg == null)) {
+          setFetchError(
+            'Offering loaded but no packages were found. In RevenueCat, map $rc_monthly, $rc_annual, and $rc_lifetime to hertzlabs_monthly_premium, hertzlabs_annual_premium, and hertzlabs_lifetime_ultra.',
           );
         }
       } catch (e) {
         if (__DEV__) {
           console.warn('[Paywall] getOfferings failed:', e);
         }
+        const msg = e instanceof Error ? e.message : 'Could not load offerings.';
         setFetchError(
-          e instanceof Error ? e.message : 'Could not load offerings. Check your connection.',
+          `${msg} Check App Store Connect products, Paid Apps agreement, and RevenueCat product import.`,
         );
       } finally {
         setLoading(false);
@@ -292,6 +317,13 @@ export function PaywallScreen() {
               <View style={styles.loadingRow}>
                 <ActivityIndicator color={GOLD} />
                 <Text style={styles.loadingText}>Loading plans…</Text>
+              </View>
+            )}
+
+            {!loading && fetchError != null && (
+              <View style={styles.errorCard}>
+                <Text style={styles.errorText}>Plans not ready for purchase</Text>
+                <Text style={styles.errorHint}>{fetchError}</Text>
               </View>
             )}
 

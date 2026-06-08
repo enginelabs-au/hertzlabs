@@ -7,6 +7,7 @@ import {createPresetSlice} from './slices/preset';
 import {createSessionSlice} from './slices/session';
 import {createSettingsSlice} from './slices/settings';
 import {createSubscriptionSlice} from './slices/subscription';
+import {createTelemetrySlice} from './slices/telemetry';
 import {createUiSlice} from './slices/ui';
 import {persist, persistedStoreOptions} from './middleware/persist';
 import type {AppStore} from './types';
@@ -23,6 +24,7 @@ export const useHertzStore = create<AppStore>()(
         ...createUiSlice(...args),
         ...createSettingsSlice(...args),
         ...createSubscriptionSlice(...args),
+        ...createTelemetrySlice(...args),
       }),
       persistedStoreOptions,
     ),

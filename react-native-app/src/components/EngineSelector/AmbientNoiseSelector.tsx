@@ -1,12 +1,12 @@
-import React, {useEffect} from 'react';
+import React, {useCallback, useEffect} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {pushNoiseToNative} from '../../audio/pushNoiseToNative';
 import {
   NOISE_LAYER_CATALOG,
-  anyNoiseActive,
   type NoiseLayerId,
   type NoiseLayerMeta,
 } from '../../audio/noiseLayers';
+import {noiseMixToSliderNorm, sliderNormToNoiseMix} from '../../audio/noiseMixSlider';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {NeonSlider} from '../player/NeonSlider';
@@ -26,13 +26,24 @@ function DescriptorTags({tags}: {tags: string[]}) {
 function NoiseRow({
   meta,
   isActive,
-  onToggle,
+  noiseMix,
+  beatSliderScale,
+  onSelect,
+  onMixChange,
 }: {
   meta: NoiseLayerMeta;
   isActive: boolean;
-  onToggle: () => void;
+  noiseMix: number;
+  beatSliderScale: 'linear' | 'exponential';
+  onSelect: () => void;
+  onMixChange: (mix: number) => void;
 }) {
   const [expanded, setExpanded] = React.useState(isActive);
+
+  const handleSliderChange = useCallback(
+    (norm: number) => onMixChange(sliderNormToNoiseMix(norm, beatSliderScale)),
+    [beatSliderScale, onMixChange],
+  );
 
   return (
     <View style={[styles.engineCard, isActive && styles.engineCardActive]}>
@@ -56,23 +67,41 @@ function NoiseRow({
         {isActive && <View style={[styles.activeDot, {backgroundColor: meta.accent}]} />}
       </Pressable>
 
+      {isActive && (
+        <View style={styles.levelCard}>
+          <Text style={styles.levelTitle}>Noise level</Text>
+          <Text style={styles.levelHint}>
+            {beatSliderScale === 'linear' ? 'Linear' : 'Exponential'} scrub — one noise at a time
+          </Text>
+          <View style={styles.levelRow}>
+            <NeonSlider
+              value={noiseMixToSliderNorm(noiseMix, beatSliderScale)}
+              onChange={handleSliderChange}
+              accent={meta.accent}
+            />
+            <Text style={styles.levelPct}>{Math.round(noiseMix * 100)}%</Text>
+          </View>
+        </View>
+      )}
+
       <Pressable
         style={[styles.selectBtn, isActive && styles.selectBtnActive]}
-        onPress={onToggle}
-        accessibilityRole="checkbox"
-        accessibilityState={{checked: isActive}}>
+        onPress={onSelect}
+        accessibilityRole="radio"
+        accessibilityState={{selected: isActive}}>
         <Text style={[styles.selectBtnText, isActive && styles.selectBtnTextActive]}>
-          {isActive ? '● Active' : '○ Add layer'}
+          {isActive ? '● Selected' : '○ Select noise'}
         </Text>
       </Pressable>
     </View>
   );
 }
 
-/** Ambient noise layers — same accordion pattern as Binaural / Hemispheric Sync. */
+/** Ambient noise layers — select one at a time; level slider lives in each module. */
 export function AmbientNoiseSelector() {
   const noiseLayers = useHertzStore(s => s.noiseLayers);
   const noiseMix = useHertzStore(s => s.noiseMix);
+  const beatSliderScale = useHertzStore(s => s.beatSliderScale);
   const toggleNoiseLayer = useHertzStore(s => s.toggleNoiseLayer);
   const setNoiseMix = useHertzStore(s => s.setNoiseMix);
 
@@ -80,26 +109,17 @@ export function AmbientNoiseSelector() {
     pushNoiseToNative(noiseLayers, noiseMix);
   }, [noiseLayers, noiseMix]);
 
-  const showMix = anyNoiseActive(noiseLayers);
-
   return (
     <View style={styles.list}>
-      {showMix && (
-        <View style={styles.mixCard}>
-          <Text style={styles.mixTitle}>Noise mix</Text>
-          <Text style={styles.mixHint}>Blend level for all active layers</Text>
-          <View style={styles.mixRow}>
-            <NeonSlider value={noiseMix} onChange={setNoiseMix} accent={HertzTheme.neon.cyan} />
-            <Text style={styles.mixPct}>{Math.round(noiseMix * 100)}%</Text>
-          </View>
-        </View>
-      )}
       {NOISE_LAYER_CATALOG.map(meta => (
         <NoiseRow
           key={meta.id}
           meta={meta}
           isActive={noiseLayers[meta.id as NoiseLayerId]}
-          onToggle={() => toggleNoiseLayer(meta.id as NoiseLayerId)}
+          noiseMix={noiseMix}
+          beatSliderScale={beatSliderScale}
+          onSelect={() => toggleNoiseLayer(meta.id as NoiseLayerId)}
+          onMixChange={setNoiseMix}
         />
       ))}
     </View>
@@ -112,33 +132,34 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 10,
   },
-  mixCard: {
-    borderRadius: 14,
+  levelCard: {
+    marginHorizontal: 14,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: HertzTheme.neon.cyan,
-    backgroundColor: 'rgba(92,225,255,0.06)',
-    padding: 14,
-    marginBottom: 4,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  mixTitle: {
+  levelTitle: {
     fontFamily: HertzTheme.mono,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: HertzTheme.text.primary,
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
-  mixHint: {
-    fontSize: 11,
+  levelHint: {
+    fontSize: 10,
     color: HertzTheme.text.muted,
     marginTop: 2,
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  mixRow: {
+  levelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  mixPct: {
+  levelPct: {
     fontFamily: HertzTheme.mono,
     fontSize: 11,
     color: HertzTheme.text.muted,

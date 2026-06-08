@@ -1,5 +1,6 @@
 import type {NoiseType, Waveform} from '../audio/paramMapping';
 import type {CustomerInfo} from 'react-native-purchases';
+import type {TelemetrySlice} from './slices/telemetry';
 
 export type EngineState = 'uninitialized' | 'ready' | 'playing' | 'paused' | 'interrupted' | 'error';
 
@@ -147,4 +148,5 @@ export type AppStore = AudioParamsSlice &
   AISlice &
   UiSlice &
   SettingsSlice &
-  SubscriptionSlice;
+  SubscriptionSlice &
+  TelemetrySlice;

@@ -15,7 +15,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         AudioSessionController.shared.configureForPlayback()
 
 #if DEBUG
+        #if targetEnvironment(simulator)
         ReactNativeDelegate.configureDebugBundleProvider()
+        #else
+        // Physical device: wipe any cached Metro IP so RCTBundleURLProvider
+        // doesn't override the embedded-bundle URL we return in bundleURL().
+        RCTBundleURLProvider.sharedSettings().jsLocation = nil
+        #endif
 #endif
 
         let delegate = ReactNativeDelegate()
@@ -44,8 +50,19 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 
     override func bundleURL() -> URL? {
 #if DEBUG
+#if targetEnvironment(simulator)
+        // Simulator: Metro for fast refresh.
         let host = ReactNativeDelegate.debugHost()
         return URL(string: "http://\(host):8081/index.bundle?platform=ios&dev=true&minify=false&lazy=true")
+#else
+        // Physical device: use the JS bundle Xcode embedded at build time so the
+        // app runs without Metro (avoids "Could not connect to development server").
+        if let embedded = Bundle.main.url(forResource: "main", withExtension: "jsbundle") {
+            return embedded
+        }
+        let host = ReactNativeDelegate.debugHost()
+        return URL(string: "http://\(host):8081/index.bundle?platform=ios&dev=true&minify=false&lazy=true")
+#endif
 #else
         Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
@@ -59,9 +76,14 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
         if let ipPath = Bundle.main.path(forResource: "ip", ofType: "txt"),
            let ip = try? String(contentsOfFile: ipPath, encoding: .utf8) {
             let host = ip.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !host.isEmpty { return host }
+            // Reject loopback/link-local values — they break physical-device Metro.
+            if !host.isEmpty,
+               !host.hasPrefix("127."),
+               !host.hasPrefix("169.254.") {
+                return host
+            }
         }
-        return "localhost"
+        return RCTBundleURLProvider.sharedSettings().jsLocation ?? "localhost"
 #endif
     }
 

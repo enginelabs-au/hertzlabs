@@ -4,11 +4,14 @@ import {GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS, useAnimatedReaction, useDerivedValue, useSharedValue} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
 import {
-  beatHzLimitsForTier,
+  beatHzFreeCapNorm,
+  beatHzInteractionLimitsForTier,
+  beatHzSliderTrackLimits,
   beatHzToSliderNorm,
   beatSliderScaleToWorklet,
   sliderNormToBeatHz,
 } from '../../audio/beatHzSlider';
+import {isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {quantizeBeatForDisplayWorklet} from '../../audio/beatHzSliderWorklet';
 import {BeatSliderScaleToggle} from './BeatSliderScaleToggle';
 import {clampDriftHz} from '../../audio/channelFrequencies';
@@ -85,8 +88,10 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     useHubLayout();
 
   const setParam = useHertzStore(s => s.setParam);
+  const setActiveModal = useHertzStore(s => s.setActiveModal);
   const tier = useHertzStore(s => s.tier);
   const beatSliderScale = useHertzStore(s => s.beatSliderScale);
+  const premiumUnlocked = isPremiumUnlocked(tier);
   const storeBeat = useHertzStore(s => s.beatHz);
   const storeCarrier = useHertzStore(s => s.carrierHz);
   const phaseAngle = useHertzStore(s => s.phaseAngle);
@@ -103,16 +108,20 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     [dialValues],
   );
 
-  // Beat slider limits + scale mirrored on the UI thread (no bridge during drag).
-  const {min: beatMin, max: beatMax} = beatHzLimitsForTier(tier);
-  const beatSliderMinHz = useSharedValue(beatMin);
-  const beatSliderMaxHz = useSharedValue(beatMax);
+  // Full premium track on the UI thread; free tier clamps interaction at 40 Hz.
+  const {min: trackMin, max: trackMax} = beatHzSliderTrackLimits();
+  const {min: interactMin, max: interactMax} = beatHzInteractionLimitsForTier(tier);
+  const beatSliderMinHz = useSharedValue(trackMin);
+  const beatSliderMaxHz = useSharedValue(trackMax);
   const beatSliderScaleSV = useSharedValue(beatSliderScaleToWorklet(beatSliderScale));
+  const lockedNormStart = premiumUnlocked ? undefined : beatHzFreeCapNorm(beatSliderScale);
   useEffect(() => {
-    beatSliderMinHz.value = beatMin;
-    beatSliderMaxHz.value = beatMax;
+    beatSliderMinHz.value = trackMin;
+    beatSliderMaxHz.value = trackMax;
     beatSliderScaleSV.value = beatSliderScaleToWorklet(beatSliderScale);
-  }, [beatMin, beatMax, beatSliderScale, beatSliderMinHz, beatSliderMaxHz, beatSliderScaleSV]);
+  }, [trackMin, trackMax, beatSliderScale, beatSliderMinHz, beatSliderMaxHz, beatSliderScaleSV]);
+
+  const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
   const onBeatSliderComplete = useCallback(
     (v: number) => {
@@ -143,9 +152,13 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
 
   const onBandSelect = useCallback(
     (midHz: number) => {
+      if (!premiumUnlocked && midHz > interactMax) {
+        openPaywall();
+        return;
+      }
       setParam('beatHz', midHz);
     },
-    [setParam],
+    [setParam, premiumUnlocked, interactMax, openPaywall],
   );
 
   const beatSlider = (
@@ -155,6 +168,8 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
       beatSliderMinHz={beatSliderMinHz}
       beatSliderMaxHz={beatSliderMaxHz}
       beatSliderScale={beatSliderScaleSV}
+      lockedNormStart={lockedNormStart}
+      onLockedZonePress={premiumUnlocked ? undefined : openPaywall}
       onChangeComplete={onBeatSliderComplete}
       accent={bandHex}
       accentValue={liveAccent}

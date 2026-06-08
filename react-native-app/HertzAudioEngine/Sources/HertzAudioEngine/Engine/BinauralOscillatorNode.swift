@@ -19,10 +19,12 @@ public final class BinauralOscillatorNode {
     private let sampleRate: Double
 
     // Exponential smoothing coefficient: alpha = 1 − exp(−1 / (τ × sampleRate))
-    // τ = 50 ms → computed once at init
+    // τ = 80 ms → computed once at init
     private let smoothAlpha: Float
     /// Faster ramp for noise layers so toggles feel immediate.
     private let noiseSmoothAlpha: Float
+    /// Very fast ramp (τ = 15 ms) used only when gain falls to zero on pause/stop.
+    private let silenceSmoothAlpha: Float
     private let twoPi = 2.0 * Double.pi
 
     // Phase accumulators (Double)
@@ -46,6 +48,10 @@ public final class BinauralOscillatorNode {
         smoothAlpha = Float(1.0 - exp(-1.0 / (tau * sampleRate)))
         let noiseTau: Double = 0.040 // 40 ms — avoids noise-layer zipper noise
         noiseSmoothAlpha = Float(1.0 - exp(-1.0 / (noiseTau * sampleRate)))
+        // 15 ms fast-silence ramp — used when gain is falling toward zero on pause/stop.
+        // At the 80 ms engine.pause() delay the gain is at e^(-80/15) ≈ 0.5 %, inaudible.
+        let silenceTau: Double = 0.015
+        silenceSmoothAlpha = Float(1.0 - exp(-1.0 / (silenceTau * sampleRate)))
 
         // Capture value-type state; closure is @Sendable and captures no reference types
         // except parameterBox (which is @unchecked Sendable, render-safe by design).
@@ -53,6 +59,7 @@ public final class BinauralOscillatorNode {
         let sr = sampleRate
         let alpha = smoothAlpha
         let noiseAlpha = noiseSmoothAlpha
+        let silenceAlpha = silenceSmoothAlpha
         let twoPiLocal = twoPi
         let ceiling = AudioConstants.kMaxAmplitude
 
@@ -117,7 +124,10 @@ public final class BinauralOscillatorNode {
                 // Per-sample exponential smoothing (Double carriers, Float for gain/balance)
                 smCarrier  += Double(alpha) * (targetCarrier - smCarrier)
                 smBeat     += Double(alpha) * (targetBeat    - smBeat)
-                smGain     += alpha * (targetGain   - smGain)
+                // Use the fast-silence ramp when gain is falling toward zero (pause/stop).
+                // This avoids the click caused by engine.pause() cutting the render mid-fade.
+                let gainDelta = targetGain - smGain
+                smGain += (gainDelta < 0 && targetGain == 0 ? silenceAlpha : alpha) * gainDelta
                 smBalance  += alpha * (targetBalance - smBalance)
                 smNoiseWhite += noiseAlpha * (targetNoiseWhite - smNoiseWhite)
                 smNoisePink  += noiseAlpha * (targetNoisePink  - smNoisePink)

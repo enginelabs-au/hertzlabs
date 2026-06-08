@@ -6,13 +6,20 @@ export const createSubscriptionSlice: StateCreator<AppStore, [], [], Subscriptio
   tier: 'free',
   entitlements: [],
 
-  setSubscription: (tier, entitlements) => set({tier, entitlements}),
+  setSubscription: (tier, entitlements) =>
+    set({
+      tier,
+      entitlements,
+      ...(tier === 'free' ? {experimentalMode: false} : {}),
+    }),
 
   _hydrateFromRC: (info: CustomerInfo, entitlementId = 'premium') => {
     const active = Object.keys(info.entitlements.active);
+    const tier = active.includes(entitlementId) ? 'premium' : 'free';
     set({
       entitlements: active,
-      tier: active.includes(entitlementId) ? 'premium' : 'free',
+      tier,
+      ...(tier === 'free' ? {experimentalMode: false} : {}),
     });
   },
 });

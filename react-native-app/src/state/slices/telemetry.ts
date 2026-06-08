@@ -1,5 +1,4 @@
-// @ts-nocheck — TelemetrySlice not yet composed into AppStore (telemetry-js-wiring blocker)
-import type { StateCreator } from 'zustand';
+import type {StateCreator} from 'zustand';
 import type { AppStore } from '../types';
 
 export interface TelemetryState {

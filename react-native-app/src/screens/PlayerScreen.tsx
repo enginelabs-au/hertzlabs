@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {BlurView} from '@sbaiahmed1/react-native-blur';
 import {AmbientNoiseSelector} from '../components/EngineSelector/AmbientNoiseSelector';
@@ -8,8 +8,11 @@ import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
 import {CategoryTabBar, type EngineCategoryId} from '../components/layout/CategoryTabBar';
 import {useDialSharedValues} from '../components/CircularController/useDialSharedValues';
 import {useHertzStore} from '../state/store';
-import {useKineticModulation} from '../hooks/useKineticModulation';
 import {DEFAULT_CARRIER_HZ} from '../audio/paramMapping';
+import {
+  isExperimentalModeActive,
+  isPremiumUnlocked,
+} from '../monetization/isPremiumUnlocked';
 import {HertzTheme} from '../theme/hertzTheme';
 
 function VolumeWarningBanner() {
@@ -41,29 +44,37 @@ export function PlayerScreen() {
   const [category, setCategory] = useState<EngineCategoryId>('entrainment');
   const highVolumeWarning = useHertzStore(s => s.highVolumeWarningTriggered);
   const isKineticModeEnabled = useHertzStore(s => s.isKineticModeEnabled);
-  const experimental = useHertzStore(s => s.experimentalMode);
+  const tier = useHertzStore(s => s.tier);
+  const experimentalMode = useHertzStore(s => s.experimentalMode);
+  const experimental = isExperimentalModeActive(tier, experimentalMode);
+  const premiumUnlocked = isPremiumUnlocked(tier);
   const updateSettings = useHertzStore(s => s.updateSettings);
+  const setActiveModal = useHertzStore(s => s.setActiveModal);
   const setParam = useHertzStore(s => s.setParam);
   const isPlaying = useHertzStore(s => s.isPlaying);
   const requestPlay = useHertzStore(s => s.requestPlay);
   const requestPause = useHertzStore(s => s.requestPause);
 
+  const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
+
   const toggleExperimental = () => {
-    const next = !experimental;
+    if (!premiumUnlocked) {
+      if (experimentalMode) {
+        updateSettings({experimentalMode: false});
+        setParam('carrierHz', DEFAULT_CARRIER_HZ);
+      } else {
+        openPaywall();
+      }
+      return;
+    }
+    const next = !experimentalMode;
     updateSettings({experimentalMode: next});
-    // In Experimental the Ω−/Ω+ dials control the PITCH (carrier); the slider keeps
-    // controlling the BEAT in both modes. Reset the pitch to a safe, audible default
-    // (220 Hz) on every toggle so the produced tone is predictable — and, when
-    // leaving, it re-clamps to the normal ≤1500 Hz ceiling. The beat (slider) is left
-    // untouched, so its speed stays at the user's current setting.
     setParam('carrierHz', DEFAULT_CARRIER_HZ);
   };
 
   // Own the dial shared values here so the TARGET / L / R readout row and the
   // dial hub share the same UI-thread values (readouts follow the slider live).
   const dialValues = useDialSharedValues();
-
-  useKineticModulation();
 
   return (
     <View style={styles.screen}>
@@ -119,13 +130,26 @@ export function PlayerScreen() {
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.kineticToggle, experimental && styles.expToggleActive]}
+            style={[
+              styles.kineticToggle,
+              experimental && styles.expToggleActive,
+              !premiumUnlocked && styles.expToggleLocked,
+            ]}
             onPress={toggleExperimental}
             accessibilityRole="switch"
-            accessibilityState={{checked: experimental}}
+            accessibilityState={{checked: experimental, disabled: !premiumUnlocked && !experimentalMode}}
             accessibilityLabel="Experimental mode">
-            <Text style={[styles.kineticToggleText, experimental && styles.expToggleTextActive]}>
-              {experimental ? '⚗ Experimental ON' : '⚗ Experimental OFF'}
+            <Text
+              style={[
+                styles.kineticToggleText,
+                experimental && styles.expToggleTextActive,
+                !premiumUnlocked && !experimental && styles.expToggleTextLocked,
+              ]}>
+              {!premiumUnlocked && !experimentalMode
+                ? '🔒 Experimental'
+                : experimental
+                  ? '⚗ Experimental ON'
+                  : '⚗ Experimental OFF'}
             </Text>
           </Pressable>
         </View>
@@ -190,11 +214,18 @@ const styles = StyleSheet.create({
   },
   playBtnIcon: {
     fontSize: 18,
+    lineHeight: 20,
+    height: 20,
+    width: 20,
+    textAlign: 'center',
     color: HertzTheme.neon.lime,
   },
   pauseIcon: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 20,
+    width: 20,
     gap: 4,
   },
   pauseBar: {
@@ -209,6 +240,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: HertzTheme.neon.lime,
     letterSpacing: 2,
+    width: 54,
+    textAlign: 'center',
   },
   bottomControls: {
     flexDirection: 'row',
@@ -262,5 +295,12 @@ const styles = StyleSheet.create({
   },
   expToggleTextActive: {
     color: '#EAF7FF',
+  },
+  expToggleLocked: {
+    borderColor: 'rgba(251,191,36,0.35)',
+    backgroundColor: 'rgba(251,191,36,0.08)',
+  },
+  expToggleTextLocked: {
+    color: 'rgba(251,191,36,0.85)',
   },
 });

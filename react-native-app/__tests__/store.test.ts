@@ -3,6 +3,8 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 vi.mock('../src/monetization/isPremiumUnlocked', () => ({
   FORCED_V1_TEST_UNLOCK: false,
   isPremiumUnlocked: (tier: string) => tier === 'premium',
+  isExperimentalModeActive: (tier: string, experimentalMode: boolean) =>
+    tier === 'premium' && experimentalMode,
 }));
 
 import {useHertzStore} from '../src/state/store';
@@ -95,12 +97,15 @@ describe('applyPreset', () => {
     expect(s.fadeMs).toBe(50);
   });
 
-  it('toggles noise layers independently', () => {
+  it('selects one noise layer at a time and starts at 25%', () => {
     get().toggleNoiseLayer('pink');
     expect(get().noiseLayers.pink).toBe(true);
+    expect(get().noiseLayers.white).toBe(false);
+    expect(get().noiseMix).toBe(0.25);
     get().toggleNoiseLayer('white');
     expect(get().noiseLayers.white).toBe(true);
-    expect(get().noiseLayers.pink).toBe(true);
+    expect(get().noiseLayers.pink).toBe(false);
+    expect(get().noiseMix).toBe(0.25);
   });
 });
 

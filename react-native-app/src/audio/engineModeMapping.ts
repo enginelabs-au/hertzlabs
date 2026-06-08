@@ -1,4 +1,5 @@
 import type {AppStore, EngineMode} from '../state/types';
+import {isExperimentalModeActive} from '../monetization/isPremiumUnlocked';
 import {channelFrequencies, nativeBinauralFromChannels} from './channelFrequencies';
 import type {BinauralParameters} from './paramMapping';
 import {sanitizeBinauralParameters} from './paramMapping';
@@ -26,7 +27,7 @@ export const NATIVE_ENGINE_MODE_CODE: Record<EngineMode, number> = {
  */
 export function mapStateToNativeAudio(state: AppStore): MappedNativeAudio {
   const tier = state.tier;
-  const experimental = state.experimentalMode === true;
+  const experimental = isExperimentalModeActive(state.tier, state.experimentalMode);
   const base = sanitizeBinauralParameters(
     {
       carrierHz: state.carrierHz,

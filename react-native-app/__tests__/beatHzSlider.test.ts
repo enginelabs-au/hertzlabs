@@ -5,8 +5,12 @@ vi.mock('../src/monetization/isPremiumUnlocked', () => ({
   isPremiumUnlocked: (tier: string) => tier === 'premium',
 }));
 
-import {beatHzToSliderNorm, sliderNormToBeatHz} from '../src/audio/beatHzSlider';
-import {MAX_BEAT_HZ_PREMIUM, MIN_BEAT_HZ_PREMIUM} from '../src/audio/paramMapping';
+import {
+  beatHzFreeCapNorm,
+  beatHzToSliderNorm,
+  sliderNormToBeatHz,
+} from '../src/audio/beatHzSlider';
+import {MAX_BEAT_HZ, MAX_BEAT_HZ_PREMIUM, MIN_BEAT_HZ_PREMIUM} from '../src/audio/paramMapping';
 
 describe('beatHzSlider exponential (log) mapping', () => {
   it('maps epsilon and lambda within premium range', () => {
@@ -17,6 +21,18 @@ describe('beatHzSlider exponential (log) mapping', () => {
     const lambda = sliderNormToBeatHz(beatHzToSliderNorm(120, tier, 'exponential'), tier, 'exponential');
     expect(lambda).toBeCloseTo(120, 0);
     expect(sliderNormToBeatHz(1, tier, 'exponential')).toBeCloseTo(MAX_BEAT_HZ_PREMIUM, 0);
+  });
+});
+
+describe('beatHzSlider free tier track', () => {
+  it('maps 40 Hz below the end of the full premium track', () => {
+    const tier = 'free' as const;
+    const cap = beatHzFreeCapNorm('exponential');
+    expect(cap).toBeGreaterThan(0.2);
+    expect(cap).toBeLessThan(0.85);
+    expect(beatHzToSliderNorm(40, tier, 'exponential')).toBeCloseTo(cap, 3);
+    expect(sliderNormToBeatHz(1, tier, 'exponential')).toBe(MAX_BEAT_HZ);
+    expect(sliderNormToBeatHz(cap + 0.1, tier, 'exponential')).toBe(MAX_BEAT_HZ);
   });
 });
 

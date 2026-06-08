@@ -1,4 +1,5 @@
 import {useWindowDimensions} from 'react-native';
+import {isExperimentalModeActive} from '../monetization/isPremiumUnlocked';
 import {useHertzStore} from '../state/store';
 
 /** Width of the embedded phase slider column (right edge of hub). */
@@ -23,7 +24,9 @@ export const EXPERIMENTAL_DOCK_EXTRA_H = 56;
 /** Shared hub / visualizer dimensions. */
 export function useHubLayout() {
   const {width: screenWidth} = useWindowDimensions();
-  const experimental = useHertzStore(s => s.experimentalMode);
+  const experimental = useHertzStore(s =>
+    isExperimentalModeActive(s.tier, s.experimentalMode),
+  );
   const hubW = screenWidth - 24;
   // Taller frame so the 11-band vertical rail stays readable (mirrors phase column).
   const baseFrameH = Math.min(308, Math.max(272, hubW * 0.74));

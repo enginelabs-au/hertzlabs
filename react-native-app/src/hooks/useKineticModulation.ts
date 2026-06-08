@@ -1,4 +1,8 @@
-import {useEffect, useRef, useCallback} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
+import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
+import type {DialValues} from '../components/CircularController/useDialSharedValues';
+import NativeHertzTelemetry from '../audio/specs/NativeHertzTelemetry';
+import {mountKineticSync} from '../state/middleware/kineticSync';
 import {useHertzStore} from '../state/store';
 
 /** Sensor reading normalized to 0.0–1.0 */
@@ -15,24 +19,25 @@ export interface KineticModulationState {
   shakeDetected: boolean;
 }
 
-const SHAKE_G_THRESHOLD = 2.5;
-const PANIC_RESET_HZ = 10;
-const PANIC_RESET_CARRIER = 220;
+const SENSOR_INTERVAL_MS = 50;
 
-const GYRO_INTERVAL_MS = 50;
-const ACCEL_INTERVAL_MS = 100;
-/** Avoid setParam / audioSync / useAudioSharedValues storms while kinetic is on. */
-const PHASE_COMMIT_MS = 200;
+function accelMagnitude(event: {
+  accelX: number;
+  accelY: number;
+  accelZ: number;
+}): number {
+  const ax = event.accelX * 4 - 2;
+  const ay = event.accelY * 4 - 2;
+  const az = event.accelZ * 4 - 2;
+  return Math.sqrt(ax * ax + ay * ay + az * az);
+}
 
 /**
- * Kinematic modulation hook (Annexure C).
- *
- * Stub implementation for simulator compatibility.
+ * Kinetic mode: live device tilt drives beat frequency (roll) and phase (pitch).
  */
-export function useKineticModulation(): KineticModulationState {
+export function useKineticModulation(dialValues: DialValues): KineticModulationState {
   const isKineticModeEnabled = useHertzStore(s => s.isKineticModeEnabled);
-  const setParam = useHertzStore(s => s.setParam);
-
+  const gestureActiveRef = useRef(false);
   const frameRef = useRef<NormalizedSensorFrame>({
     gyroY: 0.5,
     accelMag: 0,
@@ -40,70 +45,77 @@ export function useKineticModulation(): KineticModulationState {
     pitch: 0.5,
   });
   const shakeRef = useRef(false);
-  const phaseCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingPhaseRef = useRef(0);
 
-  const flushPhase = useCallback(() => {
-    setParam('phaseAngle', pendingPhaseRef.current);
-    phaseCommitTimerRef.current = null;
-  }, [setParam]);
+  const setGestureActive = useCallback((v: boolean) => {
+    gestureActiveRef.current = v;
+  }, []);
 
-  const simulateGyro = useCallback(() => {
-    if (!isKineticModeEnabled) {
-      return;
-    }
-    const t = Date.now() / 3000;
-    const rawY = Math.sin(t) * 0.15;
-    const normalized = Math.max(0, Math.min(1, 0.5 + rawY));
-    frameRef.current = {...frameRef.current, gyroY: normalized};
-
-    const phaseAngle = normalized * 360;
-    pendingPhaseRef.current = phaseAngle;
-
-    if (phaseCommitTimerRef.current != null) {
-      clearTimeout(phaseCommitTimerRef.current);
-    }
-    phaseCommitTimerRef.current = setTimeout(flushPhase, PHASE_COMMIT_MS);
-  }, [isKineticModeEnabled, flushPhase]);
-
-  const simulateAccel = useCallback(() => {
-    if (!isKineticModeEnabled) {
-      return;
-    }
-    frameRef.current = {...frameRef.current, accelMag: 0};
-    shakeRef.current = false;
-  }, [isKineticModeEnabled]);
+  useAnimatedReaction(
+    () => dialValues.gestureActive.value,
+    active => {
+      runOnJS(setGestureActive)(active);
+    },
+    [setGestureActive],
+  );
 
   useEffect(() => {
     if (!isKineticModeEnabled) {
       return;
     }
 
-    const gyroTimer = setInterval(simulateGyro, GYRO_INTERVAL_MS);
-    const accelTimer = setInterval(simulateAccel, ACCEL_INTERVAL_MS);
+    const store = useHertzStore;
+
+    NativeHertzTelemetry.startSensors(SENSOR_INTERVAL_MS);
+    store.getState().setSensorActive(true);
+
+    const updateSub = NativeHertzTelemetry.onTelemetryUpdate(event => {
+        const mag = accelMagnitude(event);
+        frameRef.current = {
+          gyroY: event.gyroY,
+          accelMag: mag,
+          roll: event.roll,
+          pitch: event.pitch,
+        };
+        shakeRef.current = event.shakeDetected;
+        store.getState()._ingestTelemetry({
+          gyroY: event.gyroY,
+          accelMagnitude: mag,
+          attitude: {
+            roll: event.roll,
+            pitch: event.pitch,
+            yaw: event.yaw,
+          },
+          heading: event.heading,
+          stepCadence: event.cadenceBpm ?? 0,
+          shakeDetected: event.shakeDetected,
+          sensorActive: true,
+        });
+    });
+
+    const sleepSub = NativeHertzTelemetry.onTelemetrySleep(() => {
+      store.getState().setSensorActive(false);
+    });
+
+    const unsubKinetic = mountKineticSync(
+      {
+        getState: () => store.getState(),
+        subscribe: store.subscribe as never,
+      },
+      gestureActiveRef,
+    );
 
     return () => {
-      clearInterval(gyroTimer);
-      clearInterval(accelTimer);
-      if (phaseCommitTimerRef.current != null) {
-        clearTimeout(phaseCommitTimerRef.current);
-        phaseCommitTimerRef.current = null;
-      }
+      NativeHertzTelemetry.stopSensors();
+      store.getState().setSensorActive(false);
+      updateSub.remove();
+      sleepSub.remove();
+      unsubKinetic();
     };
-  }, [isKineticModeEnabled, simulateGyro, simulateAccel]);
+  }, [isKineticModeEnabled]);
 
   return {
     isActive: isKineticModeEnabled,
     lastFrame: frameRef.current,
     shakeDetected: shakeRef.current,
   };
-}
-
-export function isShakeEvent(gForceMagnitude: number): boolean {
-  return gForceMagnitude > SHAKE_G_THRESHOLD;
-}
-
-export function applyPanicReset(setParam: (key: 'beatHz' | 'carrierHz', v: number) => void): void {
-  setParam('beatHz', PANIC_RESET_HZ);
-  setParam('carrierHz', PANIC_RESET_CARRIER);
 }

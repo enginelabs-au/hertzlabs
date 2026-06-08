@@ -20,12 +20,47 @@ interface EngineRowProps {
   meta: EngineMeta;
   isActive: boolean;
   isLocked: boolean;
+  isComingSoon: boolean;
   onSelect: (mode: EngineMode) => void;
   onUpgrade: () => void;
 }
 
-function EngineRow({meta, isActive, isLocked, onSelect, onUpgrade}: EngineRowProps) {
+function EngineRow({meta, isActive, isLocked, isComingSoon, onSelect, onUpgrade}: EngineRowProps) {
   const [expanded, setExpanded] = React.useState(isActive);
+
+  if (isComingSoon) {
+    return (
+      <View style={styles.comingSoonCard}>
+        <Pressable
+          style={styles.comingSoonHeader}
+          onPress={() => setExpanded(v => !v)}
+          accessibilityRole="button">
+          <View style={styles.comingSoonIcon}>
+            <Text style={styles.comingSoonIconText}>♪</Text>
+          </View>
+          <View style={styles.comingSoonInfo}>
+            <Text style={styles.comingSoonTitle}>
+              {meta.label}
+              <Text style={styles.engineTag}> · {meta.tag}</Text>
+            </Text>
+            <Text style={styles.comingSoonSubtitle}>{meta.shortDesc}</Text>
+          </View>
+          <View style={styles.comingSoonBadge}>
+            <Text style={styles.comingSoonBadgeText}>SOON</Text>
+          </View>
+        </Pressable>
+        {expanded && (
+          <View style={styles.comingSoonBody}>
+            <HeadphonePill required={meta.requiresHeadphones} />
+            <Text style={styles.comingSoonBodyText}>{meta.deepDive}</Text>
+            <Text style={styles.comingSoonNote}>
+              This engine is in development and will be available in a future update.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.engineCard, isActive && styles.engineCardActive, isLocked && styles.engineCardLocked]}>
@@ -91,7 +126,8 @@ export function EngineSelector({category}: EngineSelectorProps) {
           key={meta.mode}
           meta={meta}
           isActive={engineType === meta.mode}
-          isLocked={meta.isPremium && !unlocked}
+          isLocked={meta.isPremium && !unlocked && !meta.comingSoon}
+          isComingSoon={Boolean(meta.comingSoon)}
           onSelect={setEngineType}
           onUpgrade={openPaywall}
         />
@@ -205,6 +241,74 @@ const styles = StyleSheet.create({
   },
   selectBtnTextActive: {
     color: HertzTheme.neon.cyan,
+  },
+  comingSoonCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    overflow: 'hidden',
+  },
+  comingSoonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  comingSoonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comingSoonIconText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  comingSoonInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  comingSoonTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: HertzTheme.text.primary,
+  },
+  comingSoonSubtitle: {
+    fontSize: 12,
+    color: HertzTheme.text.muted,
+  },
+  comingSoonBadge: {
+    backgroundColor: 'rgba(147,197,253,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(147,197,253,0.3)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  comingSoonBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: 'rgba(147,197,253,0.8)',
+    letterSpacing: 1,
+  },
+  comingSoonBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 10,
+  },
+  comingSoonBodyText: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 11,
+    lineHeight: 17,
+    color: 'rgba(255,255,255,0.55)',
+  },
+  comingSoonNote: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: 'rgba(147,197,253,0.75)',
   },
   lockedCta: {
     marginHorizontal: 14,
