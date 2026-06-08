@@ -14,6 +14,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         AudioSessionController.shared.configureForPlayback()
 
+#if DEBUG
+        ReactNativeDelegate.configureDebugBundleProvider()
+#endif
+
         let delegate = ReactNativeDelegate()
         let factory = RCTReactNativeFactory(delegate: delegate)
         delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -40,9 +44,29 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 
     override func bundleURL() -> URL? {
 #if DEBUG
-        URL(string: "http://localhost:8081/index.bundle?platform=ios&dev=true&lazy=true&minify=false")
+        let host = ReactNativeDelegate.debugHost()
+        return URL(string: "http://\(host):8081/index.bundle?platform=ios&dev=true&minify=false&lazy=true")
 #else
         Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
     }
+
+#if DEBUG
+    static func debugHost() -> String {
+#if targetEnvironment(simulator)
+        return "localhost"
+#else
+        if let ipPath = Bundle.main.path(forResource: "ip", ofType: "txt"),
+           let ip = try? String(contentsOfFile: ipPath, encoding: .utf8) {
+            let host = ip.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !host.isEmpty { return host }
+        }
+        return "localhost"
+#endif
+    }
+
+    static func configureDebugBundleProvider() {
+        RCTBundleURLProvider.sharedSettings().jsLocation = debugHost()
+    }
+#endif
 }

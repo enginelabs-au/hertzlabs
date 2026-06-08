@@ -4,8 +4,9 @@ import {StaticWelcomeWaveHeader} from '../components/layout/StaticWelcomeWaveHea
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
-const TERMS_URL = 'https://hertzlabs.app/terms';
-const PRIVACY_URL = 'https://hertzlabs.app/privacy';
+const TERMS_URL = 'https://enginelabs-au.github.io/hertzlabs/terms/';
+const PRIVACY_URL = 'https://enginelabs-au.github.io/hertzlabs/privacy/';
+const SUPPORT_URL = 'https://enginelabs-au.github.io/hertzlabs/support/';
 
 function Checkbox({
   checked,
@@ -156,6 +157,14 @@ export function SafetyOnboardingScreen() {
           </Text>
         </Pressable>
 
+        <View style={styles.legalFooter}>
+          <InlineLink label="Support" url={SUPPORT_URL} />
+          <Text style={styles.legalSep}> · </Text>
+          <InlineLink label="Terms" url={TERMS_URL} />
+          <Text style={styles.legalSep}> · </Text>
+          <InlineLink label="Privacy" url={PRIVACY_URL} />
+        </View>
+
         <View style={styles.bottomPad} />
       </ScrollView>
     </View>
@@ -297,6 +306,17 @@ const styles = StyleSheet.create({
   },
   ctaTextDisabled: {
     color: HertzTheme.text.muted,
+  },
+  legalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  legalSep: {
+    color: HertzTheme.text.muted,
+    fontSize: 13,
   },
   bottomPad: {
     height: 20,

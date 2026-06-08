@@ -48,6 +48,9 @@ export function useRevenueCatBoot(): void {
     };
 
     try {
+      if (__DEV__ && typeof Purchases.setLogLevel === 'function') {
+        Purchases.setLogLevel('DEBUG');
+      }
       Purchases.configure({apiKey});
       void Purchases.getCustomerInfo()
         .then(info => onCustomerInfoUpdate(info))

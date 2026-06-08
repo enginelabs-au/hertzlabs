@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support — Hertz Labs</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a; --card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+      --cyan: #22d3ee; --text: #e2e8f0; --muted: rgba(255,255,255,0.5);
+      --green: #4ade80; --warn: #fbbf24;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.7; }
+    nav { display: flex; gap: 24px; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    nav .brand { font-family: monospace; font-size: 13px; font-weight: 700; color: var(--cyan); letter-spacing: 2px; text-decoration: none; }
+    nav a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    nav a:hover { color: var(--text); }
+    .container { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+    .eyebrow { font-family: monospace; font-size: 11px; font-weight: 700; color: var(--cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+    h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .meta { font-size: 15px; color: var(--muted); margin-bottom: 40px; }
+    h2 { font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin: 36px 0 12px; font-family: monospace; }
+    p { color: rgba(255,255,255,0.75); margin-bottom: 16px; }
+    ul { color: rgba(255,255,255,0.75); padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .card p { margin-bottom: 0; }
+    .contact-card { background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.2); border-radius: 14px; padding: 28px 24px; margin-bottom: 16px; text-align: center; }
+    .contact-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .contact-card p { margin-bottom: 16px; }
+    .btn { display: inline-block; background: rgba(34,211,238,0.12); border: 1px solid rgba(34,211,238,0.35); border-radius: 8px; padding: 12px 24px; color: var(--cyan); text-decoration: none; font-weight: 700; font-size: 14px; transition: background 0.2s; }
+    .btn:hover { background: rgba(34,211,238,0.2); }
+    details { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
+    summary { padding: 16px 20px; cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: '+'; color: var(--cyan); font-size: 18px; font-weight: 300; }
+    details[open] summary::after { content: '−'; }
+    details p { padding: 0 20px 16px; color: rgba(255,255,255,0.7); }
+    a { color: var(--cyan); }
+    footer { text-align: center; padding: 32px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+    footer a { color: var(--muted); text-decoration: none; margin: 0 10px; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="../">HERTZ LABS</a>
+  <a href="../">Home</a>
+  <a href="../privacy/">Privacy</a>
+  <a href="../terms/">Terms</a>
+  <a href="../support/">Support</a>
+</nav>
+
+<div class="container">
+  <div class="eyebrow">Help &amp; Support</div>
+  <h1>Support</h1>
+  <p class="meta">We're here to help with any questions about Hertz Labs.</p>
+
+  <div class="contact-card">
+    <h3>Get in Touch</h3>
+    <p>Email us directly for any issue — bugs, billing, feedback, or feature requests.</p>
+    <a class="btn" href="mailto:support@enginelabs.au">support@enginelabs.au</a>
+  </div>
+
+  <h2>Frequently Asked Questions</h2>
+
+  <details>
+    <summary>How do I restore my Premium purchase?</summary>
+    <p>Open the app, tap any "Upgrade to Premium" button to open the paywall, then tap "Restore Previous Purchase" at the bottom. Make sure you are signed into the same Apple ID used for the original purchase.</p>
+  </details>
+
+  <details>
+    <summary>How do I cancel my subscription?</summary>
+    <p>Subscriptions are managed through Apple. Go to Settings → tap your name → Subscriptions → Hertz Labs → Cancel Subscription. Cancellations take effect at the end of the current billing period.</p>
+  </details>
+
+  <details>
+    <summary>Can I use other music apps (Spotify, Apple Music) at the same time?</summary>
+    <p>Yes. Hertz Labs is designed to mix with other audio apps — start your music in Spotify, Apple Music, or any other app, then open Hertz Labs. Both will play simultaneously. The audio sessions mix automatically.</p>
+  </details>
+
+  <details>
+    <summary>Why does audio stop when I lock my screen?</summary>
+    <p>Free tier audio stops when the app is minimised or the screen is locked. Premium users can enable "Continue playing when minimised" in the Background Audio tab to maintain playback.</p>
+  </details>
+
+  <details>
+    <summary>What does the AI Guide do?</summary>
+    <p>The AI Guide lets you describe how you want to feel (e.g. "help me focus for a coding session") and suggests frequency settings tailored to that goal. Suggestions are generated by Google Gemini and are for personal wellness only — not medical advice.</p>
+  </details>
+
+  <details>
+    <summary>What are the recommended headphones for binaural beats?</summary>
+    <p>Any stereo headphones or earphones work. True stereo separation is required for the binaural effect — speakers produce monaural output. Over-ear headphones with good channel isolation produce the strongest effect. Wireless earbuds work well provided they maintain stereo separation.</p>
+  </details>
+
+  <details>
+    <summary>Is Hertz Labs safe to use?</summary>
+    <p>Hertz Labs is intended for relaxation, focus, and wellness. Use at a comfortable volume and take regular breaks. Do not use the app if you have epilepsy, photosensitivity disorder, or any condition that makes you susceptible to seizures. If you are pregnant, have a cardiac condition, or are unsure about your sensitivity to audio stimulation, consult a physician before use. See the full safety information displayed when you first open the app.</p>
+  </details>
+
+  <details>
+    <summary>How do I request a refund?</summary>
+    <p>Refunds are processed by Apple. Visit <a href="https://reportaproblem.apple.com" target="_blank">reportaproblem.apple.com</a>, sign in with your Apple ID, find your Hertz Labs purchase, and select "Request a Refund."</p>
+  </details>
+
+  <h2>Still need help?</h2>
+  <p>Email <a href="mailto:support@enginelabs.au">support@enginelabs.au</a> with a description of your issue and your device model and iOS version. We aim to respond within 2 business days.</p>
+</div>
+
+<footer>
+  <a href="../">Hertz Labs</a>
+  <a href="../privacy/">Privacy Policy</a>
+  <a href="../terms/">Terms of Service</a>
+  <a href="../support/">Support</a>
+  <p style="margin-top:12px">© 2026 Engine Labs. All rights reserved.</p>
+</footer>
+</body>
+</html>

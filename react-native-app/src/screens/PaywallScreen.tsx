@@ -39,13 +39,19 @@ const PREMIUM_FEATURES = [
 ];
 
 type PackageItem = {
-  pkg: Package;
+  pkg: Package | null;
   label: string;
   price: string;
   period: string;
   badge?: string;
   highlighted?: boolean;
 };
+
+const FALLBACK_PLANS: Omit<PackageItem, 'pkg'>[] = [
+  {label: 'Monthly', price: '$4.99', period: '/ month', badge: '7-day free trial'},
+  {label: 'Annual', price: '$24.99', period: '/ year', badge: 'Best value · 7-day free trial', highlighted: true},
+  {label: 'Lifetime', price: '$19.99', period: 'one-time', badge: 'Pay once, own forever'},
+];
 
 function parsePackages(offering: PurchasesOffering): PackageItem[] {
   const items: PackageItem[] = [];
@@ -113,7 +119,7 @@ function PackageCard({
   purchasing,
 }: {
   item: PackageItem;
-  onPurchase: (pkg: Package) => void;
+  onPurchase: (pkg: Package | null) => void;
   purchasing: boolean;
 }) {
   return (
@@ -166,8 +172,20 @@ export function PaywallScreen() {
     void (async () => {
       try {
         const offerings = await Purchases.getOfferings();
+        if (__DEV__) {
+          console.log('[Paywall] offerings.current:', offerings.current?.identifier ?? null);
+          console.log('[Paywall] offerings.all keys:', Object.keys(offerings.all ?? {}));
+        }
         setOffering(offerings.current);
+        if (!offerings.current) {
+          setFetchError(
+            'No current offering found. In RevenueCat, set offering "default" as Current.',
+          );
+        }
       } catch (e) {
+        if (__DEV__) {
+          console.warn('[Paywall] getOfferings failed:', e);
+        }
         setFetchError(
           e instanceof Error ? e.message : 'Could not load offerings. Check your connection.',
         );
@@ -180,8 +198,16 @@ export function PaywallScreen() {
   const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
 
   const handlePurchase = useCallback(
-    async (pkg: Package) => {
+    async (pkg: Package | null) => {
       if (purchasing) {
+        return;
+      }
+      if (!pkg) {
+        Alert.alert(
+          'Not Available Yet',
+          'Plans are still being configured. Please check back shortly or contact support.',
+          [{text: 'OK'}],
+        );
         return;
       }
       setPurchasing(true);
@@ -234,7 +260,9 @@ export function PaywallScreen() {
     }
   }, [restoring, _hydrateFromRC, dismiss]);
 
-  const packages = offering ? parsePackages(offering) : [];
+  const packages: PackageItem[] = offering
+    ? parsePackages(offering)
+    : FALLBACK_PLANS.map(p => ({...p, pkg: null}));
 
   return (
     <View style={styles.overlay}>
@@ -267,27 +295,9 @@ export function PaywallScreen() {
               </View>
             )}
 
-            {!loading && fetchError != null && (
-              <View style={styles.errorCard}>
-                <Text style={styles.errorText}>{fetchError}</Text>
-                <Text style={styles.errorHint}>
-                  Check your internet connection and try again.
-                </Text>
-              </View>
-            )}
-
-            {!loading && fetchError == null && packages.length === 0 && (
-              <View style={styles.errorCard}>
-                <Text style={styles.errorText}>No plans available in this region.</Text>
-                <Text style={styles.errorHint}>
-                  Make sure products are configured in RevenueCat and App Store Connect.
-                </Text>
-              </View>
-            )}
-
             {packages.map(item => (
               <PackageCard
-                key={item.pkg.identifier}
+                key={item.label}
                 item={item}
                 onPurchase={handlePurchase}
                 purchasing={purchasing}
