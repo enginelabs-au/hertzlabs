@@ -5,8 +5,15 @@ android/app/build/
 ios/Pods/
 ios/build/
 .env
-.env.local
+.env.*
 !.env.example
+**/.env.local
+**/.env.*.local
 *.keystore
 *.jks
 **/GenerativeAI-Info.plist
+**/xcuserdata/
+*.xcuserstate
+ios/HertzLabsBinauralBeats/ip.txt
+ios/.xcode.env.local
+HertzAudioEngine/.swiftpm/

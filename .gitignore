@@ -1,5 +1,24 @@
 .DS_Store
 
+# Cursor workspace (local agent state — never publish)
+.cursor/
+
+# Environment & secrets (never commit real values)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.local
+**/.env.*.local
+**/GenerativeAI-Info.plist
+*.pem
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+credentials.json
+secrets.json
+
 # React Native
 react-native-app/node_modules/
 react-native-app/ios/Pods/
@@ -10,15 +29,15 @@ react-native-app/android/.gradle/
 react-native-app/android/build/
 react-native-app/android/app/build/
 react-native-app/build/
-react-native-app/.env
-react-native-app/.env.local
-**/GenerativeAI-Info.plist
 
-# Cursor local QA artifacts
-.cursor/qa-screenshots/
-.cursor/tmp-sim*.png
+# Xcode user-specific / local dev
+**/xcuserdata/
+*.xcuserstate
+react-native-app/ios/HertzLabsBinauralBeats/ip.txt
+react-native-app/ios/.xcode.env.local
 
 # Swift
 react-native-app/HertzAudioEngine/.build/
 react-native-app/HertzAudioEngine/DerivedData/
+react-native-app/HertzAudioEngine/.swiftpm/
 *.xcframework
