@@ -4,6 +4,8 @@
 <dict>
 	<key>method</key>
 	<string>app-store-connect</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
 	<key>teamID</key>
 	<string>256U2M55W7</string>
 	<key>uploadSymbols</key>

@@ -36,6 +36,22 @@ cpp_flags = '-DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 '
             '-DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32 ' \
             '-Wno-documentation -Wno-nullability-completeness -std=c++20'
 
+# Dedupe first so CocoaPods duplicate header rows do not block source insertion.
+target.build_phases.each do |phase|
+  next unless phase.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase) ||
+              phase.is_a?(Xcodeproj::Project::Object::PBXHeadersBuildPhase)
+  seen = {}
+  phase.files.to_a.each do |build_file|
+    path = build_file.file_ref&.real_path&.to_s
+    next if path.nil? || path.empty?
+    if seen[path]
+      phase.files.delete(build_file)
+    else
+      seen[path] = true
+    end
+  end
+end
+
 added = 0
 FABRIC_COMPONENTS.each do |component|
   component_dir = File.join(components_root, component)
@@ -65,22 +81,6 @@ FABRIC_COMPONENTS.each do |component|
     bf.settings = { 'COMPILER_FLAGS' => cpp_flags }
     puts "ReactCodegen + #{component}/#{fname}"
     added += 1
-  end
-end
-
-# Dedupe by real path (rnskia duplicate rows, etc.)
-target.build_phases.each do |phase|
-  next unless phase.is_a?(Xcodeproj::Project::Object::PBXSourcesBuildPhase) ||
-              phase.is_a?(Xcodeproj::Project::Object::PBXHeadersBuildPhase)
-  seen = {}
-  phase.files.to_a.each do |build_file|
-    path = build_file.file_ref&.real_path&.to_s
-    next if path.nil? || path.empty?
-    if seen[path]
-      phase.files.delete(build_file)
-    else
-      seen[path] = true
-    end
   end
 end
 

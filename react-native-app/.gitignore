@@ -5,6 +5,7 @@ android/app/build/
 ios/Pods/
 ios/build/
 .env
+scripts/.iap-review-screenshot.png
 .env.*
 !.env.example
 **/.env.local
@@ -17,3 +18,4 @@ ios/build/
 ios/HertzLabsBinauralBeats/ip.txt
 ios/.xcode.env.local
 HertzAudioEngine/.swiftpm/
+assets/demo/*.mov

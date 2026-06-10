@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hertz Labs — Binaural Beats &amp; Frequency Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a; --card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+      --cyan: #22d3ee; --text: #e2e8f0; --muted: rgba(255,255,255,0.5);
+      --green: #4ade80; --gold: #fbbf24;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.7; }
+    nav { display: flex; gap: 24px; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    nav .brand { font-family: monospace; font-size: 13px; font-weight: 700; color: var(--cyan); letter-spacing: 2px; text-decoration: none; }
+    nav a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    nav a:hover { color: var(--text); }
+    .hero { text-align: center; padding: 80px 24px 60px; }
+    .hero-eyebrow { font-family: monospace; font-size: 12px; font-weight: 700; color: var(--cyan); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; }
+    .hero h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 700; letter-spacing: -1px; margin-bottom: 20px; background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 18px; color: var(--muted); max-width: 540px; margin: 0 auto 36px; }
+    .badge { display: inline-block; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.3); border-radius: 20px; padding: 6px 16px; font-size: 13px; color: var(--cyan); font-family: monospace; font-weight: 700; letter-spacing: 1px; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+    .feature-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+    .feature-card .icon { font-size: 28px; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .links { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; padding: 0 24px 80px; }
+    .link-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 28px; text-align: center; text-decoration: none; color: var(--text); transition: border-color 0.2s; min-width: 160px; }
+    .link-card:hover { border-color: var(--cyan); }
+    .link-card .lc-label { font-family: monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+    .link-card .lc-title { font-size: 16px; font-weight: 700; }
+    footer { text-align: center; padding: 32px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+    footer a { color: var(--muted); text-decoration: none; margin: 0 10px; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="./">HERTZ LABS</a>
+  <a href="./privacy/">Privacy</a>
+  <a href="./terms/">Terms</a>
+  <a href="./support/">Support</a>
+</nav>
+
+<div class="hero">
+  <div class="badge">Available on the App Store</div>
+  <h1>Precision Frequency<br/>Generation</h1>
+  <p>Hertz Labs is a dedicated binaural beats and audio frequency generator built for focus, meditation, sleep, and personal wellness exploration.</p>
+</div>
+
+<div class="grid">
+  <div class="feature-card">
+    <div class="icon">〰️</div>
+    <h3>7 Engine Modes</h3>
+    <p>Binaural, Monaural, Hemispheric Sync, Phase, Pitch Shift, Music, and Ambient — each with full manual control.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">∑</div>
+    <h3>Math Mode</h3>
+    <p>Generate frequencies from mathematical constants — Fibonacci, Golden Ratio, Solfeggio, Schumann resonance, and more.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">✦</div>
+    <h3>AI Guide</h3>
+    <p>Describe how you want to feel. The AI Guide suggests frequency settings tailored to your goal.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">⏵</div>
+    <h3>Background Audio</h3>
+    <p>Premium: keep your session running when the screen is locked or the app is minimised.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">⚡</div>
+    <h3>0–500 Hz Range</h3>
+    <p>Full spectrum coverage from sub-delta through supra-gamma. No software guards on the upper range.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">🎵</div>
+    <h3>Plays Alongside Any App</h3>
+    <p>Mix Hertz Labs with Spotify, Apple Music, or any podcast app — audio sessions blend automatically.</p>
+  </div>
+</div>
+
+<div style="text-align:center; padding: 0 24px 32px;">
+  <p style="font-size:14px; color:var(--muted); margin-bottom: 24px;">Legal &amp; Support</p>
+</div>
+<div class="links">
+  <a class="link-card" href="./privacy/">
+    <div class="lc-label">Legal</div>
+    <div class="lc-title">Privacy Policy</div>
+  </a>
+  <a class="link-card" href="./terms/">
+    <div class="lc-label">Legal</div>
+    <div class="lc-title">Terms of Service</div>
+  </a>
+  <a class="link-card" href="./support/">
+    <div class="lc-label">Help</div>
+    <div class="lc-title">Support</div>
+  </a>
+</div>
+
+<footer>
+  <a href="./privacy/">Privacy Policy</a>
+  <a href="./terms/">Terms of Service</a>
+  <a href="./support/">Support</a>
+  <p style="margin-top:12px">© 2026 Engine Labs. All rights reserved.</p>
+</footer>
+</body>
+</html>

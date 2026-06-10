@@ -20,8 +20,8 @@ const PACKAGES = {
   lifetime: 'pkgefd490f7076',
 };
 const PRODUCTS = {
-  monthly: {store: 'hertzlabs_premium_monthly', display: 'Hertz Labs Premium Monthly', type: 'subscription'},
-  annual: {store: 'hertzlabs_premium_annual', display: 'Hertz Labs Premium Annual', type: 'subscription'},
+  monthly: {store: 'hertzlabs_bb_monthly', display: 'Hertz Labs Premium Monthly', type: 'subscription'},
+  annual: {store: 'hertzlabs_bb_annual', display: 'Hertz Labs Premium Annual', type: 'subscription'},
   lifetime: {store: 'hertzlabs_lifetime_ultra', display: 'Hertz Labs Lifetime Ultra', type: 'non_consumable'},
 };
 
@@ -95,12 +95,22 @@ async function ensureProduct(secret, spec) {
     }
     return existing.id;
   }
-  const {status, json} = await rc(secret, 'POST', `/projects/${PROJECT_ID}/products`, {
+  let displayName = spec.display;
+  let {status, json} = await rc(secret, 'POST', `/projects/${PROJECT_ID}/products`, {
     app_id: APP_STORE_APP_ID,
     store_identifier: spec.store,
-    display_name: spec.display,
+    display_name: displayName,
     type: spec.type,
   });
+  if (status === 409 && String(json.message ?? '').includes('display_name')) {
+    displayName = `${spec.display} (${spec.store})`;
+    ({status, json} = await rc(secret, 'POST', `/projects/${PROJECT_ID}/products`, {
+      app_id: APP_STORE_APP_ID,
+      store_identifier: spec.store,
+      display_name: displayName,
+      type: spec.type,
+    }));
+  }
   if (status >= 300) {
     throw new Error(`create ${spec.store} failed: ${status} ${json.message ?? JSON.stringify(json)}`);
   }

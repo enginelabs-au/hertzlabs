@@ -303,7 +303,7 @@ target 'HertzLabsBinauralBeats' do
           end
         end
 
-        %w[rngesturehandler_codegen rnskia].each do |component|
+        %w[rngesturehandler_codegen rnskia ReactNativeBlurViewSpec].each do |component|
           component_dir = File.join(components_root, component)
           unless Dir.exist?(component_dir)
             puts "  [Podfile post_install] WARN: missing #{component_dir} (run codegen before pod install)"

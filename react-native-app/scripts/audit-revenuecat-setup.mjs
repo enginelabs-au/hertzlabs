@@ -16,8 +16,8 @@ const EXPECTED = {
   entitlement: 'premium',
   offering: 'default',
   products: {
-    monthly: 'hertzlabs_premium_monthly',
-    annual: 'hertzlabs_premium_annual',
+    monthly: 'hertzlabs_bb_monthly',
+    annual: 'hertzlabs_bb_annual',
     lifetime: 'hertzlabs_lifetime_ultra',
   },
   packages: {
@@ -184,6 +184,8 @@ for (const [label, storeId] of Object.entries(EXPECTED.products)) {
 const staleIds = [
   'hertzlabs_monthly_premium',
   'hertzlabs_annual_premium',
+  'hertzlabs_premium_monthly',
+  'hertzlabs_premium_annual',
 ];
 for (const stale of staleIds) {
   if (productByStoreId.has(stale)) {
