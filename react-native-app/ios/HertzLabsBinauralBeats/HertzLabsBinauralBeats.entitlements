@@ -5,6 +5,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>appclips:enginelabs-au.github.io</string>
+		<string>applinks:enginelabs-au.github.io</string>
 	</array>
 </dict>
 </plist>
