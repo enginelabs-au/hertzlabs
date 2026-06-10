@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,11 +9,14 @@ import {
   View,
 } from 'react-native';
 import Purchases from 'react-native-purchases';
-import type {CustomerInfo, Package, PurchasesOffering} from 'react-native-purchases';
+import type {CustomerInfo} from 'react-native-purchases';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
+import {loadPaywallPackages, type PaywallPlan} from '../monetization/loadPaywallPackages';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
-const ENTITLEMENT_ID = 'premium';
+const ENTITLEMENT_ID = REVENUECAT_ENTITLEMENT;
 
 const GOLD = '#FBBF24';
 const GOLD_DIM = 'rgba(251,191,36,0.12)';
@@ -38,57 +41,37 @@ const PREMIUM_FEATURES = [
   '7-day free trial on monthly & annual plans',
 ];
 
-type PackageItem = {
-  pkg: Package | null;
-  label: string;
-  price: string;
-  period: string;
-  badge?: string;
-  highlighted?: boolean;
-};
+function isPurchasable(plan: PaywallPlan): boolean {
+  return plan.pkg != null || plan.storeProduct != null;
+}
 
-const FALLBACK_PLANS: Omit<PackageItem, 'pkg'>[] = [
-  {label: 'Monthly', price: '$4.99', period: '/ month', badge: '7-day free trial'},
-  {label: 'Annual', price: '$24.99', period: '/ year', badge: 'Best value · 7-day free trial', highlighted: true},
-  {label: 'Lifetime', price: '$19.99', period: 'one-time', badge: 'Pay once, own forever'},
-];
-
-function parsePackages(offering: PurchasesOffering): PackageItem[] {
-  const items: PackageItem[] = [];
-
-  if (offering.monthly) {
-    items.push({
-      pkg: offering.monthly,
-      label: 'Monthly',
-      price: offering.monthly.product.priceString,
-      period: '/ month',
-      badge: '7-day free trial',
-    });
-  }
-  if (offering.annual) {
-    items.push({
-      pkg: offering.annual,
-      label: 'Annual',
-      price: offering.annual.product.priceString,
-      period: '/ year',
-      badge: 'Best value · 7-day free trial',
-      highlighted: true,
-    });
-  }
-  // lifetime / one-time
-  const lifetime: Package | undefined = offering.lifetime ?? offering.availablePackages.find(
-    (p: Package) => p.packageType === 'LIFETIME',
+function StoreUnavailableCard({
+  detail,
+  onRetry,
+  retrying,
+}: {
+  detail: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <View style={styles.errorCard}>
+      <Text style={styles.errorText}>App Store products not available yet</Text>
+      <Text style={styles.errorHint}>{detail}</Text>
+      <Pressable
+        style={[styles.retryBtn, retrying && styles.retryBtnDisabled]}
+        onPress={onRetry}
+        disabled={retrying}
+        accessibilityRole="button"
+        accessibilityLabel="Retry loading subscription plans">
+        {retrying ? (
+          <ActivityIndicator size="small" color={GOLD} />
+        ) : (
+          <Text style={styles.retryBtnText}>Retry loading plans</Text>
+        )}
+      </Pressable>
+    </View>
   );
-  if (lifetime) {
-    items.push({
-      pkg: lifetime,
-      label: 'Lifetime',
-      price: lifetime.product.priceString,
-      period: 'one-time',
-      badge: 'Pay once, own forever',
-    });
-  }
-  return items;
 }
 
 function PremiumFeatureList() {
@@ -118,10 +101,11 @@ function PackageCard({
   onPurchase,
   purchasing,
 }: {
-  item: PackageItem;
-  onPurchase: (pkg: Package | null) => void;
+  item: PaywallPlan;
+  onPurchase: (plan: PaywallPlan) => void;
   purchasing: boolean;
 }) {
+  const ready = isPurchasable(item);
   return (
     <View style={[styles.packageCard, item.highlighted && styles.packageCardHighlighted]}>
       {item.badge != null && (
@@ -142,18 +126,18 @@ function PackageCard({
         <Pressable
           style={[
             styles.buyBtn,
-            item.highlighted && item.pkg != null && styles.buyBtnHighlighted,
-            (purchasing || item.pkg == null) && styles.buyBtnDisabled,
+            item.highlighted && ready && styles.buyBtnHighlighted,
+            (purchasing || !ready) && styles.buyBtnDisabled,
           ]}
-          onPress={() => onPurchase(item.pkg)}
-          disabled={purchasing || item.pkg == null}
+          onPress={() => onPurchase(item)}
+          disabled={purchasing || !ready}
           accessibilityRole="button"
           accessibilityLabel={`Purchase ${item.label} plan`}>
           {purchasing ? (
             <ActivityIndicator size="small" color={item.highlighted ? '#000' : GOLD} />
           ) : (
-            <Text style={[styles.buyBtnText, item.highlighted && item.pkg != null && styles.buyBtnTextHighlighted]}>
-              {item.pkg == null
+            <Text style={[styles.buyBtnText, item.highlighted && ready && styles.buyBtnTextHighlighted]}>
+              {!ready
                 ? 'Not Ready'
                 : item.label === 'Monthly' || item.label === 'Annual'
                   ? 'Start Free Trial'
@@ -170,74 +154,73 @@ export function PaywallScreen() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
 
-  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [plans, setPlans] = useState<PaywallPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeUnavailableDetail, setStoreUnavailableDetail] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const offerings = await Purchases.getOfferings();
-        const resolved =
-          offerings.current ??
-          offerings.all?.default ??
-          Object.values(offerings.all ?? {}).find(o => o.availablePackages.length > 0) ??
-          null;
+  const loadOfferings = useCallback(async () => {
+    setLoading(true);
+    setPlans([]);
+    setFetchError(null);
+    setStoreUnavailableDetail(null);
 
-        if (__DEV__) {
-          console.log('[Paywall] offerings.current:', offerings.current?.identifier ?? null);
-          console.log('[Paywall] offerings.all keys:', Object.keys(offerings.all ?? {}));
-          console.log('[Paywall] resolved offering:', resolved?.identifier ?? null);
-          console.log(
-            '[Paywall] packages:',
-            resolved?.availablePackages.map(p => p.identifier).join(', ') ?? 'none',
-          );
-        }
+    const result = await loadPaywallPackages();
 
-        setOffering(resolved);
-        if (!resolved) {
-          setFetchError(
-            'RevenueCat has no live offering. In the RC dashboard: import your 3 App Store products, attach them to entitlement "premium", add packages to offering "default", then mark "default" as Current.',
-          );
-        } else if (parsePackages(resolved).every(p => p.pkg == null)) {
-          setFetchError(
-            'Offering loaded but no packages were found. In RevenueCat, map $rc_monthly, $rc_annual, and $rc_lifetime to hertzlabs_monthly_premium, hertzlabs_annual_premium, and hertzlabs_lifetime_ultra.',
-          );
-        }
-      } catch (e) {
-        if (__DEV__) {
-          console.warn('[Paywall] getOfferings failed:', e);
-        }
-        const msg = e instanceof Error ? e.message : 'Could not load offerings.';
+    if (__DEV__) {
+      console.log('[Paywall] load result:', result.status);
+    }
+
+    switch (result.status) {
+      case 'ready':
+        setPlans(result.plans);
+        break;
+      case 'not_configured':
         setFetchError(
-          `${msg} Check App Store Connect products, Paid Apps agreement, and RevenueCat product import.`,
+          'RevenueCat API key missing. Add REVENUECAT_API_KEY_IOS to react-native-app/.env, rebuild the app, then reopen the paywall.',
         );
-      } finally {
-        setLoading(false);
-      }
-    })();
+        break;
+      case 'store_unavailable':
+        setPlans(result.plans ?? []);
+        setStoreUnavailableDetail(result.detail);
+        break;
+      case 'error':
+        setFetchError(result.message);
+        break;
+      default:
+        break;
+    }
+
+    setLoading(false);
   }, []);
+
+  React.useEffect(() => {
+    void loadOfferings();
+  }, [loadOfferings]);
 
   const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
 
   const handlePurchase = useCallback(
-    async (pkg: Package | null) => {
+    async (plan: PaywallPlan) => {
       if (purchasing) {
         return;
       }
-      if (!pkg) {
+      if (!isPurchasable(plan)) {
         Alert.alert(
           'Not Available Yet',
-          'Plans are still being configured. Please check back shortly or contact support.',
+          storeUnavailableDetail ??
+            'Plans are still being configured. Please check back shortly or contact support.',
           [{text: 'OK'}],
         );
         return;
       }
       setPurchasing(true);
       try {
-        const result = await Purchases.purchasePackage(pkg);
+        const result = plan.pkg
+          ? await Purchases.purchasePackage(plan.pkg)
+          : await Purchases.purchaseStoreProduct(plan.storeProduct!);
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
         // If purchase succeeded and entitlement is now active, close
         const isActive = Object.keys(result.customerInfo.entitlements.active).includes(
@@ -257,7 +240,7 @@ export function PaywallScreen() {
         setPurchasing(false);
       }
     },
-    [purchasing, _hydrateFromRC, dismiss],
+    [purchasing, storeUnavailableDetail, _hydrateFromRC, dismiss],
   );
 
   const handleRestore = useCallback(async () => {
@@ -284,10 +267,6 @@ export function PaywallScreen() {
       setRestoring(false);
     }
   }, [restoring, _hydrateFromRC, dismiss]);
-
-  const packages: PackageItem[] = offering
-    ? parsePackages(offering)
-    : FALLBACK_PLANS.map(p => ({...p, pkg: null}));
 
   return (
     <View style={styles.overlay}>
@@ -320,16 +299,31 @@ export function PaywallScreen() {
               </View>
             )}
 
-            {!loading && fetchError != null && (
+            {!loading && storeUnavailableDetail != null && (
+              <StoreUnavailableCard
+                detail={storeUnavailableDetail}
+                onRetry={() => void loadOfferings()}
+                retrying={loading}
+              />
+            )}
+
+            {!loading && storeUnavailableDetail == null && fetchError != null && (
               <View style={styles.errorCard}>
-                <Text style={styles.errorText}>Plans not ready for purchase</Text>
+                <Text style={styles.errorText}>Could not load plans</Text>
                 <Text style={styles.errorHint}>{fetchError}</Text>
+                <Pressable
+                  style={styles.retryBtn}
+                  onPress={() => void loadOfferings()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading subscription plans">
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </Pressable>
               </View>
             )}
 
-            {packages.map(item => (
+            {plans.map(item => (
               <PackageCard
-                key={item.label}
+                key={item.key}
                 item={item}
                 onPurchase={handlePurchase}
                 purchasing={purchasing}
@@ -359,6 +353,7 @@ export function PaywallScreen() {
           </Text>
         </ScrollView>
       </View>
+      <LegalMenuBar />
     </View>
   );
 }
@@ -587,6 +582,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: MUTED,
     lineHeight: 17,
+  },
+  checklistItem: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+    lineHeight: 17,
+    marginTop: 6,
+  },
+  retryBtn: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: GOLD_BORDER,
+    backgroundColor: GOLD_DIM,
+  },
+  retryBtnDisabled: {
+    opacity: 0.6,
+  },
+  retryBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: GOLD,
   },
   restoreBtn: {
     alignItems: 'center',

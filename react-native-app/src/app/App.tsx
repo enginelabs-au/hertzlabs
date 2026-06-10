@@ -14,6 +14,7 @@ import {useHertzStore} from '../state/store';
 import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
 import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {MainTabs} from '../navigation/MainTabs';
+import {LegalScreen} from '../screens/LegalScreen';
 import {PaywallScreen} from '../screens/PaywallScreen';
 import {installAudioSync} from '../state/middleware/audioSync';
 import {HertzAudioClient} from '../audio/HertzAudioClient';
@@ -133,6 +134,7 @@ function AppContent(): React.JSX.Element {
         </View>
       )}
       {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
+      {activeModal === 'legal' && <LegalScreen />}
       {activeModal === 'paywall' && <PaywallScreen />}
     </>
   );

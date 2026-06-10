@@ -8,6 +8,8 @@
   "scripts": {
     "postinstall": "patch-package && node scripts/sync-native-secrets.js",
     "sync-secrets": "node scripts/sync-native-secrets.js",
+    "audit:revenuecat": "node scripts/audit-revenuecat-setup.mjs",
+    "fix:revenuecat": "node scripts/fix-revenuecat-setup.mjs",
     "generate-icons": "python3 scripts/generate-app-icons.py",
     "start": "react-native start",
     "start:clean": "npm run clean:metro && react-native start --reset-cache",

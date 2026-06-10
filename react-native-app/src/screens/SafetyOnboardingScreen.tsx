@@ -1,12 +1,10 @@
 import React, {useState} from 'react';
 import {Linking, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {StaticWelcomeWaveHeader} from '../components/layout/StaticWelcomeWaveHeader';
+import {PRIVACY_URL, SUPPORT_URL, TERMS_URL} from '../constants/legalUrls';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
-
-const TERMS_URL = 'https://enginelabs-au.github.io/hertzlabs/terms/';
-const PRIVACY_URL = 'https://enginelabs-au.github.io/hertzlabs/privacy/';
-const SUPPORT_URL = 'https://enginelabs-au.github.io/hertzlabs/support/';
 
 function Checkbox({
   checked,
@@ -167,6 +165,7 @@ export function SafetyOnboardingScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+      <LegalMenuBar />
     </View>
   );
 }
