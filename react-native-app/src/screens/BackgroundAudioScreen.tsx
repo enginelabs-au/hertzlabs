@@ -5,6 +5,7 @@ import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
 import {useCallback} from 'react';
 import {BackgroundDopplerField} from '../components/background/BackgroundDopplerField';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const BG = HertzTheme.bg;
@@ -92,6 +93,7 @@ export function BackgroundAudioScreen() {
   const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
   return (
+    <View style={styles.screen}>
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
@@ -120,10 +122,16 @@ export function BackgroundAudioScreen() {
 
       <View style={styles.bottomPad} />
     </ScrollView>
+    <LegalMenuBar />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: BG,
+  },
   root: {
     flex: 1,
     backgroundColor: BG,

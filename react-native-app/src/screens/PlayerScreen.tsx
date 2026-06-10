@@ -13,6 +13,7 @@ import {
   isExperimentalModeActive,
   isPremiumUnlocked,
 } from '../monetization/isPremiumUnlocked';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
 
 function VolumeWarningBanner() {
@@ -93,6 +94,8 @@ export function PlayerScreen() {
         ) : (
           <EngineSelector category={category} />
         )}
+
+        <LegalMenuBar />
       </ScrollView>
 
       <View style={styles.footer}>

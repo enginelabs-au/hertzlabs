@@ -6,7 +6,6 @@ import {
   SUPPORT_URL,
   TERMS_URL,
 } from '../constants/legalUrls';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -71,7 +70,6 @@ export function LegalScreen() {
             on first launch for full warnings.
           </Text>
         </ScrollView>
-        <LegalMenuBar />
       </View>
     </View>
   );

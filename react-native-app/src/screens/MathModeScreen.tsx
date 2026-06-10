@@ -7,6 +7,7 @@ import {BRAINWAVE_BANDS} from '../components/ReadoutPanel/brainwaveBands';
 import {MathMode3DHeader} from '../components/math/MathMode3DHeader';
 import {CommandLineCard} from '../components/layout/CommandLineCard';
 import {MathModeGroupRow, type MathPresetItem} from '../components/math/MathModeGroupRow';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const MATH_PRESETS: MathPresetItem[] = [
@@ -134,8 +135,9 @@ export function MathModeScreen() {
   );
 
   return (
+    <View style={styles.root}>
     <ScrollView
-      style={styles.root}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
       <MathMode3DHeader />
@@ -164,6 +166,8 @@ export function MathModeScreen() {
 
       <View style={styles.bottomPad} />
     </ScrollView>
+    <LegalMenuBar />
+    </View>
   );
 }
 
@@ -171,6 +175,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: HertzTheme.bg,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     paddingTop: 8,

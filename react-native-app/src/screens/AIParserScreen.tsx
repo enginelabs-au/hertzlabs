@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {useHertzStore} from '../state/store';
 import {BRAINWAVE_BANDS} from '../components/ReadoutPanel/brainwaveBands';
 import type {EngineMode} from '../state/types';
@@ -465,6 +466,7 @@ export function AIParserScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+      <LegalMenuBar />
     </KeyboardAvoidingView>
   );
 }

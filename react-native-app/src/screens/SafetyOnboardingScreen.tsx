@@ -1,9 +1,9 @@
 import React, {useState} from 'react';
 import {Linking, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {StaticWelcomeWaveHeader} from '../components/layout/StaticWelcomeWaveHeader';
-import {PRIVACY_URL, SUPPORT_URL, TERMS_URL} from '../constants/legalUrls';
+import {PRIVACY_URL, TERMS_URL} from '../constants/legalUrls';
 import {useHertzStore} from '../state/store';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
 
 function Checkbox({
@@ -154,14 +154,6 @@ export function SafetyOnboardingScreen() {
             Acknowledge & Enter
           </Text>
         </Pressable>
-
-        <View style={styles.legalFooter}>
-          <InlineLink label="Support" url={SUPPORT_URL} />
-          <Text style={styles.legalSep}> · </Text>
-          <InlineLink label="Terms" url={TERMS_URL} />
-          <Text style={styles.legalSep}> · </Text>
-          <InlineLink label="Privacy" url={PRIVACY_URL} />
-        </View>
 
         <View style={styles.bottomPad} />
       </ScrollView>

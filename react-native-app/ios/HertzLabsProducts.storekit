@@ -1,0 +1,110 @@
+{
+  "identifier" : "HertzLabsProducts",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "6777615569",
+      "localizations" : [
+        {
+          "description" : "One-time lifetime premium access.",
+          "displayName" : "Lifetime Ultra",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "hertzlabs_lifetime_ultra",
+      "referenceName" : "Lifetime Ultra",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6777604364",
+    "_developerTeamID" : "256U2M55W7",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "HertzLabsPremium",
+      "localizations" : [
+        {
+          "description" : "Premium binaural beats and features.",
+          "displayName" : "Hertz Labs Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Hertz Labs Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6778755902",
+          "introductoryOffer" : {
+            "internalID" : "BB_MONTHLY_TRIAL",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Monthly premium subscription.",
+              "displayName" : "Premium Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "hertzlabs_bb_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "subscriptionGroupID" : "HertzLabsPremium",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6778755165",
+          "introductoryOffer" : {
+            "internalID" : "BB_ANNUAL_TRIAL",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Annual premium subscription.",
+              "displayName" : "Premium Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "hertzlabs_bb_annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Premium Annual",
+          "subscriptionGroupID" : "HertzLabsPremium",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import Purchases from 'react-native-purchases';
 import type {CustomerInfo} from 'react-native-purchases';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
 import {loadPaywallPackages, type PaywallPlan} from '../monetization/loadPaywallPackages';
 import {useHertzStore} from '../state/store';
+import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const ENTITLEMENT_ID = REVENUECAT_ENTITLEMENT;
@@ -352,8 +352,8 @@ export function PaywallScreen() {
             end of the trial period.
           </Text>
         </ScrollView>
+        <LegalMenuBar />
       </View>
-      <LegalMenuBar />
     </View>
   );
 }
