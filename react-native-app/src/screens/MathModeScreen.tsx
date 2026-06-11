@@ -8,6 +8,7 @@ import {MathMode3DHeader} from '../components/math/MathMode3DHeader';
 import {CommandLineCard} from '../components/layout/CommandLineCard';
 import {MathModeGroupRow, type MathPresetItem} from '../components/math/MathModeGroupRow';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {DEFAULT_BEAT_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const MATH_PRESETS: MathPresetItem[] = [
@@ -128,11 +129,29 @@ export function MathModeScreen() {
   const handleSelect = useCallback(
     (preset: MathPresetItem) => {
       setActivePresetId(preset.id);
-      setParam('beatHz', preset.beatHz);
-      setParam('carrierHz', 220);
+      // Solfeggio labels are audible carrier tones; beat differential stays in the
+      // entrainment range (premium ceiling is 500 Hz — 639/741/852 were clamped).
+      if (preset.group === 'Solfeggio') {
+        setParam('carrierHz', preset.beatHz);
+        setParam('beatHz', DEFAULT_BEAT_HZ);
+      } else {
+        setParam('beatHz', preset.beatHz);
+        setParam('carrierHz', 220);
+      }
     },
     [setParam],
   );
+
+  const activeDisplayHz = useMemo(() => {
+    if (!activePresetId) {
+      return beatHz;
+    }
+    const preset = MATH_PRESETS.find(p => p.id === activePresetId);
+    if (preset?.group === 'Solfeggio') {
+      return preset.beatHz;
+    }
+    return beatHz;
+  }, [activePresetId, beatHz]);
 
   return (
     <View style={styles.root}>
@@ -145,7 +164,9 @@ export function MathModeScreen() {
 
       <View style={styles.activeChip}>
         <Text style={styles.activeLabel}>ACTIVE TARGET Δ</Text>
-        <Text style={[styles.activeHz, {color: getBandColor(beatHz)}]}>{beatHz.toFixed(2)} Hz</Text>
+        <Text style={[styles.activeHz, {color: getBandColor(activeDisplayHz)}]}>
+          {activeDisplayHz.toFixed(2)} Hz
+        </Text>
       </View>
 
       <PremiumFormulaCard unlocked={unlocked} onUpgrade={openPaywall} />

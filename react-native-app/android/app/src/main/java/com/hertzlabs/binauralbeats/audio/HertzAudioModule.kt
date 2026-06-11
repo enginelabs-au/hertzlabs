@@ -72,6 +72,11 @@ class HertzAudioModule(
         // Preset decoding remains in TypeScript for the scaffold; native remains parameter-authoritative.
     }
 
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun setBackgroundPlaybackEnabled(enabled: Boolean) {
+        // iOS AudioSessionController; Android uses HertzAudioService when foreground service is started.
+    }
+
     companion object {
         const val NAME = "HertzAudio"
 

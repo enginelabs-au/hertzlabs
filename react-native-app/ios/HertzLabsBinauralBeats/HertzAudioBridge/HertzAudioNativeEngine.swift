@@ -66,4 +66,8 @@ final class HertzAudioNativeEngine: NSObject {
   @objc func setPhaseAndTiming(phase: Double, timingMs: Double) {
     facade.setPhaseAndTiming(phaseAngle: phase, timingDiffMs: timingMs)
   }
+
+  @objc func setBackgroundPlaybackEnabled(_ enabled: Bool) {
+    AudioSessionController.shared.backgroundPlaybackEnabled = enabled
+  }
 }

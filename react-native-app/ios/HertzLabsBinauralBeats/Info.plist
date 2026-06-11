@@ -20,6 +20,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSMotionUsageDescription</key>
 	<string>Hertz Labs uses motion data to adapt binaural entrainment to your movement and stillness.</string>
 	<key>NSMicrophoneUsageDescription</key>

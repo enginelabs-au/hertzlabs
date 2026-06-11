@@ -4,12 +4,13 @@ import UIKit
 /// Manages the AVAudioSession lifecycle for background/foreground transitions.
 /// - Free tier: stops audio on background.
 /// - Premium tier: keeps session active for background audio playback.
+@objcMembers
 final class AudioSessionController: NSObject {
 
     static let shared = AudioSessionController()
 
-    /// Set by the bridge/module when subscription state changes.
-    var isPremium: Bool = false
+    /// Premium + user toggle — set from JS when tier or background-audio setting changes.
+    var backgroundPlaybackEnabled: Bool = false
 
     private override init() {
         super.init()
@@ -56,7 +57,7 @@ final class AudioSessionController: NSObject {
     }
 
     @objc private func didEnterBackground() {
-        if !isPremium {
+        if !backgroundPlaybackEnabled {
             engineStop()
             do {
                 try AVAudioSession.sharedInstance().setActive(

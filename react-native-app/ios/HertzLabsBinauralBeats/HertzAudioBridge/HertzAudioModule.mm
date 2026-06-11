@@ -122,6 +122,11 @@ RCT_EXPORT_MODULE(HertzAudio)
   [self.nativeEngine setPhaseAndTimingWithPhase:phase timingMs:timingMs];
 }
 
+- (void)setBackgroundPlaybackEnabled:(BOOL)enabled
+{
+  [self.nativeEngine setBackgroundPlaybackEnabled:enabled];
+}
+
 #pragma mark - HertzAudioEventSink
 
 - (void)emitEngineStateWithState:(NSString *)state

@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setNoiseLayersWithWhite:(float)white pink:(float)pink brown:(float)brown;
 - (void)fadeToGain:(float)toGain durationMs:(NSInteger)durationMs;
 - (void)setPhaseAndTimingWithPhase:(double)phase timingMs:(double)timingMs;
+- (void)setBackgroundPlaybackEnabled:(BOOL)enabled;
 
 @end
 

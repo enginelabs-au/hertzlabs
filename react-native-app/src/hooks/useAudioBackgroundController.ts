@@ -4,9 +4,8 @@ import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
 
-function maintainBackgroundPlayback(): void {
-  // iOS: AVAudioSession is already configured for background audio playback
-  // in AudioSessionController.swift. No-op here on the JS side.
+function syncNativeBackgroundPlayback(enabled: boolean): void {
+  HertzAudioClient.setBackgroundPlaybackEnabled(enabled);
 }
 
 function stopAudioEngine(): void {
@@ -17,8 +16,8 @@ function stopAudioEngine(): void {
 /**
  * Manages audio background behaviour based on subscription tier.
  *
- * Premium: calls maintainBackgroundPlayback() when the app goes to background.
- * Free:    calls stopAudioEngine() when the app goes to background.
+ * Premium + toggle on: keeps native session alive when backgrounded.
+ * Otherwise: pauses audio when the app goes to background.
  *
  * Wired in BackgroundAudioScreen and MainTabs so it always runs while the
  * main app is mounted.
@@ -31,6 +30,8 @@ export function useAudioBackgroundController(): void {
   const unlockedRef = useRef(unlocked);
   const backgroundAudioRef = useRef(backgroundAudio);
 
+  const backgroundPlaybackAllowed = unlocked && backgroundAudio;
+
   useEffect(() => {
     unlockedRef.current = unlocked;
   }, [unlocked]);
@@ -40,13 +41,18 @@ export function useAudioBackgroundController(): void {
   }, [backgroundAudio]);
 
   useEffect(() => {
+    syncNativeBackgroundPlayback(backgroundPlaybackAllowed);
+  }, [backgroundPlaybackAllowed]);
+
+  useEffect(() => {
     const subscription = AppState.addEventListener(
       'change',
       (nextState: AppStateStatus) => {
         if (nextState === 'background' || nextState === 'inactive') {
           if (unlockedRef.current && backgroundAudioRef.current) {
-            maintainBackgroundPlayback();
+            syncNativeBackgroundPlayback(true);
           } else {
+            syncNativeBackgroundPlayback(false);
             stopAudioEngine();
           }
         }

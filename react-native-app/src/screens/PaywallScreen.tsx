@@ -1,7 +1,8 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,10 @@ import {
 } from 'react-native';
 import Purchases from 'react-native-purchases';
 import type {CustomerInfo} from 'react-native-purchases';
+import {
+  summarizeActiveSubscription,
+  type ActiveSubscriptionSummary,
+} from '../monetization/activeSubscriptionSummary';
 import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
 import {loadPaywallPackages, type PaywallPlan} from '../monetization/loadPaywallPackages';
 import {useHertzStore} from '../state/store';
@@ -74,6 +79,47 @@ function StoreUnavailableCard({
   );
 }
 
+function ActiveSubscriptionCard({summary}: {summary: ActiveSubscriptionSummary}) {
+  const openManagement = useCallback(() => {
+    if (!summary.managementURL) {
+      Alert.alert(
+        'Manage Subscription',
+        'Open Settings → Apple ID → Subscriptions on your iPhone to manage billing.',
+        [{text: 'OK'}],
+      );
+      return;
+    }
+    void Linking.openURL(summary.managementURL);
+  }, [summary.managementURL]);
+
+  return (
+    <View style={[styles.activeCard, summary.isPremium && styles.activeCardPremium]}>
+      <Text style={styles.activeCardLabel}>
+        {summary.isPremium ? 'YOUR ACTIVE PLAN' : 'CURRENT STATUS'}
+      </Text>
+      <Text style={styles.activePlanName}>{summary.planLabel}</Text>
+      {summary.productId ? (
+        <Text style={styles.activeProductId}>{summary.productId}</Text>
+      ) : null}
+      <Text style={styles.activeStatus}>{summary.statusLine}</Text>
+      {summary.detailLines.map(line => (
+        <Text key={line} style={styles.activeDetail}>
+          {line}
+        </Text>
+      ))}
+      {summary.isPremium && summary.managementURL ? (
+        <Pressable
+          style={styles.manageBtn}
+          onPress={openManagement}
+          accessibilityRole="button"
+          accessibilityLabel="Manage subscription in App Store">
+          <Text style={styles.manageBtnText}>Manage in App Store</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 function PremiumFeatureList() {
   return (
     <View style={styles.featureList}>
@@ -96,14 +142,20 @@ function PremiumFeatureList() {
   );
 }
 
+function planProductId(plan: PaywallPlan): string | null {
+  return plan.pkg?.product.productIdentifier ?? plan.storeProduct?.productIdentifier ?? null;
+}
+
 function PackageCard({
   item,
   onPurchase,
   purchasing,
+  isCurrentPlan,
 }: {
   item: PaywallPlan;
   onPurchase: (plan: PaywallPlan) => void;
   purchasing: boolean;
+  isCurrentPlan: boolean;
 }) {
   const ready = isPurchasable(item);
   return (
@@ -126,22 +178,32 @@ function PackageCard({
         <Pressable
           style={[
             styles.buyBtn,
-            item.highlighted && ready && styles.buyBtnHighlighted,
-            (purchasing || !ready) && styles.buyBtnDisabled,
+            item.highlighted && ready && !isCurrentPlan && styles.buyBtnHighlighted,
+            (purchasing || !ready || isCurrentPlan) && styles.buyBtnDisabled,
+            isCurrentPlan && styles.buyBtnCurrent,
           ]}
           onPress={() => onPurchase(item)}
-          disabled={purchasing || !ready}
+          disabled={purchasing || !ready || isCurrentPlan}
           accessibilityRole="button"
-          accessibilityLabel={`Purchase ${item.label} plan`}>
+          accessibilityLabel={
+            isCurrentPlan ? `${item.label} is your current plan` : `Purchase ${item.label} plan`
+          }>
           {purchasing ? (
             <ActivityIndicator size="small" color={item.highlighted ? '#000' : GOLD} />
           ) : (
-            <Text style={[styles.buyBtnText, item.highlighted && ready && styles.buyBtnTextHighlighted]}>
-              {!ready
-                ? 'Not Ready'
-                : item.label === 'Monthly' || item.label === 'Annual'
-                  ? 'Start Free Trial'
-                  : 'Buy Now'}
+            <Text
+              style={[
+                styles.buyBtnText,
+                item.highlighted && ready && !isCurrentPlan && styles.buyBtnTextHighlighted,
+                isCurrentPlan && styles.buyBtnTextCurrent,
+              ]}>
+              {isCurrentPlan
+                ? 'Current Plan'
+                : !ready
+                  ? 'Not Ready'
+                  : item.label === 'Monthly' || item.label === 'Annual'
+                    ? 'Start Free Trial'
+                    : 'Buy Now'}
             </Text>
           )}
         </Pressable>
@@ -155,11 +217,28 @@ export function PaywallScreen() {
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
 
   const [plans, setPlans] = useState<PaywallPlan[]>([]);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [storeUnavailableDetail, setStoreUnavailableDetail] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+
+  const subscriptionSummary = useMemo(
+    () => summarizeActiveSubscription(customerInfo, ENTITLEMENT_ID),
+    [customerInfo],
+  );
+
+  const loadCustomerInfo = useCallback(async () => {
+    try {
+      const info = await Purchases.getCustomerInfo();
+      setCustomerInfo(info);
+      _hydrateFromRC(info, ENTITLEMENT_ID);
+      return info;
+    } catch {
+      return null;
+    }
+  }, [_hydrateFromRC]);
 
   const loadOfferings = useCallback(async () => {
     setLoading(true);
@@ -167,6 +246,7 @@ export function PaywallScreen() {
     setFetchError(null);
     setStoreUnavailableDetail(null);
 
+    void loadCustomerInfo();
     const result = await loadPaywallPackages();
 
     if (__DEV__) {
@@ -194,7 +274,7 @@ export function PaywallScreen() {
     }
 
     setLoading(false);
-  }, []);
+  }, [loadCustomerInfo]);
 
   React.useEffect(() => {
     void loadOfferings();
@@ -221,14 +301,8 @@ export function PaywallScreen() {
         const result = plan.pkg
           ? await Purchases.purchasePackage(plan.pkg)
           : await Purchases.purchaseStoreProduct(plan.storeProduct!);
+        setCustomerInfo(result.customerInfo);
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
-        // If purchase succeeded and entitlement is now active, close
-        const isActive = Object.keys(result.customerInfo.entitlements.active).includes(
-          ENTITLEMENT_ID,
-        );
-        if (isActive) {
-          dismiss();
-        }
       } catch (e) {
         // RevenueCat throws with code; user-cancelled is not an error to alert
         const msg = e instanceof Error ? e.message : String(e);
@@ -250,6 +324,7 @@ export function PaywallScreen() {
     setRestoring(true);
     try {
       const info: CustomerInfo = await Purchases.restorePurchases();
+      setCustomerInfo(info);
       _hydrateFromRC(info, ENTITLEMENT_ID);
       const isActive = Object.keys(info.entitlements.active).includes(ENTITLEMENT_ID);
       Alert.alert(
@@ -275,7 +350,11 @@ export function PaywallScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title}>Hertz Labs Premium</Text>
-            <Text style={styles.subtitle}>Unlock the full frequency spectrum</Text>
+            <Text style={styles.subtitle}>
+              {subscriptionSummary.isPremium
+                ? 'View your plan or switch subscriptions'
+                : 'Unlock the full frequency spectrum'}
+            </Text>
           </View>
           <Pressable style={styles.closeBtn} onPress={dismiss} accessibilityLabel="Close paywall">
             <Text style={styles.closeBtnText}>✕</Text>
@@ -285,6 +364,8 @@ export function PaywallScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>
+          <ActiveSubscriptionCard summary={subscriptionSummary} />
+
           {/* Feature comparison */}
           <PremiumFeatureList />
 
@@ -327,6 +408,10 @@ export function PaywallScreen() {
                 item={item}
                 onPurchase={handlePurchase}
                 purchasing={purchasing}
+                isCurrentPlan={
+                  subscriptionSummary.planKey === item.key ||
+                  planProductId(item) === subscriptionSummary.productId
+                }
               />
             ))}
           </View>
@@ -412,6 +497,64 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  activeCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: CARD,
+    gap: 4,
+  },
+  activeCardPremium: {
+    borderColor: GOLD_BORDER,
+    backgroundColor: GOLD_DIM,
+  },
+  activeCardLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: MUTED,
+    letterSpacing: 1.2,
+  },
+  activePlanName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 2,
+  },
+  activeProductId: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 10,
+    color: MUTED,
+  },
+  activeStatus: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  activeDetail: {
+    fontSize: 12,
+    color: MUTED,
+    lineHeight: 17,
+  },
+  manageBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: GOLD_BORDER,
+    backgroundColor: 'rgba(251,191,36,0.08)',
+  },
+  manageBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: GOLD,
   },
   featureList: {
     paddingHorizontal: 20,
@@ -545,6 +688,11 @@ const styles = StyleSheet.create({
   buyBtnDisabled: {
     opacity: 0.5,
   },
+  buyBtnCurrent: {
+    opacity: 1,
+    borderColor: 'rgba(92,225,255,0.35)',
+    backgroundColor: 'rgba(92,225,255,0.1)',
+  },
   buyBtnText: {
     fontSize: 12,
     fontWeight: '700',
@@ -553,6 +701,9 @@ const styles = StyleSheet.create({
   },
   buyBtnTextHighlighted: {
     color: '#000000',
+  },
+  buyBtnTextCurrent: {
+    color: HertzTheme.neon.cyan,
   },
   loadingRow: {
     flexDirection: 'row',

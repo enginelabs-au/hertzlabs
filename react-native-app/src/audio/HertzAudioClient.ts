@@ -70,6 +70,10 @@ export const HertzAudioClient = {
     NativeHertzAudio.setPhaseAndTiming(phaseAngle, timingDiffMs);
   },
 
+  setBackgroundPlaybackEnabled(enabled: boolean): void {
+    NativeHertzAudio.setBackgroundPlaybackEnabled(enabled);
+  },
+
   setNoise(type: BinauralParameters['noiseType'], level: number): void {
     NativeHertzAudio.setNoise(type, clampGain(level));
   },
