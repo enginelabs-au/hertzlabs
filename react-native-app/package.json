@@ -14,6 +14,7 @@
     "populate:asc-metadata": "node scripts/populate-asc-metadata.mjs",
     "audit:asc-review": "node scripts/audit-asc-review.mjs",
     "fix:asc-review": "node scripts/fix-asc-review-issues.mjs",
+    "generate:iap-promo-images": "node scripts/generate-iap-promo-images.mjs",
     "generate-icons": "python3 scripts/generate-app-icons.py",
     "start": "react-native start",
     "start:clean": "npm run clean:metro && react-native start --reset-cache",

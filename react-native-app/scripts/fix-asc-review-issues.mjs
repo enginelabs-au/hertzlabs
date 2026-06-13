@@ -2,7 +2,7 @@
 /**
  * Fix ASC issues detectable via API before resubmission.
  * - Re-upload subscription promotional images (1024² PNGs)
- * - Refresh en-US IAP localizations (<=55 chars)
+ * - Custom EULA + App Description legal links (Guideline 3.1.2)
  * - Add App Review notes for build 8 fixes
  * - Report REJECTED en-AU localizations (manual ASC UI required)
  */
@@ -15,7 +15,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const envPath = path.join(__dirname, '..', '.env');
 const APP_ID = '6777604364';
 const GROUP_ID = '22147327';
+const VERSION_ID = '2bfc2fc7-31fc-44bd-8b3c-7a329172b40a';
 const REVIEW_DETAIL_ID = '0c0e0f10-8870-4786-bde6-f17f2783aa19';
+const TERMS_URL = 'https://enginelabs-au.github.io/hertzlabs/terms/';
+const PRIVACY_URL = 'https://enginelabs-au.github.io/hertzlabs/privacy/';
+const SUPPORT_URL = 'https://enginelabs-au.github.io/hertzlabs/support/';
+const EULA_TERRITORIES = ['AUS', 'USA'];
 
 const PRODUCT_IMAGES = {
   hertzlabs_bb_monthly: path.join(__dirname, '..', 'assets', 'products', 'product-monthly.png'),
@@ -24,7 +29,7 @@ const PRODUCT_IMAGES = {
 };
 
 const REVIEW_NOTES =
-  'Build 8: IAP purchases verified in sandbox. Background audio works for premium subscribers with toggle enabled. Plans menu shows active subscription and paywall for premium users. Solfeggio 639/741/852 Hz fixed in Math mode.';
+  'Build 8: IAP purchases verified in sandbox. Background audio works for premium subscribers with toggle enabled. Plans menu shows active subscription and paywall for premium users. Solfeggio 639/741/852 Hz fixed in Math mode. Guideline 3.1.2: Custom EULA added in App Store Connect (App Information). App Description includes functional Terms of Use and Privacy Policy links. In-app: Legal menu and onboarding link to the same URLs. Paywall shows auto-renewal terms. Privacy Policy URL is set in App Information.';
 
 function parseEnv(filePath) {
   const out = {};
@@ -162,6 +167,142 @@ async function uploadBinaryImage(token, {createRoute, type, relationshipKey, res
   }
 }
 
+const LEGAL_FOOTER = `\n\nNot a medical device. Consult a healthcare provider before use if you have epilepsy, a pacemaker, or are pregnant.\n\nTerms of Use (EULA): ${TERMS_URL}\nPrivacy Policy: ${PRIVACY_URL}`;
+
+const TRIMMABLE_COPY = [
+  {
+    from: 'Headphones strongly recommended for binaural modes — stereo separation is essential for the dichotic effect.',
+    to: 'Headphones recommended for binaural modes (stereo separation required).',
+  },
+];
+
+function ensureDescriptionLegalLinks(description) {
+  if (!description) return description.trimEnd() + LEGAL_FOOTER;
+  if (description.includes(TERMS_URL)) return description;
+
+  let next = description;
+  const legalIdx = next.indexOf('Terms of Use (EULA):');
+  if (legalIdx >= 0) next = next.slice(0, legalIdx).trimEnd();
+  next = next
+    .replace(/\n\nHertz Labs is a wellness tool[^\n]*$/s, '')
+    .replace(/\n\nHertz Labs is a wellness and research tool[^\n]*$/s, '')
+    .trimEnd();
+
+  for (const {from, to} of TRIMMABLE_COPY) {
+    if (next.includes(from)) next = next.replace(from, to);
+  }
+
+  if (next.length + LEGAL_FOOTER.length > 4000) {
+    throw new Error(
+      `App description too long after legal footer (${next.length + LEGAL_FOOTER.length}/4000). Shorten copy manually.`,
+    );
+  }
+  return next + LEGAL_FOOTER;
+}
+
+function customEulaText() {
+  return `HERTZ LABS — TERMS OF USE (EULA)
+
+Full terms: ${TERMS_URL}
+
+By using Hertz Labs you agree to these Terms. Hertz Labs is a wellness audio tool, not a medical device. Subscriptions (Monthly, Annual) include a 7-day free trial and auto-renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Apple ID Settings → Subscriptions. Payment is charged to your Apple ID at confirmation. Lifetime Ultra is a one-time non-consumable purchase. Refunds are handled by Apple per App Store policies.
+
+Privacy Policy: ${PRIVACY_URL}
+Support: ${SUPPORT_URL}`;
+}
+
+async function ensureCustomEula(token) {
+  const existing = await ascRequest(token, 'GET', `/v1/apps/${APP_ID}/endUserLicenseAgreement`);
+  const eulaId = existing.json?.data?.id;
+  const agreementText = customEulaText();
+  const territoryData = EULA_TERRITORIES.map(id => ({type: 'territories', id}));
+
+  if (eulaId) {
+    const {status} = await ascRequest(token, 'PATCH', `/v1/endUserLicenseAgreements/${eulaId}`, {
+      data: {
+        type: 'endUserLicenseAgreements',
+        id: eulaId,
+        attributes: {agreementText},
+        relationships: {territories: {data: territoryData}},
+      },
+    });
+    if (status < 300) {
+      console.log('FIXED: Custom EULA updated in App Information');
+    } else {
+      console.log(`WARN: Could not update custom EULA (${status})`);
+    }
+    return;
+  }
+
+  const {status} = await ascRequest(token, 'POST', '/v1/endUserLicenseAgreements', {
+    data: {
+      type: 'endUserLicenseAgreements',
+      attributes: {agreementText},
+      relationships: {
+        app: {data: {type: 'apps', id: APP_ID}},
+        territories: {data: territoryData},
+      },
+    },
+  });
+  if (status < 300) {
+    console.log('FIXED: Custom EULA created in App Information');
+  } else {
+    console.log(`WARN: Could not create custom EULA (${status})`);
+  }
+}
+
+async function ensureAppDescriptionLegalLinks(token) {
+  const locs = await ascGetAll(token, `/v1/appStoreVersions/${VERSION_ID}/appStoreVersionLocalizations`);
+  for (const loc of locs) {
+    const locale = loc.attributes?.locale ?? loc.id;
+    const description = loc.attributes?.description ?? '';
+    const updated = ensureDescriptionLegalLinks(description);
+    if (updated === description) {
+      console.log(`OK: ${locale} description already includes Terms link`);
+      continue;
+    }
+    const {status} = await ascRequest(token, 'PATCH', `/v1/appStoreVersionLocalizations/${loc.id}`, {
+      data: {
+        type: 'appStoreVersionLocalizations',
+        id: loc.id,
+        attributes: {description: updated},
+      },
+    });
+    if (status < 300) {
+      console.log(`FIXED: ${locale} App Description updated with Terms of Use + Privacy links`);
+    } else {
+      console.log(`WARN: Could not update ${locale} description (${status})`);
+    }
+  }
+}
+
+async function ensurePrivacyPolicyUrls(token) {
+  const appInfos = await ascGetAll(token, `/v1/apps/${APP_ID}/appInfos`);
+  for (const info of appInfos) {
+    const locs = await ascGetAll(token, `/v1/appInfos/${info.id}/appInfoLocalizations`);
+    for (const loc of locs) {
+      const locale = loc.attributes?.locale ?? loc.id;
+      const current = loc.attributes?.privacyPolicyUrl ?? '';
+      if (current === PRIVACY_URL) {
+        console.log(`OK: ${locale} privacyPolicyUrl set`);
+        continue;
+      }
+      const {status} = await ascRequest(token, 'PATCH', `/v1/appInfoLocalizations/${loc.id}`, {
+        data: {
+          type: 'appInfoLocalizations',
+          id: loc.id,
+          attributes: {privacyPolicyUrl: PRIVACY_URL},
+        },
+      });
+      if (status < 300) {
+        console.log(`FIXED: ${locale} privacyPolicyUrl set`);
+      } else {
+        console.log(`WARN: Could not set ${locale} privacyPolicyUrl (${status})`);
+      }
+    }
+  }
+}
+
 async function replaceSubscriptionPromoImage(token, subscriptionId, productId) {
   const imagePath = PRODUCT_IMAGES[productId];
   const existing = await ascRequest(token, 'GET', `/v1/subscriptions/${subscriptionId}/images`);
@@ -188,6 +329,10 @@ async function main() {
   });
 
   console.log('--- Fix ASC review issues ---');
+
+  await ensureCustomEula(token);
+  await ensurePrivacyPolicyUrls(token);
+  await ensureAppDescriptionLegalLinks(token);
 
   const {status: noteStatus} = await ascRequest(token, 'PATCH', `/v1/appStoreReviewDetails/${REVIEW_DETAIL_ID}`, {
     data: {
@@ -252,7 +397,7 @@ async function main() {
     console.log(`OK: lifetime state=${refreshed.json?.data?.attributes?.state ?? 'unknown'}`);
   }
 
-  const version = await ascRequest(token, 'GET', '/v1/appStoreVersions/2bfc2fc7-31fc-44bd-8b3c-7a329172b40a');
+  const version = await ascRequest(token, 'GET', `/v1/appStoreVersions/${VERSION_ID}`);
   console.log(`\nVersion 1.0 appStoreState=${version.json?.data?.attributes?.appStoreState}`);
 
   if (manual.length) {
