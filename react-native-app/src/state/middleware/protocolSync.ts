@@ -58,7 +58,11 @@ export function installProtocolSync(store: StoreApi): () => void {
       lastBeatHz = ev.beatHz;
     }
     if (gainChanged) {
-      state.setParam('gain', ev.gain);
+      if (state.breathPacerEnabled) {
+        state.setBreathGainAnchor(ev.gain);
+      } else {
+        state.setParam('gain', ev.gain);
+      }
       lastGain = ev.gain;
     }
     if (beatChanged || gainChanged) {

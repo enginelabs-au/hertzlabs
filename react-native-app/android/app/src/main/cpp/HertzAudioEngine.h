@@ -46,6 +46,7 @@ public:
     void setNoiseLevel(float level);
     void setNoiseLayers(float white, float pink, float brown);
     void fade(float toGain, int32_t durationMs);
+    void setBreathPacer(bool enabled, int patternId, float deltaDb);
 
     EngineState state() const noexcept;
     int32_t sampleRate() const noexcept;

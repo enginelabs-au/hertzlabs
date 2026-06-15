@@ -59,8 +59,81 @@ function resolveCredentialsPath(env) {
   return path.isAbsolute(rel) ? rel : path.join(appRoot, rel);
 }
 
-function priceMicros(usd) {
-  return String(Math.round(usd * 1_000_000));
+function money(usd) {
+  const units = Math.floor(usd);
+  const nanos = Math.round((usd - units) * 1e9);
+  return {currencyCode: 'USD', units: String(units), nanos};
+}
+
+function buildBasePlan(spec) {
+  return {
+    basePlanId: 'default',
+    state: 'DRAFT',
+    autoRenewingBasePlanType: {
+      billingPeriodDuration: spec.period,
+      gracePeriodDuration: 'P3D',
+      resubscribeState: 'RESUBSCRIBE_STATE_ACTIVE',
+      prorationMode: 'SUBSCRIPTION_PRORATION_MODE_CHARGE_ON_NEXT_BILLING_DATE',
+    },
+    regionalConfigs: [
+      {
+        regionCode: 'US',
+        newSubscriberAvailability: true,
+        price: money(spec.priceUsd),
+      },
+      {
+        regionCode: 'AU',
+        newSubscriberAvailability: true,
+        price: money(Math.round(spec.priceUsd * 1.55 * 100) / 100),
+      },
+    ],
+    otherRegionsConfig: {
+      usdPrice: money(spec.priceUsd),
+      eurPrice: money(Math.round(spec.priceUsd * 0.92 * 100) / 100),
+      newSubscriberAvailability: true,
+    },
+  };
+}
+
+async function ensureTrialOffer(token, spec) {
+  const offerUrl = `${BASE}/subscriptions/${spec.productId}/basePlans/default/offers/free-trial`;
+  const existing = await playApiRequest(token, 'GET', offerUrl);
+  if (existing.status === 200) {
+    console.log(`OK: trial offer exists ${spec.productId}:default:free-trial`);
+    return;
+  }
+
+  const body = {
+    packageName: PACKAGE_NAME,
+    productId: spec.productId,
+    basePlanId: 'default',
+    offerId: 'free-trial',
+    phases: [
+      {
+        recurrenceCount: 1,
+        duration: `P${spec.trialDays}D`,
+        regionalConfigs: [
+          {regionCode: 'US', free: {}},
+          {regionCode: 'AU', free: {}},
+        ],
+        otherRegionsConfig: {free: {}},
+      },
+    ],
+    regionalConfigs: [
+      {regionCode: 'US', newSubscriberAvailability: true},
+      {regionCode: 'AU', newSubscriberAvailability: true},
+    ],
+    targeting: {acquisitionRule: {}},
+  };
+
+  const createUrl =
+    `${BASE}/subscriptions/${spec.productId}/basePlans/default/offers` +
+    '?offerId=free-trial&regionsVersion.version=2025/01';
+  const created = await playApiRequest(token, 'POST', createUrl, body);
+  if (created.status >= 300) {
+    throw new Error(`CREATE offer ${spec.productId} -> ${created.status} ${JSON.stringify(created.json)}`);
+  }
+  console.log(`FIXED: created 7-day trial offer for ${spec.productId}`);
 }
 
 async function ensureSubscription(token, spec) {
@@ -68,6 +141,9 @@ async function ensureSubscription(token, spec) {
   const existing = await playApiRequest(token, 'GET', getUrl);
   if (existing.status === 200) {
     console.log(`OK: subscription exists ${spec.productId}`);
+    if (spec.trialDays > 0) {
+      await ensureTrialOffer(token, spec);
+    }
     return;
   }
   if (existing.status !== 404) {
@@ -84,55 +160,8 @@ async function ensureSubscription(token, spec) {
         description: spec.description,
       },
     ],
-    basePlans: [
-      {
-        basePlanId: 'default',
-        state: 'DRAFT',
-        autoRenewingBasePlanType: {
-          billingPeriodDuration: spec.period,
-          gracePeriodDuration: 'P3D',
-          resubscribeState: 'RESUBSCRIBE_STATE_ACTIVE',
-          prorationMode: 'SUBSCRIPTION_PRORATION_MODE_CHARGE_ON_NEXT_BILLING_DATE',
-        },
-        regionalConfigs: [
-          {
-            regionCode: 'AU',
-            newSubscriberAvailability: true,
-            price: {currencyCode: 'AUD', units: String(Math.floor(spec.priceUsd * 1.5)), nanos: 0},
-          },
-          {
-            regionCode: 'US',
-            newSubscriberAvailability: true,
-            price: {currencyCode: 'USD', units: String(Math.floor(spec.priceUsd)), nanos: Math.round((spec.priceUsd % 1) * 1e9)},
-          },
-        ],
-        offerTags: [],
-        otherRegionsConfig: {
-          usdPrice: {currencyCode: 'USD', units: String(Math.floor(spec.priceUsd)), nanos: Math.round((spec.priceUsd % 1) * 1e9)},
-          eurPrice: {currencyCode: 'EUR', units: String(Math.floor(spec.priceUsd * 0.92)), nanos: 0},
-          newSubscriberAvailability: true,
-        },
-      },
-    ],
+    basePlans: [buildBasePlan(spec)],
   };
-
-  if (spec.trialDays > 0) {
-    body.basePlans[0].offers = [
-      {
-        offerId: 'free-trial',
-        state: 'DRAFT',
-        phases: [
-          {
-            recurrenceCount: 1,
-            duration: `P${spec.trialDays}D`,
-            otherRegionsConfig: {free: {}},
-            regionalConfigs: [{regionCode: 'US', free: {}}, {regionCode: 'AU', free: {}}],
-          },
-        ],
-        targeting: {acquisitionRule: {}},
-      },
-    ];
-  }
 
   const createUrl = `${BASE}/subscriptions?productId=${encodeURIComponent(spec.productId)}&regionsVersion.version=2025/01`;
   const created = await playApiRequest(token, 'POST', createUrl, body);
@@ -140,41 +169,64 @@ async function ensureSubscription(token, spec) {
     throw new Error(`CREATE subscription ${spec.productId} -> ${created.status} ${JSON.stringify(created.json)}`);
   }
   console.log(`FIXED: created subscription ${spec.productId} (DRAFT — activate in Play Console)`);
+  if (spec.trialDays > 0) {
+    await ensureTrialOffer(token, spec);
+  }
 }
 
 async function ensureLifetimeProduct(token, spec) {
-  const getUrl = `${BASE}/inappproducts/${spec.productId}`;
+  const getUrl = `${BASE}/oneTimeProducts/${spec.productId}`;
   const existing = await playApiRequest(token, 'GET', getUrl);
   if (existing.status === 200) {
-    console.log(`OK: in-app product exists ${spec.productId}`);
+    const po = (existing.json.purchaseOptions || []).find(p => p.purchaseOptionId === 'default');
+    console.log(
+      `OK: one-time product exists ${spec.productId}` +
+        (po ? ` (purchase option default state=${po.state ?? 'unknown'})` : ''),
+    );
     return;
   }
   if (existing.status !== 404) {
-    throw new Error(`GET inapp ${spec.productId} -> ${existing.status} ${JSON.stringify(existing.json)}`);
+    throw new Error(`GET oneTimeProduct ${spec.productId} -> ${existing.status} ${JSON.stringify(existing.json)}`);
   }
 
   const body = {
-    packageName: PACKAGE_NAME,
-    sku: spec.productId,
-    status: 'inactive',
-    purchaseType: 'managedUser',
-    defaultPrice: {
-      priceMicros: priceMicros(spec.priceUsd),
-      currency: 'USD',
-    },
-    listings: {
-      'en-US': {
-        title: spec.title,
-        description: spec.description,
+    requests: [
+      {
+        allowMissing: true,
+        oneTimeProduct: {
+          packageName: PACKAGE_NAME,
+          productId: spec.productId,
+          listings: [{languageCode: 'en-US', title: spec.title, description: spec.description}],
+          purchaseOptions: [
+            {
+              purchaseOptionId: 'default',
+              buyOption: {legacyCompatible: true},
+              regionalPricingAndAvailabilityConfigs: [
+                {
+                  regionCode: 'US',
+                  price: money(spec.priceUsd),
+                  availability: 'AVAILABLE',
+                },
+              ],
+              newRegionsConfig: {
+                usdPrice: money(spec.priceUsd),
+                eurPrice: money(Math.round(spec.priceUsd * 0.92 * 100) / 100),
+                availability: 'AVAILABLE',
+              },
+            },
+          ],
+        },
+        updateMask: 'listings,purchaseOptions',
+        regionsVersion: {version: '2025/01'},
       },
-    },
+    ],
   };
 
-  const created = await playApiRequest(token, 'POST', `${BASE}/inappproducts`, body);
+  const created = await playApiRequest(token, 'POST', `${BASE}/oneTimeProducts:batchUpdate`, body);
   if (created.status >= 300) {
-    throw new Error(`CREATE inapp ${spec.productId} -> ${created.status} ${JSON.stringify(created.json)}`);
+    throw new Error(`CREATE oneTimeProduct ${spec.productId} -> ${created.status} ${JSON.stringify(created.json)}`);
   }
-  console.log(`FIXED: created in-app product ${spec.productId} (inactive — activate in Play Console)`);
+  console.log(`FIXED: created one-time product ${spec.productId} (activate purchase option in Play Console if DRAFT)`);
 }
 
 async function probePlayAccess(token) {

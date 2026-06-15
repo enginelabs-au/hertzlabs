@@ -3,8 +3,9 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
+import {LayoutModeToggle} from './LayoutModeToggle';
 
-/** Plans + Legal — pinned at the bottom of each screen. */
+/** Plans + Legal + layout mode — pinned at the bottom of each screen. */
 export function LegalMenuBar() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const tier = useHertzStore(s => s.tier);
@@ -12,6 +13,7 @@ export function LegalMenuBar() {
 
   return (
     <View style={styles.container}>
+      <LayoutModeToggle />
       <View style={styles.row}>
         <Pressable
           style={styles.menuBtn}

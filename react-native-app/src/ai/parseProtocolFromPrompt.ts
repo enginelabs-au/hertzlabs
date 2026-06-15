@@ -5,6 +5,24 @@ import type {ProtocolStep, RampCurve, SessionProtocol} from '../protocol/types';
 
 const HZ = /(\d+(?:\.\d+)?)\s*(?:hz|hertz)\b/gi;
 
+const BAND_HZ: Record<string, number> = {
+  epsilon: 0.5,
+  delta: 2.5,
+  theta: 6,
+  alpha: 10,
+  smr: 14,
+  beta: 18,
+  gamma: 40,
+  lambda: 100,
+};
+
+const BAND_NAMES = Object.keys(BAND_HZ).join('|');
+
+export function bandNameToHz(name: string): number | null {
+  const key = name.toLowerCase().trim();
+  return BAND_HZ[key] ?? null;
+}
+
 const STEP_SPLIT =
   /\s+(?:then|→|->|,\s*then|;\s*|\bstep\s+\d+\s*:?\s*|\bphase\s+\d+\s*:?\s*|\bstage\s+\d+\s*:?\s*)/i;
 
@@ -186,6 +204,12 @@ export function extractTargetHzFromConversationText(text: string): number | null
       }
     }
   }
+  if (lastHz == null) {
+    const bandMatches = [...normalized.matchAll(new RegExp(`\\b(${BAND_NAMES})\\b`, 'gi'))];
+    if (bandMatches.length > 0) {
+      lastHz = bandNameToHz(bandMatches[bandMatches.length - 1][1]);
+    }
+  }
   return lastHz;
 }
 
@@ -217,10 +241,42 @@ function parseHzValues(chunk: string): number[] {
       values.push(clampHz(parseFloat(bare[1])));
     }
   }
+  if (values.length === 0) {
+    const bandMatch = chunk.match(new RegExp(`\\b(${BAND_NAMES})\\b`, 'i'));
+    if (bandMatch != null) {
+      const hz = bandNameToHz(bandMatch[1]);
+      if (hz != null) {
+        values.push(hz);
+      }
+    }
+  }
   return values;
 }
 
+function parseBandGlide(chunk: string): {start: number; end: number; curve: RampCurve} | null {
+  const bandRe = new RegExp(
+    `(?:from|start(?:ing)?\\s+(?:at)?\\s*|ramp(?:s|ing)?\\s+(?:from\\s+)?)(${BAND_NAMES}).{0,40}(?:to|→|->|down\\s+to|up\\s+to|into)\\s+(${BAND_NAMES})`,
+    'i',
+  );
+  const m = chunk.match(bandRe);
+  if (m == null) {
+    return null;
+  }
+  const start = bandNameToHz(m[1]);
+  const end = bandNameToHz(m[2]);
+  if (start == null || end == null) {
+    return null;
+  }
+  const curve: RampCurve = /log|smooth|gradual|sleep|wind/i.test(chunk) ? 'logarithmic' : 'linear';
+  return {start, end, curve};
+}
+
 function parseGlide(chunk: string): {start: number; end: number; curve: RampCurve} | null {
+  const bandGlide = parseBandGlide(chunk);
+  if (bandGlide != null) {
+    return bandGlide;
+  }
+
   const ramp =
     chunk.match(
       /(?:from|start(?:ing)?\s+(?:at)?)\s*(\d+(?:\.\d+)?)\s*(?:hz|hertz)?\s*(?:to|→|->|down\s+to|up\s+to|into)\s*(\d+(?:\.\d+)?)/i,

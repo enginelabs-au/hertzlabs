@@ -1,4 +1,5 @@
 import type {ChatTurn} from '../../ai/aiPromptParsing';
+import {wantsProtocolSequence} from '../../ai/aiIntent';
 import {
   adjustHzFromRelativeCues,
   extractTargetHzFromPrompt,
@@ -230,6 +231,16 @@ function generateFormulaLocal(
   const history = options.history ?? [];
   const baseHz = getLastAppliedHz(history, ctx.f_beat);
 
+  if (wantsProtocolSequence(history, prompt)) {
+    return {
+      reply: CLARIFY_REPLY,
+      formula: '',
+      evalHz: null,
+      bandLabel: null,
+      error: null,
+    };
+  }
+
   // 1. Explicit Hz always wins.
   const explicit = extractTargetHzFromPrompt(prompt);
   if (explicit != null && explicit <= MAX_BEAT_HZ * 12) {
@@ -270,6 +281,16 @@ export async function generateFormulaFromPrompt(
   const trimmed = prompt.trim();
   if (!trimmed) {
     return generateFormulaLocal('f_beat', ctx, options);
+  }
+
+  if (wantsProtocolSequence(history, trimmed)) {
+    return {
+      reply: CLARIFY_REPLY,
+      formula: '',
+      evalHz: null,
+      bandLabel: null,
+      error: null,
+    };
   }
 
   const geminiRaw = await geminiFormulaResponse(history, trimmed, {

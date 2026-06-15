@@ -7,6 +7,7 @@ import type {EngineMode} from '../../state/types';
 import type {EngineCategoryId} from '../layout/CategoryTabBar';
 import {ENGINE_CATEGORIES} from '../layout/CategoryTabBar';
 import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 import {HertzTheme} from '../../theme/hertzTheme';
 
 function HeadphonePill({required}: {required: boolean}) {
@@ -102,6 +103,7 @@ function EngineRow({meta, isActive, isLocked, isComingSoon, onSelect, onUpgrade}
 
       {expanded && (
         <View style={styles.seqWrap}>
+          <BreathPacerSection foldStyle={styles.seqFold} />
           <ProtocolSequencesSection foldStyle={styles.seqFold} engineMode={meta.mode} />
         </View>
       )}

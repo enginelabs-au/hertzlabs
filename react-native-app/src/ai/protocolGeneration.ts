@@ -9,67 +9,21 @@ import {
 import type {ProtocolStep, RampCurve, SessionProtocol} from '../protocol/types';
 import {geminiProtocolSequence} from './geminiChatClient';
 import type {ChatTurn} from './aiPromptParsing';
+import {isSequenceRequestInConversation} from './aiIntent';
+import {bandNameToHz} from './parseProtocolFromPrompt';
 import {
   buildUserConversationText,
+  collectDurationSecMentions,
   conversationHasExplicitSequenceNumbers,
   inferTargetTotalSecFromConversation,
+  normalizeConversationForParsing,
   parseExplicitProtocolFromConversation,
   parseExplicitProtocolFromPrompt,
   parseFadeOutFromConversation,
   parseFadeOutFromText,
 } from './parseProtocolFromPrompt';
 
-const SEQUENCE_CUES = [
-  'sequence',
-  'protocol',
-  'journey',
-  'progression',
-  'over time',
-  'step by step',
-  'gradual',
-  'ramp down',
-  'ramp up',
-  'wind down',
-  'induction',
-  'timeline',
-  'chain',
-  'multi-step',
-  'multistep',
-  'minutes then',
-  'min then',
-  'then go',
-  'then drop',
-  'transition',
-  'schedule',
-  'program',
-  'over \d',
-  '\d+\s*min',
-  'hour',
-];
-
-export function isSequenceRequest(prompt: string): boolean {
-  const lower = prompt.toLowerCase();
-  if (SEQUENCE_CUES.some(c => (c.includes('\\') ? new RegExp(c, 'i').test(lower) : lower.includes(c)))) {
-    return true;
-  }
-  if (/\b\d+\s*(?:sec|second|min|minute|hour)/i.test(prompt)) {
-    return true;
-  }
-  return /\b\d+\s*(?:min|minute|hour)/i.test(prompt) && /\b(then|→|->|step|phase|stage)\b/i.test(prompt);
-}
-
-export function isSequenceRequestInConversation(history: ChatTurn[], latest: string): boolean {
-  if (isSequenceRequest(latest)) {
-    return true;
-  }
-  const userText = buildUserConversationText(history, latest);
-  if (isSequenceRequest(userText)) {
-    return true;
-  }
-  const hasSequenceCue = history.some(t => t.role === 'user' && isSequenceRequest(t.text));
-  const hasTiming = conversationHasExplicitSequenceNumbers(history, latest);
-  return hasSequenceCue && hasTiming;
-}
+export {isSequenceRequest, isSequenceRequestInConversation} from './aiIntent';
 
 function makeStep(
   partial: Partial<ProtocolStep> &
@@ -101,6 +55,9 @@ function localCalmSequence(engine: EngineMode): SessionProtocol {
     description: 'Gradual alpha→theta descent to settle racing thoughts.',
     stopAfterSec: 0,
     stopAfterPlayback: true,
+    fadeOutDurationSec: 30,
+    fadeOutStartGain: 0.28,
+    fadeOutEndGain: 0.04,
     steps: [
       makeStep({id: 'settle', label: 'Alpha · 10 Hz', durationSec: 8 * 60, startBeatHz: 12, endBeatHz: 10, startGain: 0.42, endGain: 0.38}, engine),
       makeStep({id: 'deep-calm', label: 'Theta · 6 Hz', durationSec: 12 * 60, startBeatHz: 10, endBeatHz: 6, startGain: 0.38, endGain: 0.32}, engine),
@@ -158,6 +115,24 @@ function parseEngineMode(raw: unknown, fallback: EngineMode): EngineMode {
   return fallback;
 }
 
+function parseBeatHzField(raw: unknown, fallback?: number): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.max(0.5, Math.min(500, raw));
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    const asNum = parseFloat(trimmed);
+    if (Number.isFinite(asNum)) {
+      return Math.max(0.5, Math.min(500, asNum));
+    }
+    const bandHz = bandNameToHz(trimmed);
+    if (bandHz != null) {
+      return bandHz;
+    }
+  }
+  return fallback ?? null;
+}
+
 function maxMinutesMentioned(prompt: string): number {
   let max = 0;
   for (const m of prompt.matchAll(/(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|min\b)/gi)) {
@@ -194,7 +169,6 @@ function normalizeStepDurationSec(raw: unknown, prompt: string): number | null {
   }
 
   const maxMin = maxMinutesMentioned(prompt);
-  // Gemini often returns minutes in durationSec when the user wrote "10 min".
   if (maxMin > 0 && durationSec <= maxMin + 0.01 && durationSec < 300) {
     return Math.max(1, Math.round(durationSec * 60));
   }
@@ -214,6 +188,38 @@ function mergeProtocolSteps(
     title: secondary.title || primary.title,
     description: secondary.description || primary.description,
   });
+}
+
+function isLocalParseAuthoritative(protocol: SessionProtocol): boolean {
+  if (protocol.steps.length >= 2) {
+    return true;
+  }
+  if (protocol.steps.length === 0) {
+    return false;
+  }
+  const step = protocol.steps[0];
+  if (Math.abs(step.startBeatHz - step.endBeatHz) >= 0.05) {
+    return true;
+  }
+  if (protocol.description.includes('timings and frequencies')) {
+    return true;
+  }
+  if (protocol.description.includes('duration and frequency')) {
+    return true;
+  }
+  if (step.label.includes('→')) {
+    return true;
+  }
+  if (step.label !== 'Hold · 10 Hz') {
+    return true;
+  }
+  return false;
+}
+
+function hasExplicitPerStepDurations(history: ChatTurn[], latest: string): boolean {
+  const text = normalizeConversationForParsing(buildUserConversationText(history, latest));
+  const durations = collectDurationSecMentions(text);
+  return /\b(then|→|->)\b/i.test(text) && durations.length >= 2;
 }
 
 function parseGeminiProtocol(
@@ -237,9 +243,15 @@ function parseGeminiProtocol(
       }
       const s = item as Record<string, unknown>;
       const durationSec = normalizeStepDurationSec(s, prompt);
-      const startBeatHz = Number(s.startBeatHz);
-      const endBeatHz = Number(s.endBeatHz ?? startBeatHz);
-      if (durationSec == null || !Number.isFinite(startBeatHz)) {
+      const startBeatHz =
+        parseBeatHzField(s.startBeatHz) ??
+        parseBeatHzField(s.beatHz) ??
+        parseBeatHzField(s.frequency);
+      const endBeatHz =
+        parseBeatHzField(s.endBeatHz) ??
+        parseBeatHzField(s.targetBeatHz) ??
+        startBeatHz;
+      if (durationSec == null || startBeatHz == null || endBeatHz == null) {
         return null;
       }
       const curve: RampCurve = s.curve === 'linear' ? 'linear' : 'logarithmic';
@@ -330,6 +342,9 @@ function applyDurationIntent(
   history: ChatTurn[],
   latest: string,
 ): SessionProtocol {
+  if (hasExplicitPerStepDurations(history, latest)) {
+    return protocol;
+  }
   const targetSec = inferTargetTotalSecFromConversation(history, latest);
   if (targetSec == null || protocol.steps.length === 0) {
     return protocol;
@@ -357,6 +372,36 @@ function applyFadeOutIntent(
     return protocol;
   }
   return normalizeProtocol({...protocol, ...patch});
+}
+
+function buildProtocolFromSources(
+  localExplicit: SessionProtocol | null,
+  parsed: SessionProtocol | null,
+  conversationText: string,
+  engineType: EngineMode,
+): SessionProtocol {
+  const localAuthoritative =
+    localExplicit != null && isLocalParseAuthoritative(localExplicit);
+
+  if (localAuthoritative && parsed != null) {
+    return mergeProtocolSteps(localExplicit, parsed);
+  }
+  if (parsed != null) {
+    return parsed;
+  }
+  if (localAuthoritative && localExplicit != null) {
+    return localExplicit;
+  }
+  if (localExplicit != null && localExplicit.steps.length > 0) {
+    return localExplicit;
+  }
+  if (conversationHasExplicitSequenceNumbers([], conversationText)) {
+    const retry = parseExplicitProtocolFromPrompt(conversationText, engineType);
+    if (retry != null && isLocalParseAuthoritative(retry)) {
+      return retry;
+    }
+  }
+  return localGenericSequence(conversationText, engineType);
 }
 
 export async function generateProtocolFromPrompt(
@@ -393,14 +438,7 @@ export async function generateProtocolFromPrompt(
   const parsed =
     geminiRaw != null ? parseGeminiProtocol(geminiRaw, engineType, conversationText) : null;
 
-  let protocol: SessionProtocol;
-  if (localExplicit != null && localExplicit.steps.length > 0) {
-    protocol = mergeProtocolSteps(localExplicit, parsed);
-  } else if (parsed != null) {
-    protocol = parsed;
-  } else {
-    protocol = localGenericSequence(conversationText, engineType);
-  }
+  let protocol = buildProtocolFromSources(localExplicit, parsed, conversationText, engineType);
 
   protocol = applyDurationIntent(protocol, history, trimmed);
   protocol = applyFadeOutIntent(protocol, history, trimmed, conversationText);

@@ -31,6 +31,7 @@ export interface Spec extends TurboModule {
   // Phase/timing injection (Plan 03 additive)
   setPhaseAndTiming(phase: number, timingMs: number): void;
   setBackgroundPlaybackEnabled(enabled: boolean): void;
+  setBreathPacer(enabled: boolean, patternId: number, deltaDb: number): void;
 
   // Events — native → JS
   readonly onEngineState: EventEmitter<{
@@ -64,6 +65,7 @@ const NativeHertzAudio: Spec = _module ?? ({
   loadPreset: noop,
   setPhaseAndTiming: noop,
   setBackgroundPlaybackEnabled: noop,
+  setBreathPacer: noop,
   onEngineState: (_l: unknown) => noopSub,
   onPosition: (_l: unknown) => noopSub,
   onError: (_l: unknown) => noopSub,

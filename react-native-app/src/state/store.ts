@@ -8,8 +8,10 @@ import {createSessionSlice} from './slices/session';
 import {createSettingsSlice} from './slices/settings';
 import {createSubscriptionSlice} from './slices/subscription';
 import {createTelemetrySlice} from './slices/telemetry';
+import {createBreathPacerSlice} from './slices/breathPacer';
 import {createProtocolSlice} from './slices/protocol';
 import {createAiChatSlice} from './slices/aiChat';
+import {createLayoutModeSlice} from './slices/layoutMode';
 import {createUiSlice} from './slices/ui';
 import {persist, persistedStoreOptions} from './middleware/persist';
 import type {AppStore} from './types';
@@ -24,10 +26,12 @@ export const useHertzStore = create<AppStore>()(
         ...createPresetSlice(...args),
         ...createAISlice(...args),
         ...createUiSlice(...args),
+        ...createLayoutModeSlice(...args),
         ...createSettingsSlice(...args),
         ...createSubscriptionSlice(...args),
         ...createTelemetrySlice(...args),
         ...createProtocolSlice(...args),
+        ...createBreathPacerSlice(...args),
         ...createAiChatSlice(...args),
       }),
       persistedStoreOptions,

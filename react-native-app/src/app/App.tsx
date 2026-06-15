@@ -17,6 +17,7 @@ import {MainTabs} from '../navigation/MainTabs';
 import {LegalScreen} from '../screens/LegalScreen';
 import {PaywallScreen} from '../screens/PaywallScreen';
 import {installAudioSync} from '../state/middleware/audioSync';
+import {installBreathPacerSync} from '../state/middleware/breathPacerSync';
 import {installProtocolSync} from '../state/middleware/protocolSync';
 import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
@@ -112,9 +113,17 @@ function AppContent(): React.JSX.Element {
     HertzAudioClient.configure(192000, bufferMs);
     const uninstallAudio = installAudioSync(useHertzStore);
     const uninstallProtocol = installProtocolSync(useHertzStore);
+    const uninstallBreath = installBreathPacerSync({
+      getState: useHertzStore.getState,
+      setState: partial => {
+        useHertzStore.setState(partial);
+      },
+      subscribe: useHertzStore.subscribe,
+    });
     return () => {
       uninstallAudio();
       uninstallProtocol();
+      uninstallBreath();
     };
   }, [hydrated]);
 
@@ -151,7 +160,7 @@ export function App(): React.JSX.Element {
     <SafeAreaProvider>
       <RootErrorBoundary>
         <GestureHandlerRootView style={styles.root}>
-          <StatusBar barStyle="light-content" backgroundColor={BG} translucent={Platform.OS === 'android'} />
+          <StatusBar barStyle="light-content" backgroundColor={BG} translucent={false} />
           <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
             <AppContent />
           </SafeAreaView>

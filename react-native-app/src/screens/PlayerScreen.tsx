@@ -14,6 +14,7 @@ import {
 } from '../monetization/isPremiumUnlocked';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
+import {SimplePlayerScreen} from './SimplePlayerScreen';
 
 function VolumeWarningBanner() {
   return (
@@ -41,6 +42,14 @@ function KineticIndicator({active}: {active: boolean}) {
  * kinetic/experimental toggles. Playback lives in the global TransportBar above tabs.
  */
 export function PlayerScreen() {
+  const isAdvancedMode = useHertzStore(s => s.isAdvancedMode);
+  if (!isAdvancedMode) {
+    return <SimplePlayerScreen />;
+  }
+  return <AdvancedPlayerScreen />;
+}
+
+function AdvancedPlayerScreen() {
   const [category, setCategory] = useState<EngineCategoryId>('entrainment');
   const highVolumeWarning = useHertzStore(s => s.highVolumeWarningTriggered);
   const isKineticModeEnabled = useHertzStore(s => s.isKineticModeEnabled);

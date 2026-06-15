@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BreathPacer.h"
 #include "ParameterBox.h"
 #include <cstdint>
 
@@ -53,6 +54,9 @@ private:
     float pinkB5_ = 0.0f;
     float pinkB6_ = 0.0f;
     float brownState_ = 0.0f;
+
+    BreathPacer breathPacer_;
+    uint64_t lastBreathGeneration_ = 0;
 
     void syncTargets(const ParameterSnapshot &snapshot);
     float nextNoiseSample();

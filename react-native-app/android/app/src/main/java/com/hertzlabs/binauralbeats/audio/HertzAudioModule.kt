@@ -80,6 +80,11 @@ class HertzAudioModule(
         // iOS AudioSessionController; Android uses HertzAudioService when foreground service is started.
     }
 
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun setBreathPacer(enabled: Boolean, patternId: Double, deltaDb: Double) {
+        nativeSetBreathPacer(enabled, patternId.toInt(), deltaDb)
+    }
+
     companion object {
         const val NAME = "HertzAudio"
 
@@ -101,6 +106,7 @@ class HertzAudioModule(
         @JvmStatic private external fun nativeSetNoiseLevel(level: Double)
         @JvmStatic private external fun nativeSetNoiseLayers(white: Double, pink: Double, brown: Double)
         @JvmStatic private external fun nativeFade(toGain: Double, durationMs: Int)
+        @JvmStatic private external fun nativeSetBreathPacer(enabled: Boolean, patternId: Int, deltaDb: Double)
         @JvmStatic private external fun nativeSampleRate(): Int
     }
 }

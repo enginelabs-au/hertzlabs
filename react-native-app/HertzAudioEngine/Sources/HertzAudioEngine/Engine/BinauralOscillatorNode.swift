@@ -75,6 +75,7 @@ public final class BinauralOscillatorNode {
         var smPhaseAngleRad: Double = 0
         var smToneDuck: Float = 1.0
         var lastGeneration: UInt64 = 0
+        let breathPacer = BreathPacer()
         var rngState: UInt32 = 0xA3C59AC3
         var pinkB0: Float = 0, pinkB1: Float = 0, pinkB2: Float = 0
         var pinkB3: Float = 0, pinkB4: Float = 0, pinkB5: Float = 0, pinkB6: Float = 0
@@ -102,6 +103,12 @@ public final class BinauralOscillatorNode {
             // Target phase offset (degrees → rad); smoothed per-sample below.
             let targetPhaseAngleRad = snap.targetPhaseAngle * (.pi / 180.0)
             let modeCode = Int(snap.targetTimingDiffMs.rounded())
+            breathPacer.configure(
+                enabled: snap.breathPacerEnabled,
+                patternId: snap.breathPatternId,
+                deltaDb: snap.breathDeltaDb,
+                sampleRate: sr
+            )
 
             let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard !buffers.isEmpty else {
@@ -134,6 +141,10 @@ public final class BinauralOscillatorNode {
                 smNoiseBrown += noiseAlpha * (targetNoiseBrown - smNoiseBrown)
                 smPhaseAngleRad += Double(alpha) * (targetPhaseAngleRad - smPhaseAngleRad)
 
+                let breathMult =
+                    snap.breathPacerEnabled && snap.playIntent ? breathPacer.advance() : Float(1)
+                let pacedGain = smGain * breathMult
+
                 let mode = NativeEngineModeCode(rawValue: modeCode) ?? .binaural
                 let leftHz  = max(0.001, smCarrier - smBeat * 0.5)
                 let rightHz = max(0.001, smCarrier + smBeat * 0.5)
@@ -161,8 +172,8 @@ public final class BinauralOscillatorNode {
                 )
 
                 // Balance: gainL = gain * max(0, 1 − balance), gainR = gain * max(0, 1 + balance)
-                let gainL = smGain * max(0, 1.0 - smBalance)
-                let gainR = smGain * max(0, 1.0 + smBalance)
+                let gainL = pacedGain * max(0, 1.0 - smBalance)
+                let gainR = pacedGain * max(0, 1.0 + smBalance)
 
                 let clampedGainL = min(gainL, AudioConstants.kMaxAmplitude)
                 let clampedGainR = min(gainR, AudioConstants.kMaxAmplitude)

@@ -10,6 +10,7 @@ import {noiseMixToSliderNorm, sliderNormToNoiseMix} from '../../audio/noiseMixSl
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {NeonSlider} from '../player/NeonSlider';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 
 function DescriptorTags({tags}: {tags: string[]}) {
   return (
@@ -93,6 +94,12 @@ function NoiseRow({
           {isActive ? '● Selected' : '○ Select noise'}
         </Text>
       </Pressable>
+
+      {expanded && (
+        <View style={styles.nestedFold}>
+          <BreathPacerSection foldStyle={styles.nestedFoldInner} />
+        </View>
+      )}
     </View>
   );
 }
@@ -255,5 +262,15 @@ const styles = StyleSheet.create({
   },
   selectBtnTextActive: {
     color: HertzTheme.neon.cyan,
+  },
+  nestedFold: {
+    marginHorizontal: 12,
+    marginBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
+    paddingTop: 8,
+  },
+  nestedFoldInner: {
+    marginHorizontal: 0,
   },
 });

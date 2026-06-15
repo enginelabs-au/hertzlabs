@@ -89,6 +89,12 @@ export const HertzAudioClient = {
     NativeHertzAudio.setBackgroundPlaybackEnabled(enabled);
   },
 
+  setBreathPacer(enabled: boolean, patternId: number, deltaDb: number): void {
+    if (typeof NativeHertzAudio.setBreathPacer === 'function') {
+      NativeHertzAudio.setBreathPacer(enabled, patternId, deltaDb);
+    }
+  },
+
   setNoise(type: BinauralParameters['noiseType'], level: number): void {
     NativeHertzAudio.setNoise(type, clampGain(level));
   },

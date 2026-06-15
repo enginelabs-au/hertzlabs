@@ -46,6 +46,12 @@ export function railBands(
   return experimental ? BRAINWAVE_BANDS : BRAINWAVE_BANDS.slice(0, EXPERIMENTAL_BAND_INDEX);
 }
 
+/** Simple Home vertical rail — HEALING through COGNITION (≤40 Hz cap on select). */
+export function simpleHomeRailBands(): readonly (typeof BRAINWAVE_BANDS)[number][] {
+  const cognitionIdx = BRAINWAVE_BANDS.findIndex(b => b.label === 'COGNITION');
+  return BRAINWAVE_BANDS.slice(0, cognitionIdx + 1);
+}
+
 /** Segments shown in the hub frequency bar (excludes premium-only tail above 100 Hz). */
 export const HUB_BAND_SEGMENTS = BRAINWAVE_BANDS.filter(b => b.maxHz <= 100 || b.minHz < 100);
 

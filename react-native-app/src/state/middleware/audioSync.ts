@@ -36,6 +36,14 @@ export function installAudioSync(store: SelectorStore): () => void {
   const unsubscribeRightDrift = store.subscribe(s => s.rightDriftHz, () => pushParams());
   const unsubscribeEngine    = store.subscribe(s => s.engineType, () => pushParams());
   const unsubscribeExperimental = store.subscribe(s => s.experimentalMode, () => pushParams());
+  const unsubscribeBreathEnabled = store.subscribe(s => s.breathPacerEnabled, () => pushBreathPacer());
+  const unsubscribeBreathPattern = store.subscribe(s => s.breathPatternId, () => pushBreathPacer());
+  const unsubscribeBreathDelta = store.subscribe(s => s.breathDeltaDb, () => pushBreathPacer());
+
+  function pushBreathPacer() {
+    // Volume modulation runs via store `gain` + breathPacerSync (moves the dial).
+    HertzAudioClient.setBreathPacer(false, 0, 0);
+  }
 
   function pushNoise() {
     const s = store.getState();
@@ -81,6 +89,7 @@ export function installAudioSync(store: SelectorStore): () => void {
     unsubscribeNoiseMix();
     unsubscribePhase(); unsubscribeLeftDrift(); unsubscribeRightDrift();
     unsubscribeEngine(); unsubscribeExperimental();
+    unsubscribeBreathEnabled(); unsubscribeBreathPattern(); unsubscribeBreathDelta();
   };
   const unsubscribePlayback = () => {
     unsubscribeIsPlaying(); unsubscribeIsPaused();
@@ -166,6 +175,7 @@ export function installAudioSync(store: SelectorStore): () => void {
 
   // Prime native DSP before first play (subscriptions only fire on change).
   pushParams();
+  pushBreathPacer();
 
   return () => {
     installed = false;

@@ -195,6 +195,10 @@ public final class HertzAudioEngine {
         parameterBox.setNoiseLayers(white: white, pink: pink, brown: brown)
     }
 
+    public func setBreathPacer(enabled: Bool, patternId: Int, deltaDb: Float) {
+        parameterBox.setBreathPacer(enabled: enabled, patternId: patternId, deltaDb: deltaDb)
+    }
+
     public func fade(toGain: Float, durationMs: Int) {
         var s = parameterBox.read()
         s.targetGain = toGain

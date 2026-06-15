@@ -127,6 +127,13 @@ RCT_EXPORT_MODULE(HertzAudio)
   [self.nativeEngine setBackgroundPlaybackEnabled:enabled];
 }
 
+- (void)setBreathPacer:(BOOL)enabled patternId:(double)patternId deltaDb:(double)deltaDb
+{
+  [self.nativeEngine setBreathPacerWithEnabled:enabled
+                                     patternId:(int)patternId
+                                       deltaDb:(float)deltaDb];
+}
+
 #pragma mark - HertzAudioEventSink
 
 - (void)emitEngineStateWithState:(NSString *)state

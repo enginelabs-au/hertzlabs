@@ -23,6 +23,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)fadeToGain:(float)toGain durationMs:(NSInteger)durationMs;
 - (void)setPhaseAndTimingWithPhase:(double)phase timingMs:(double)timingMs;
 - (void)setBackgroundPlaybackEnabled:(BOOL)enabled;
+- (void)setBreathPacerWithEnabled:(BOOL)enabled
+                        patternId:(int)patternId
+                          deltaDb:(float)deltaDb;
 
 @end
 

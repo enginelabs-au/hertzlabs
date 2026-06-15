@@ -59,12 +59,13 @@ export const IAP_SETUP_CHECKLIST = APP_STORE_SETUP_CHECKLIST;
 
 /** Google Play + RevenueCat Android — required before plans load on Android. */
 export const PLAY_STORE_SETUP_CHECKLIST = [
-  `Google Play Console → Monetize → Subscriptions: create ${IAP_PRODUCT_IDS.monthly} and ${IAP_PRODUCT_IDS.annual} with base plan "${PLAY_SUBSCRIPTION_BASE_PLAN_ID}" (RevenueCat store IDs: ${PLAY_IAP_PRODUCT_IDS.monthly}, ${PLAY_IAP_PRODUCT_IDS.annual}).`,
-  `Google Play Console → Monetize → In-app products: create ${IAP_PRODUCT_IDS.lifetime} as a one-time product.`,
-  'Google Play Console → link a payments profile and publish the app to at least Internal testing (draft SKUs alone are not enough).',
-  'RevenueCat → add Android app (package com.hertzlabs.binauralbeats) with the Google Play service credentials JSON.',
-  'RevenueCat → Products: import/sync the 3 Play products, attach to entitlement "premium", and add packages to offering "default".',
-  'Set REVENUECAT_API_KEY_ANDROID (goog_…) in react-native-app/.env and rebuild the app.',
-  'Test on a Play-enabled device/emulator signed into Play Store; add your Google account as a License tester in Play Console.',
+  'Google Play Console → set up a payments profile (required before billing).',
+  `Subscriptions (Monetize with Play → Products → Subscriptions): create subscription product IDs ${IAP_PRODUCT_IDS.monthly} and ${IAP_PRODUCT_IDS.annual}, then for each add an auto-renewing base plan with ID "${PLAY_SUBSCRIPTION_BASE_PLAN_ID}", set price/availability, and Activate the base plan.`,
+  `Optional 7-day trial: on each base plan add an offer (Add offer → new customer acquisition → Free trial phase 7 days) and Activate the offer. Do not mention trial/price in subscription Benefits text (Google policy).`,
+  `One-time product (Monetize with Play → Products → One-time products): create ${IAP_PRODUCT_IDS.lifetime} with a Buy purchase option, set price, and Activate.`,
+  `RevenueCat store IDs for subscriptions use productId:basePlanId — ${PLAY_IAP_PRODUCT_IDS.monthly}, ${PLAY_IAP_PRODUCT_IDS.annual}; lifetime is ${PLAY_IAP_PRODUCT_IDS.lifetime}.`,
+  'Upload signed AAB to at least Internal testing; add license testers under Setup → License testing.',
+  'RevenueCat → Android app: service credentials JSON + Pub/Sub RTDN (Monetize with Play → Monetization setup → topic from RC).',
+  'RevenueCat catalog is wired via npm run fix:revenuecat:android; rebuild after REVENUECAT_API_KEY_ANDROID is in .env.',
   'Wait 15–60 minutes after Play + RevenueCat changes, then tap Retry on the paywall.',
 ] as const;

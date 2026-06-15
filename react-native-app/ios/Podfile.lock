@@ -26,6 +26,30 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - NitroSpeech (0.4.6):
+    - hermes-engine
+    - NitroModules
+    - RCTRequired
+    - RCTTypeSafety
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - PurchasesHybridCommon (14.3.0):
     - RevenueCat (= 5.32.0)
   - RCTDeprecation (0.85.3)
@@ -2126,6 +2150,7 @@ DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - NitroModules (from `../node_modules/react-native-nitro-modules`)
+  - NitroSpeech (from `../node_modules/react-native-nitro-speech`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../node_modules/react-native/ReactApple/RCTSwiftUI`)
@@ -2221,6 +2246,8 @@ EXTERNAL SOURCES:
     :tag: hermes-v250829098.0.10
   NitroModules:
     :path: "../node_modules/react-native-nitro-modules"
+  NitroSpeech:
+    :path: "../node_modules/react-native-nitro-speech"
   RCTDeprecation:
     :path: "../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation"
   RCTRequired:
@@ -2386,6 +2413,7 @@ SPEC CHECKSUMS:
   FBLazyVector: 24e62c765683b8d89006a88a2c8f5cf019f0074d
   hermes-engine: 7de19476e8eb38e722afb4580345ae438368d284
   NitroModules: 16bc17a076b12304d608f7c915b9d321f56dfc19
+  NitroSpeech: e65d1e6dd81cc7a633991bad4ff51fc291354dd4
   PurchasesHybridCommon: 7f0944cc5411bdcd1ea5d69affa6a6f9aaf87b13
   RCTDeprecation: a4c521821fab57cbb125b36effe84d897d0dfa12
   RCTRequired: 9f3a7e5645d4bc3f551593de7550bb66ab6e42bc
@@ -2458,7 +2486,7 @@ SPEC CHECKSUMS:
   React-utils: ccc01da318979af773259c4f6cdb1876f6f86f1a
   React-webperformancenativemodule: f8b97c2cb6cfa94e92a503c09ad6d491c50a1390
   ReactAppDependencyProvider: 25c9c516839be2c5e3d3344f95dc7da5f7e63fc2
-  ReactCodegen: a95fc51e30622e991cc8a9b480d230314181accb
+  ReactCodegen: 29fbff26a9bd7eb69bf501d069384f2e51a123f3
   ReactCommon: 7dfc3250793bf36cf221096ff59e1179e13eef7f
   ReactNativeBlur: 1ca228989aa5d9904e14f705a38d88085fabd2ae
   ReactNativeDependencies: a974db2c6952ff3ba0ba8376d71749687ebcf634

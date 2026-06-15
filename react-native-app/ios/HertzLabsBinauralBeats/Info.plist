@@ -27,7 +27,9 @@
 	<key>NSMotionUsageDescription</key>
 	<string>Hertz Labs uses motion data to adapt binaural entrainment to your movement and stillness.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Hertz Labs uses the microphone only to initialize audio routing on the simulator; audio is not recorded.</string>
+	<string>Hertz Labs uses the microphone to convert your speech into text for the AI guide.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Hertz Labs uses speech recognition so you can describe your session goal by voice.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

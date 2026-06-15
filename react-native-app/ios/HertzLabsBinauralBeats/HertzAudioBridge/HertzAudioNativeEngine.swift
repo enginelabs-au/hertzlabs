@@ -70,4 +70,9 @@ final class HertzAudioNativeEngine: NSObject {
   @objc func setBackgroundPlaybackEnabled(_ enabled: Bool) {
     AudioSessionController.shared.backgroundPlaybackEnabled = enabled
   }
+
+  @objc(setBreathPacerWithEnabled:patternId:deltaDb:)
+  func setBreathPacerWithEnabled(_ enabled: Bool, patternId: Int, deltaDb: Float) {
+    facade.setBreathPacer(enabled: enabled, patternId: patternId, deltaDb: deltaDb)
+  }
 }

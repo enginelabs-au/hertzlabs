@@ -95,6 +95,11 @@ public final class HertzEngineFacade: NSObject {
         engine.setNoiseLayers(white: white, pink: pink, brown: brown)
     }
 
+    @objc(setBreathPacerWithEnabled:patternId:deltaDb:)
+    public func setBreathPacer(enabled: Bool, patternId: Int, deltaDb: Float) {
+        engine.setBreathPacer(enabled: enabled, patternId: patternId, deltaDb: deltaDb)
+    }
+
     @objc(fadeToGain:durationMs:)
     public func fade(toGain: Float, durationMs: Int) {
         engine.fade(toGain: toGain, durationMs: durationMs)

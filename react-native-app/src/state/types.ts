@@ -139,6 +139,12 @@ export type SettingsSlice = {
   updateSettings(settings: Partial<Omit<SettingsSlice, 'updateSettings'>>): void;
 };
 
+export type LayoutModeSlice = {
+  /** When true: full engineering UI. When false: streamlined Simple Mode. */
+  isAdvancedMode: boolean;
+  toggleAdvancedMode(): void;
+};
+
 export type SubscriptionSlice = {
   tier: SubscriptionTier;
   entitlements: string[];
@@ -177,6 +183,19 @@ export type ProtocolSlice = {
   seekProtocolElapsed(elapsedSec: number): void;
 };
 
+export type BreathPacerSlice = {
+  breathPacerEnabled: boolean;
+  breathPatternId: import('../breathPacer/patterns').BreathPatternId;
+  breathDeltaDb: number;
+  /** User's center volume — live `gain` = anchor × breath envelope when overlay is on. */
+  breathGainAnchor: number;
+  breathClockStartedAtMs: number | null;
+  setBreathPacerEnabled(enabled: boolean): void;
+  setBreathPatternId(patternId: import('../breathPacer/patterns').BreathPatternId): void;
+  setBreathDeltaDb(deltaDb: number): void;
+  setBreathGainAnchor(anchor: number): void;
+};
+
 export type AppStore = AudioParamsSlice &
   SessionSlice &
   EngineSlice &
@@ -184,7 +203,9 @@ export type AppStore = AudioParamsSlice &
   AISlice &
   UiSlice &
   SettingsSlice &
+  LayoutModeSlice &
   SubscriptionSlice &
   TelemetrySlice &
   ProtocolSlice &
+  BreathPacerSlice &
   import('./slices/aiChat').AiChatSlice;

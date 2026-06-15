@@ -21,6 +21,9 @@ struct ParameterSnapshot {
     float noiseWhiteGain = 0.0f;
     float noisePinkGain = 0.0f;
     float noiseBrownGain = 0.0f;
+    bool breathPacerEnabled = false;
+    int breathPatternId = 0;
+    float breathDeltaDb = 4.5f;
     uint64_t generationCounter = 0;
 };
 
@@ -95,6 +98,18 @@ public:
         ParameterSnapshot s = slots_[currentIdx];
         s.targetPhaseAngle = std::clamp(phaseAngleDeg, 0.0, 360.0);
         s.targetTimingDiffMs = std::clamp(timingDiffMs, -500.0, 500.0);
+        s.generationCounter = nextGeneration_.fetch_add(1, std::memory_order_relaxed);
+        slots_[writeIdx] = s;
+        publishedIndex_.store(writeIdx, std::memory_order_release);
+    }
+
+    void setBreathPacer(bool enabled, int patternId, float deltaDb) {
+        const int currentIdx = publishedIndex_.load(std::memory_order_acquire);
+        const int writeIdx = 1 - currentIdx;
+        ParameterSnapshot s = slots_[currentIdx];
+        s.breathPacerEnabled = enabled;
+        s.breathPatternId = std::clamp(patternId, 0, 2);
+        s.breathDeltaDb = std::clamp(deltaDb, 3.0f, 6.0f);
         s.generationCounter = nextGeneration_.fetch_add(1, std::memory_order_relaxed);
         slots_[writeIdx] = s;
         publishedIndex_.store(writeIdx, std::memory_order_release);

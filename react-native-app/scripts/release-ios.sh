@@ -10,6 +10,10 @@ EXPORT_PATH="${EXPORT_PATH:-/tmp/hertz-release-v3/export}"
 BUNDLE_PATH="${BUNDLE_PATH:-/tmp/hertz-release-v3/main.jsbundle}"
 ASSETS_PATH="${ASSETS_PATH:-/tmp/hertz-release-v3/assets}"
 
+echo "==> Sync app version (Android + iOS)"
+cd "$ROOT"
+npm run sync:app-version
+
 echo "==> Sync secrets"
 cd "$ROOT"
 node scripts/sync-native-secrets.js

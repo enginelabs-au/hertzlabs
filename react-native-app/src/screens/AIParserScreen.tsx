@@ -20,6 +20,7 @@ const FOLD_STYLE = {marginHorizontal: 0};
 
 export function AIParserScreen() {
   const tier = useHertzStore(s => s.tier);
+  const isAdvancedMode = useHertzStore(s => s.isAdvancedMode);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const unlocked = isPremiumUnlocked(tier);
 
@@ -37,19 +38,27 @@ export function AIParserScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>AI Assistant</Text>
           <Text style={styles.headerSubtitle}>
-            Two conversational modes — session guidance and math formulas — both apply settings to your live audio. Ask either mode for a custom timed sequence; it loads in Protocol Sequences below.
+            {isAdvancedMode
+              ? 'Two conversational modes — session guidance and math formulas — both apply settings to your live audio. Ask either mode for a custom timed sequence; it loads in Protocol Sequences below.'
+              : 'Tell the guide what you want to feel — it configures your session automatically behind the scenes.'}
           </Text>
         </View>
 
-        <AIGuideChatSection foldStyle={FOLD_STYLE} />
-
-        <AIFormulaSection
-          unlocked={unlocked}
-          onUpgrade={openPaywall}
+        <AIGuideChatSection
+          layoutMode={isAdvancedMode ? 'advanced' : 'simple'}
           foldStyle={FOLD_STYLE}
         />
 
-        <ProtocolSequencesSection foldStyle={FOLD_STYLE} />
+        {isAdvancedMode && (
+          <>
+            <AIFormulaSection
+              unlocked={unlocked}
+              onUpgrade={openPaywall}
+              foldStyle={FOLD_STYLE}
+            />
+            <ProtocolSequencesSection foldStyle={FOLD_STYLE} />
+          </>
+        )}
 
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>

@@ -1,15 +1,19 @@
-import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlayerScreen} from '../screens/PlayerScreen';
 import {MathModeScreen} from '../screens/MathModeScreen';
 import {BackgroundAudioScreen} from '../screens/BackgroundAudioScreen';
 import {AIParserScreen} from '../screens/AIParserScreen';
+import {HomeScreen} from '../screens/HomeScreen';
 import {TransportBar} from '../components/layout/TransportBar';
 import {useAudioBackgroundController} from '../hooks/useAudioBackgroundController';
+import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
-type TabId = 'engines' | 'math' | 'background' | 'ai';
+type AdvancedTabId = 'engines' | 'math' | 'background' | 'ai';
+type SimpleTabId = 'home' | 'engines' | 'ai';
+type TabId = AdvancedTabId | SimpleTabId;
 
 interface TabConfig {
   id: TabId;
@@ -17,38 +21,130 @@ interface TabConfig {
   icon: string;
 }
 
-const TABS: TabConfig[] = [
+const ADVANCED_TABS: TabConfig[] = [
   {id: 'engines', label: 'Engines', icon: '◉'},
   {id: 'math', label: 'Math Mode', icon: '∑'},
   {id: 'background', label: 'Background', icon: '♪'},
   {id: 'ai', label: 'AI', icon: '✦'},
 ];
 
+const SIMPLE_TABS: TabConfig[] = [
+  {id: 'home', label: 'Home', icon: '◎'},
+  {id: 'engines', label: 'Engines', icon: '◉'},
+  {id: 'ai', label: 'AI Assistant', icon: '✦'},
+];
+
+type ScreenForTabProps = {
+  tab: TabId;
+  isAdvancedMode: boolean;
+};
+
+/** Exactly one screen mounted — no stacked hidden routes. */
+function ScreenForTab({tab, isAdvancedMode}: ScreenForTabProps) {
+  if (!isAdvancedMode) {
+    switch (tab) {
+      case 'home':
+        return <HomeScreen />;
+      case 'engines':
+        return <PlayerScreen />;
+      case 'ai':
+        return <AIParserScreen />;
+      default:
+        return <HomeScreen />;
+    }
+  }
+
+  switch (tab) {
+    case 'engines':
+      return <PlayerScreen />;
+    case 'math':
+      return <MathModeScreen />;
+    case 'background':
+      return <BackgroundAudioScreen />;
+    case 'ai':
+      return <AIParserScreen />;
+    default:
+      return <PlayerScreen />;
+  }
+}
+
 export function MainTabs() {
-  const [activeTab, setActiveTab] = useState<TabId>('engines');
+  const isAdvancedMode = useHertzStore(s => s.isAdvancedMode);
+  const tabs = isAdvancedMode ? ADVANCED_TABS : SIMPLE_TABS;
+  const defaultTab: TabId = isAdvancedMode ? 'engines' : 'home';
+
+  const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
   const {bottom: bottomInset} = useSafeAreaInsets();
 
   useAudioBackgroundController();
 
+  // Simple mode always opens on Home after launch or when toggling off Advanced.
+  useEffect(() => {
+    if (!isAdvancedMode) {
+      setActiveTab('home');
+    }
+  }, [isAdvancedMode]);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+    fadeAnim.setValue(1);
+  }, [isAdvancedMode, defaultTab, fadeAnim]);
+
+  const onSelectTab = (tab: TabId) => {
+    if (tab === activeTab) {
+      return;
+    }
+    if (!isAdvancedMode && tab === 'home') {
+      setActiveTab(tab);
+      fadeAnim.setValue(1);
+      return;
+    }
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(({finished}) => {
+      if (!finished) {
+        return;
+      }
+      setActiveTab(tab);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+  const isSimpleHome = !isAdvancedMode && activeTab === 'home';
+  const screenKey = `${isAdvancedMode ? 'adv' : 'simple'}-${activeTab}`;
+
   return (
     <View style={styles.root}>
-      <View style={styles.screenContainer}>
-        {activeTab === 'engines' && <PlayerScreen />}
-        {activeTab === 'math' && <MathModeScreen />}
-        {activeTab === 'background' && <BackgroundAudioScreen />}
-        {activeTab === 'ai' && <AIParserScreen />}
-      </View>
+      {isSimpleHome ? (
+        <View key={screenKey} style={styles.screenContainer}>
+          <HomeScreen />
+        </View>
+      ) : (
+        <Animated.View
+          key={screenKey}
+          style={[styles.screenContainer, {opacity: fadeAnim}]}
+          collapsable={false}>
+          <ScreenForTab tab={activeTab} isAdvancedMode={isAdvancedMode} />
+        </Animated.View>
+      )}
 
       <TransportBar />
 
       <View style={[styles.tabBar, {paddingBottom: Math.max(bottomInset, 4)}]}>
-        {TABS.map(tab => {
+        {tabs.map(tab => {
           const isActive = activeTab === tab.id;
           return (
             <Pressable
               key={tab.id}
               style={styles.tabItem}
-              onPress={() => setActiveTab(tab.id)}
+              onPress={() => onSelectTab(tab.id)}
               accessibilityRole="tab"
               accessibilityState={{selected: isActive}}
               accessibilityLabel={tab.label}>
@@ -70,6 +166,8 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+    overflow: 'hidden',
+    backgroundColor: HertzTheme.bg,
   },
   tabBar: {
     flexDirection: 'row',
@@ -99,6 +197,7 @@ const styles = StyleSheet.create({
     color: HertzTheme.text.muted,
     letterSpacing: 0.4,
     marginTop: 3,
+    textAlign: 'center',
   },
   tabLabelActive: {
     color: HertzTheme.neon.cyan,

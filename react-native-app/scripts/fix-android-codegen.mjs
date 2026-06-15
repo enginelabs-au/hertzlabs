@@ -14,28 +14,65 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const JNI_DIR = path.join(ROOT, 'android/app/build/generated/source/codegen/jni');
+const JAVA_DIR = path.join(ROOT, 'android/app/build/generated/source/codegen/java');
 const CMAKE = path.join(JNI_DIR, 'CMakeLists.txt');
 const APP_SPEC = 'HertzLabsBinauralBeatsSpec';
 
-const WRONG_GLOB =
-  'file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS *.cpp react/renderer/components/HertzLabsBinauralBeatsSpec/*.cpp)';
+const WRONG_GLOBS = [
+  'file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS *.cpp react/renderer/components/HertzLabsBinauralBeatsSpec/*.cpp)',
+  `file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS ${APP_SPEC}-generated.cpp react/renderer/components/${APP_SPEC}/*.cpp)`,
+];
 const FIXED_GLOB = `file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS ${APP_SPEC}-generated.cpp react/renderer/components/${APP_SPEC}/*.cpp)`;
+
+/** Third-party codegen Java is linked via each library's AAR — keep app-local Hertz specs only. */
+const JAVA_KEEP = /^NativeHertz|^com\/hertzlabs\//;
+
+function removeThirdPartyJavaCodegen() {
+  if (!fs.existsSync(JAVA_DIR)) {
+    return;
+  }
+  const stack = [JAVA_DIR];
+  while (stack.length) {
+    const dir = stack.pop();
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (fs.statSync(full).isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+      const rel = path.relative(JAVA_DIR, full).replace(/\\/g, '/');
+      if (JAVA_KEEP.test(rel)) {
+        continue;
+      }
+      fs.unlinkSync(full);
+      console.log(`fix-android-codegen: removed java/${rel}`);
+    }
+  }
+}
 
 function main() {
   if (!fs.existsSync(CMAKE)) {
     console.warn(`fix-android-codegen: ${CMAKE} not found — run Gradle codegen first`);
-    process.exit(0);
-  }
-
-  let cmake = fs.readFileSync(CMAKE, 'utf8');
-  if (cmake.includes(FIXED_GLOB)) {
-    console.log('fix-android-codegen: CMakeLists already patched');
-  } else if (cmake.includes(WRONG_GLOB)) {
-    cmake = cmake.replace(WRONG_GLOB, FIXED_GLOB);
-    fs.writeFileSync(CMAKE, cmake);
-    console.log('fix-android-codegen: patched CMakeLists to exclude third-party *-generated.cpp');
   } else {
-    console.warn('fix-android-codegen: unexpected CMakeLists format — manual review needed');
+    let cmake = fs.readFileSync(CMAKE, 'utf8');
+    if (cmake.includes(FIXED_GLOB)) {
+      console.log('fix-android-codegen: CMakeLists already patched');
+    } else {
+      let patched = false;
+      for (const wrong of WRONG_GLOBS) {
+        if (cmake.includes(wrong)) {
+          cmake = cmake.replace(wrong, FIXED_GLOB);
+          patched = true;
+          break;
+        }
+      }
+      if (patched) {
+        fs.writeFileSync(CMAKE, cmake);
+        console.log('fix-android-codegen: patched CMakeLists to exclude third-party *-generated.cpp');
+      } else {
+        console.warn('fix-android-codegen: unexpected CMakeLists format — manual review needed');
+      }
+    }
   }
 
   if (fs.existsSync(JNI_DIR)) {
@@ -55,6 +92,8 @@ function main() {
       }
     }
   }
+
+  removeThirdPartyJavaCodegen();
 }
 
 main();

@@ -15,16 +15,28 @@ type HubBandRailProps = {
   onSelectBand?: (midHz: number) => void;
   /** Experimental mode reveals the >500 Hz audible-range band cell. */
   experimental?: boolean;
+  /** Override band list (e.g. Simple Home 0–40 Hz). */
+  bands?: readonly (typeof BRAINWAVE_BANDS)[number][];
+  /** Gap between band cells (default 2). */
+  cellGap?: number;
+  /** Clamp selected mid-Hz to this ceiling. */
+  maxSelectHz?: number;
 };
 
 /** Representative Hz for a band (used when a cell is tapped). */
-function bandMidHz(index: number): number {
-  const band = BRAINWAVE_BANDS[index];
-  const max = Number.isFinite(band.maxHz) ? band.maxHz : band.minHz + 1;
+function midHzForBand(
+  band: (typeof BRAINWAVE_BANDS)[number],
+  maxSelectHz?: number,
+): number {
+  let max = Number.isFinite(band.maxHz) ? band.maxHz : band.minHz + 1;
+  if (maxSelectHz != null) {
+    max = Math.min(max, maxSelectHz);
+  }
   if (band.minHz === 0 && max <= 0.5) {
     return 0.25;
   }
-  return (band.minHz + max) / 2;
+  const mid = (band.minHz + max) / 2;
+  return maxSelectHz != null ? Math.min(mid, maxSelectHz) : mid;
 }
 
 /**
@@ -33,7 +45,17 @@ function bandMidHz(index: number): number {
  * the active band follows the beat slider live on the UI thread and only
  * re-renders on a band crossing (getBandIndex is discrete), so it stays smooth.
  */
-export function HubBandRail({beatHz, beatHzLive, height, width, onSelectBand, experimental = false}: HubBandRailProps) {
+export function HubBandRail({
+  beatHz,
+  beatHzLive,
+  height,
+  width,
+  onSelectBand,
+  experimental = false,
+  bands: bandsProp,
+  cellGap = 2,
+  maxSelectHz,
+}: HubBandRailProps) {
   const [activeIndex, setActiveIndex] = useState(() => getBandIndex(beatHz));
   useEffect(() => setActiveIndex(getBandIndex(beatHz)), [beatHz]);
   useAnimatedReaction(
@@ -46,17 +68,18 @@ export function HubBandRail({beatHz, beatHzLive, height, width, onSelectBand, ex
     [beatHzLive],
   );
 
-  const bands = railBands(experimental);
+  const bands = bandsProp ?? railBands(experimental);
 
   return (
-    <View style={[styles.rail, {width, height}]}>
-      {bands.map((band, i) => {
-        const active = i === activeIndex;
+    <View style={[styles.rail, {width, height, gap: cellGap}]}>
+      {bands.map(band => {
+        const globalIdx = BRAINWAVE_BANDS.findIndex(b => b.label === band.label);
+        const active = globalIdx === activeIndex;
         const hex = band.hexColor;
         return (
           <Pressable
             key={band.label}
-            onPress={() => onSelectBand?.(bandMidHz(i))}
+            onPress={() => onSelectBand?.(midHzForBand(band, maxSelectHz))}
             accessibilityRole="button"
             accessibilityState={{selected: active}}
             accessibilityLabel={`${band.scientific} (${band.label}) ${band.rangeLabel}`}
@@ -98,8 +121,7 @@ export function HubBandRail({beatHz, beatHzLive, height, width, onSelectBand, ex
 const styles = StyleSheet.create({
   rail: {
     flexDirection: 'column',
-    gap: 2,
-    paddingVertical: 2,
+    paddingVertical: 4,
     paddingHorizontal: 2,
     borderRightWidth: 1,
     borderRightColor: HertzTheme.glassBorder,
@@ -107,10 +129,12 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
+    minHeight: 36,
     borderLeftWidth: 3,
     borderRadius: 5,
     paddingLeft: 5,
     paddingRight: 3,
+    paddingVertical: 4,
     justifyContent: 'center',
   },
   label: {

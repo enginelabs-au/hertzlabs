@@ -6,6 +6,12 @@ react {
     autolinkLibrariesWithApp()
 }
 
+def keystorePropertiesFile = rootProject.file("../.secrets/android-signing.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.hertzlabs.binauralbeats"
     compileSdk rootProject.ext.compileSdkVersion
@@ -14,8 +20,8 @@ android {
         applicationId "com.hertzlabs.binauralbeats"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0"
+        versionCode 9
+        versionName "1.0"
 
         externalNativeBuild {
             cmake {
@@ -42,6 +48,14 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
     }
 
     buildTypes {
@@ -49,7 +63,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled false
         }
     }

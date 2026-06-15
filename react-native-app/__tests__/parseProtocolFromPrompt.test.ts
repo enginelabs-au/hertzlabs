@@ -18,7 +18,8 @@ import {
   parseFadeOutFromConversation,
   parseFadeOutFromText,
 } from '../src/ai/parseProtocolFromPrompt';
-import {isSequenceRequestInConversation} from '../src/ai/protocolGeneration';
+import {isSequenceRequestInConversation} from '../src/ai/aiIntent';
+import {wantsProtocolSequence} from '../src/ai/aiIntent';
 import type {ChatTurn} from '../src/ai/aiPromptParsing';
 
 describe('parseExplicitProtocolFromPrompt', () => {
@@ -77,6 +78,35 @@ describe('isSequenceRequestInConversation', () => {
   it('detects sequence follow-up with prior duration', () => {
     const history: ChatTurn[] = [{role: 'user', text: '45 minute sleep journey'}];
     expect(isSequenceRequestInConversation(history, 'turn that into a sequence')).toBe(true);
+  });
+
+  it('detects math mode sleep sequence chip prompt', () => {
+    expect(
+      wantsProtocolSequence(
+        [],
+        'Design a 45 minute sleep sequence that ramps from alpha to delta',
+      ),
+    ).toBe(true);
+  });
+
+  it('detects theta journey chip prompt', () => {
+    expect(
+      wantsProtocolSequence([], 'Create a multi-step theta meditation sequence over 30 minutes'),
+    ).toBe(true);
+  });
+});
+
+describe('band name parsing', () => {
+  it('parses alpha to delta ramp over total duration', () => {
+    const p = parseExplicitProtocolFromPrompt(
+      'Design a 45 minute sleep sequence that ramps from alpha to delta',
+      'binaural',
+    );
+    expect(p).not.toBeNull();
+    expect(p!.steps).toHaveLength(1);
+    expect(p!.steps[0].durationSec).toBe(45 * 60);
+    expect(p!.steps[0].startBeatHz).toBe(10);
+    expect(p!.steps[0].endBeatHz).toBe(2.5);
   });
 });
 

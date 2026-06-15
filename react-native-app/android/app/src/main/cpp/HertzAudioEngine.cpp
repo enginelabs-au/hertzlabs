@@ -134,6 +134,10 @@ void HertzAudioEngine::setNoiseLayers(float white, float pink, float brown) {
     parameterBox_.setNoiseLayers(white, pink, brown);
 }
 
+void HertzAudioEngine::setBreathPacer(bool enabled, int patternId, float deltaDb) {
+    parameterBox_.setBreathPacer(enabled, patternId, deltaDb);
+}
+
 void HertzAudioEngine::fade(float toGain, int32_t durationMs) {
     const ParameterSnapshot cur = parameterBox_.snapshot();
     parameterBox_.publish(cur.targetCarrierHz, cur.targetBeatHz, toGain, cur.targetBalance,

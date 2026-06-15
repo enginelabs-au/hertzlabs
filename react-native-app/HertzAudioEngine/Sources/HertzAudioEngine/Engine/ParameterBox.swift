@@ -34,6 +34,9 @@ public struct ParameterSnapshot: Sendable, Equatable {
     public var noiseWhiteGain: Float
     public var noisePinkGain: Float
     public var noiseBrownGain: Float
+    public var breathPacerEnabled: Bool
+    public var breathPatternId: Int
+    public var breathDeltaDb: Float
     public var generationCounter: UInt64     // monotonically incrementing
 
     public static let initial = ParameterSnapshot(
@@ -47,6 +50,9 @@ public struct ParameterSnapshot: Sendable, Equatable {
         noiseWhiteGain: 0,
         noisePinkGain: 0,
         noiseBrownGain: 0,
+        breathPacerEnabled: false,
+        breathPatternId: 0,
+        breathDeltaDb: 4.5,
         generationCounter: 0
     )
 }
@@ -167,6 +173,14 @@ public final class ParameterBox: @unchecked Sendable {
         s.noiseWhiteGain = clamp(white)
         s.noisePinkGain = clamp(pink)
         s.noiseBrownGain = clamp(brown)
+        write(s)
+    }
+
+    public func setBreathPacer(enabled: Bool, patternId: Int, deltaDb: Float) {
+        var s = read()
+        s.breathPacerEnabled = enabled
+        s.breathPatternId = max(0, min(2, patternId))
+        s.breathDeltaDb = max(3, min(6, deltaDb))
         write(s)
     }
 

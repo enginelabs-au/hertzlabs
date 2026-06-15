@@ -112,10 +112,20 @@ void BinauralOscillator::render(float *output,
                                 int32_t frameCount,
                                 const ParameterBox &params) {
     const double twoPi = NativeEngineModeDSP::kTwoPi;
+    const ParameterSnapshot headSnap = params.snapshot();
+    breathPacer_.configure(
+        headSnap.breathPacerEnabled,
+        headSnap.breathPatternId,
+        headSnap.breathDeltaDb,
+        sampleRate_);
 
     for (int32_t i = 0; i < frameCount; ++i) {
         const ParameterSnapshot snap = params.snapshot();
         syncTargets(snap);
+
+        const float breathMult =
+            snap.breathPacerEnabled && snap.playIntent ? breathPacer_.advance() : 1.0f;
+        const float pacedGain = currentGain_ * breathMult;
 
         const float gateTarget = snap.playIntent ? 1.0f : 0.0f;
         const float gateDelta = gateTarget - outputGate_;
@@ -160,8 +170,8 @@ void BinauralOscillator::render(float *output,
             rawLeft,
             rawRight);
 
-        const float gainL = currentGain_ * std::max(0.0f, 1.0f - currentBalance_);
-        const float gainR = currentGain_ * std::max(0.0f, 1.0f + currentBalance_);
+        const float gainL = pacedGain * std::max(0.0f, 1.0f - currentBalance_);
+        const float gainR = pacedGain * std::max(0.0f, 1.0f + currentBalance_);
 
         float outL = static_cast<float>(rawLeft) * std::min(gainL, kPeakCeilingLinear);
         float outR = static_cast<float>(rawRight) * std::min(gainR, kPeakCeilingLinear);

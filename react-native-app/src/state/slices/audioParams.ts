@@ -1,5 +1,6 @@
 import type {StateCreator} from 'zustand';
 import {clampDriftHz} from '../../audio/channelFrequencies';
+import {breathGainMultiplierAt, modulatedBreathGain} from '../../breathPacer/breathEnvelope';
 import {DEFAULT_NOISE_MIX, layersFromLegacyNoiseType} from '../../audio/noiseLayers';
 import {pushNoiseToNative} from '../../audio/pushNoiseToNative';
 import {
@@ -86,6 +87,30 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
   ...defaultAudioParams,
 
   setParam: (key, value) => {
+    if (key === 'gain') {
+      const state = get();
+      const nextGain = clampGain(value as number);
+      if (state.breathPacerEnabled && state.breathClockStartedAtMs != null) {
+        const mult = breathGainMultiplierAt(
+          state.breathPatternId,
+          state.breathDeltaDb,
+          state.breathClockStartedAtMs,
+        );
+        set(s =>
+          sanitize(
+            {
+              ...s,
+              breathGainAnchor: nextGain,
+              gain: modulatedBreathGain(nextGain, mult),
+            } as AudioParamsValues,
+            s.tier,
+            isExperimentalModeActive(s.tier, s.experimentalMode),
+          ),
+        );
+        return;
+      }
+    }
+
     set(state =>
       sanitize(
         {...state, [key]: value} as AudioParamsValues,

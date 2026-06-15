@@ -72,6 +72,10 @@ export const persistedStoreOptions = {
     if (state != null) {
       state.leftDriftHz = clampDriftHz(state.leftDriftHz);
       state.rightDriftHz = clampDriftHz(state.rightDriftHz);
+      if (state.breathGainAnchor == null || Number.isNaN(state.breathGainAnchor)) {
+        state.breathGainAnchor = state.gain;
+      }
+      state.breathClockStartedAtMs = state.breathPacerEnabled ? Date.now() : null;
     }
   },
   partialize: (state: AppStore) => ({
@@ -90,6 +94,11 @@ export const persistedStoreOptions = {
     tier: state.tier,
     entitlements: state.entitlements,
     engineType: state.engineType,
+    isAdvancedMode: state.isAdvancedMode,
+    breathPacerEnabled: state.breathPacerEnabled,
+    breathPatternId: state.breathPatternId,
+    breathDeltaDb: state.breathDeltaDb,
+    breathGainAnchor: state.breathGainAnchor,
   }),
 };
 

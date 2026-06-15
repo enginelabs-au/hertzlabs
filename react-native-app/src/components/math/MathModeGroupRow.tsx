@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MATH_GROUP_META} from './mathModeMeta';
 
@@ -82,6 +83,9 @@ export function MathModeGroupRow({
               </Pressable>
             );
           })}
+          <View style={styles.nestedFold}>
+            <BreathPacerSection foldStyle={styles.nestedFoldInner} />
+          </View>
         </View>
       )}
     </View>
@@ -203,5 +207,14 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     color: HertzTheme.neon.amber,
+  },
+  nestedFold: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
+    paddingTop: 8,
+  },
+  nestedFoldInner: {
+    marginHorizontal: 0,
   },
 });

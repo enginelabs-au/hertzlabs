@@ -140,6 +140,20 @@ Java_com_hertzlabs_binauralbeats_audio_HertzAudioModule_nativeFade(
     engine().fade(static_cast<float>(toGain), static_cast<int32_t>(durationMs));
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_hertzlabs_binauralbeats_audio_HertzAudioModule_nativeSetBreathPacer(
+    JNIEnv * /*env*/,
+    jclass   /*cls*/,
+    jboolean enabled,
+    jint     patternId,
+    jdouble  deltaDb)
+{
+    engine().setBreathPacer(
+        enabled == JNI_TRUE,
+        static_cast<int>(patternId),
+        static_cast<float>(deltaDb));
+}
+
 // ---------------------------------------------------------------------------
 // Stream variable queries
 // Kotlin uses these to mirror actual hardware stream config back to the JS
