@@ -1,16 +1,28 @@
 #pragma once
 
-// HertzAudioEngine.h — Oboe stream engine for binaural beat generation.
-//
-// Implements both Oboe data and error callbacks.  All audio DSP work is
-// delegated to BinauralOscillator; this class owns the stream lifecycle only.
-// The render path (onAudioReady) performs no allocations, no locks, no logging.
-
 #include "BinauralOscillator.h"
 #include "ParameterBox.h"
 
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <oboe/Oboe.h>
+
+namespace hertz {
+
+enum class EngineState : int {
+    Uninitialized = 0,
+    Ready,
+    Starting,
+    Playing,
+    Pausing,
+    Paused,
+    Stopping,
+    Stopped,
+    Interrupted,
+    Rebuilding,
+    Error
+};
 
 class HertzAudioEngine final
     : public oboe::AudioStreamDataCallback,
@@ -19,36 +31,53 @@ public:
     HertzAudioEngine();
     ~HertzAudioEngine() override;
 
-    // Open the Oboe stream and begin playback.
-    // Returns true if the stream opened and started successfully.
-    bool start();
-
-    // Stop and close the Oboe stream.
+    bool configure(int32_t requestedSampleRate,
+                   int32_t requestedBufferFrames,
+                   bool allowSharedFallback);
+    bool play();
+    void pause();
     void stop();
 
-    // Publish new binaural parameters to the lock-free ParameterBox.
-    // Safe to call from any thread; never touches the render thread directly.
-    void setParameters(double carrierHz, double beatHz, float gain, float balance);
+    bool setBinauralParameters(double carrierHz,
+                               double beatHz,
+                               float gain,
+                               float balance);
+    void setPhaseAndTiming(double phaseAngleDeg, double timingDiffMs);
+    void setNoiseLevel(float level);
+    void setNoiseLayers(float white, float pink, float brown);
+    void fade(float toGain, int32_t durationMs);
 
-    // ── Oboe data callback (real-time audio thread) ───────────────────────────
+    EngineState state() const noexcept;
+    int32_t sampleRate() const noexcept;
+    int32_t framesPerBurst() const noexcept;
+    int32_t bufferSizeInFrames() const noexcept;
+    int32_t xRunCount() const;
+
     oboe::DataCallbackResult onAudioReady(
-        oboe::AudioStream* audioStream,
-        void*              audioData,
-        int32_t            numFrames) override;
+        oboe::AudioStream *audioStream,
+        void *audioData,
+        int32_t numFrames) override;
 
-    // ── Oboe error callback (called on a non-render thread after stream closes) ─
+    bool onError(oboe::AudioStream *audioStream, oboe::Result error) override;
+
     void onErrorAfterClose(
-        oboe::AudioStream* audioStream,
-        oboe::Result       error) override;
+        oboe::AudioStream *audioStream,
+        oboe::Result error) override;
 
 private:
-    std::shared_ptr<oboe::AudioStream> stream_;
-    ParameterBox                       paramBox_;
-    BinauralOscillator                 oscillator_;
+    bool openStreamLocked(int32_t requestedSampleRate, int32_t requestedBufferFrames);
+    void closeStreamLocked();
+    void restartFromError();
 
-    // Pre-allocated per-channel work buffers — avoids any heap allocation inside
-    // onAudioReady.  4096 frames covers all realistic low-latency burst sizes.
-    static constexpr int32_t kMaxFrames = 4096;
-    float tempL_[kMaxFrames];
-    float tempR_[kMaxFrames];
+    mutable std::mutex lifecycleMutex_;
+    std::atomic<bool> allowSharedFallback_{false};
+    std::atomic<EngineState> state_{EngineState::Uninitialized};
+    ParameterBox parameterBox_;
+    std::shared_ptr<oboe::AudioStream> stream_;
+    BinauralOscillator oscillator_;
+    std::atomic<int32_t> actualSampleRate_{0};
+    std::atomic<int32_t> actualFramesPerBurst_{0};
+    std::atomic<int32_t> actualBufferSize_{0};
 };
+
+} // namespace hertz

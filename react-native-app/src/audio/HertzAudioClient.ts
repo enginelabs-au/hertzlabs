@@ -21,8 +21,18 @@ export type NativeSubscription = {
   remove(): void;
 };
 
+let __popPlayTs = 0;
+function __popLog(tag: string, extra?: unknown): void {
+  if (!__DEV__) {
+    return;
+  }
+  const dt = __popPlayTs > 0 ? Date.now() - __popPlayTs : 0;
+  console.log(`[POPTRACE +${dt}ms] ${tag}`, extra ?? '');
+}
+
 export const HertzAudioClient = {
   configure(sampleRate: number, bufferDurationMs: number): void {
+    __popLog('configure', {sampleRate, bufferDurationMs});
     NativeHertzAudio.configure(
       clampNumber(sampleRate, 8000, 192000, 48000),
       clampNumber(bufferDurationMs, 1, 100, 5),
@@ -30,10 +40,13 @@ export const HertzAudioClient = {
   },
 
   play(): void {
+    __popPlayTs = Date.now();
+    __popLog('play');
     NativeHertzAudio.play();
   },
 
   pause(): void {
+    __popLog('pause');
     NativeHertzAudio.pause();
   },
 
@@ -55,6 +68,7 @@ export const HertzAudioClient = {
     const carrierHz = clampNumber(params.carrierHz, ABS_MIN_BEAT_HZ, MAX_CARRIER_HZ_EXPERIMENTAL, 220);
     const beatHz = clampNumber(params.beatHz, ABS_MIN_BEAT_HZ, MAX_BEAT_HZ_EXPERIMENTAL, DEFAULT_BEAT_HZ);
     const g = noise ? noiseLayerGains(noise.layers, noise.mix) : {white: 0, pink: 0, brown: 0};
+    __popLog('setBinauralParameters', {carrierHz, beatHz, gain: params.gain, balance: params.balance});
     NativeHertzAudio.setBinauralParameters(
       carrierHz,
       beatHz,
@@ -67,6 +81,7 @@ export const HertzAudioClient = {
   },
 
   setPhaseAndTiming(phaseAngle: number, timingDiffMs: number): void {
+    __popLog('setPhaseAndTiming', {phaseAngle, timingDiffMs});
     NativeHertzAudio.setPhaseAndTiming(phaseAngle, timingDiffMs);
   },
 
@@ -82,6 +97,7 @@ export const HertzAudioClient = {
     const w = clampGain(white);
     const p = clampGain(pink);
     const b = clampGain(brown);
+    __popLog('setNoiseLayers', {w, p, b});
     if (typeof NativeHertzAudio.setNoiseLayers === 'function') {
       NativeHertzAudio.setNoiseLayers(w, p, b);
       return;

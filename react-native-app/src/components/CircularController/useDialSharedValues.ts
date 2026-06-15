@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import {useSharedValue} from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
+import type {SharedValue} from 'react-native-reanimated';
+import {DEFAULT_BEAT_HZ, DEFAULT_CARRIER_HZ} from '../../audio/paramMapping';
 
 /**
  * All six shared values that drive the circular controller, shader uniforms,
@@ -21,11 +22,11 @@ export interface DialValues {
 
 /**
  * All values live on the UI thread. Initial defaults match the brainwave Alpha
- * band (beatHz = 10 Hz) at 200 Hz carrier with neutral phase and timing.
+ * band (beatHz = 10 Hz) at 220 Hz carrier with neutral phase and timing.
  */
 export function useDialSharedValues(): DialValues {
-  const carrierHz = useSharedValue(200);
-  const beatHz = useSharedValue(10);
+  const carrierHz = useSharedValue(DEFAULT_CARRIER_HZ);
+  const beatHz = useSharedValue(DEFAULT_BEAT_HZ);
   const phaseAngle = useSharedValue(0);
   const timingDiffMs = useSharedValue(0);
   const gain = useSharedValue(0.45);

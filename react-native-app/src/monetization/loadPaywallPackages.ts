@@ -1,3 +1,4 @@
+import {Platform} from 'react-native';
 import Purchases, {
   PRODUCT_CATEGORY,
   type Package,
@@ -103,8 +104,21 @@ async function loadStoreProducts(): Promise<Map<string, PurchasesStoreProduct>> 
   return map;
 }
 
-const STORE_UNAVAILABLE_DETAIL =
-  'RevenueCat is configured, but the App Store has not returned your products yet. In App Store Connect, confirm all three products are Ready to Submit, attach them to your app version, then wait up to an hour and retry. For sandbox testing, sign in under Settings → App Store → Sandbox Account.';
+function storeUnavailableDetail(): string {
+  if (Platform.OS === 'android') {
+    return (
+      'RevenueCat is configured, but Google Play has not returned your products yet. ' +
+      'Create the 3 products in Play Console, connect Play to RevenueCat, publish to Internal testing, ' +
+      'set REVENUECAT_API_KEY_ANDROID in .env, rebuild, and sign into Play Store on the device. ' +
+      'Emulators without Play Store or billing cannot load real plans.'
+    );
+  }
+  return (
+    'RevenueCat is configured, but the App Store has not returned your products yet. ' +
+    'In App Store Connect, confirm all three products are Ready to Submit, attach them to your app version, ' +
+    'then wait up to an hour and retry. For sandbox testing, sign in under Settings → App Store → Sandbox Account.'
+  );
+}
 
 function buildFallbackPlans(
   packagePlans: Partial<Record<PaywallPlanKey, PaywallPlan>>,
@@ -217,9 +231,10 @@ export async function loadPaywallPackages(): Promise<PaywallLoadResult> {
     const plans = buildFallbackPlans(packagePlans);
     const purchasable = plans.filter(p => p.pkg != null || p.storeProduct != null);
     if (purchasable.length === 0) {
+      const unavailableDetail = storeUnavailableDetail();
       const detail = offeringsError
-        ? `${STORE_UNAVAILABLE_DETAIL}\n\nSDK: ${offeringsError}`
-        : STORE_UNAVAILABLE_DETAIL;
+        ? `${unavailableDetail}\n\nSDK: ${offeringsError}`
+        : unavailableDetail;
       return {status: 'store_unavailable', plans, detail};
     }
 

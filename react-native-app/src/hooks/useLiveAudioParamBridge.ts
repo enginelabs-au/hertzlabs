@@ -8,7 +8,14 @@ import {useHertzStore} from '../state/store';
 /** ~30 Hz cap on native param pushes; the engine ramps between them. */
 const MIN_PUSH_MS = 33;
 
-type LiveParams = {c: number; b: number; p: number; g: number; bal: number};
+type LiveParams = {
+  c: number;
+  b: number;
+  p: number;
+  g: number;
+  bal: number;
+  gestureActive: boolean;
+};
 
 /**
  * Streams live UI-thread dial/slider values to the native audio engine *during*
@@ -32,7 +39,7 @@ export function useLiveAudioParamBridge(dialValues: DialValues): void {
       return;
     }
     const s = useHertzStore.getState();
-    if (!s.isPlaying) {
+    if (!s.isPlaying || !v.gestureActive) {
       return;
     }
     const mapped = mapStateToNativeAudio({
@@ -51,8 +58,8 @@ export function useLiveAudioParamBridge(dialValues: DialValues): void {
   }, []);
 
   const schedulePush = useCallback(
-    (c: number, b: number, p: number, g: number, bal: number) => {
-      pending.current = {c, b, p, g, bal};
+    (c: number, b: number, p: number, g: number, bal: number, gestureActive: boolean) => {
+      pending.current = {c, b, p, g, bal, gestureActive};
       const elapsed = Date.now() - lastPushMs.current;
       if (elapsed >= MIN_PUSH_MS) {
         flush();
@@ -81,19 +88,23 @@ export function useLiveAudioParamBridge(dialValues: DialValues): void {
         p: Math.round(dialValues.phaseAngle.value),
         g: Math.round(dialValues.gain.value * 100) / 100,
         bal: Math.round(dialValues.balance.value * 100) / 100,
+        gestureActive: dialValues.gestureActive.value,
       };
     },
     (curr, prev) => {
-      if (
-        prev == null ||
-        curr.c !== prev.c ||
-        curr.b !== prev.b ||
-        curr.p !== prev.p ||
-        curr.g !== prev.g ||
-        curr.bal !== prev.bal
-      ) {
-        runOnJS(schedulePush)(curr.c, curr.b, curr.p, curr.g, curr.bal);
+      if (prev == null || !curr.gestureActive) {
+        return;
       }
+      if (
+        curr.c === prev.c &&
+        curr.b === prev.b &&
+        curr.p === prev.p &&
+        curr.g === prev.g &&
+        curr.bal === prev.bal
+      ) {
+        return;
+      }
+      runOnJS(schedulePush)(curr.c, curr.b, curr.p, curr.g, curr.bal, curr.gestureActive);
     },
     [schedulePush],
   );

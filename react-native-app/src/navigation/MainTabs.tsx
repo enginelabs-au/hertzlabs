@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlayerScreen} from '../screens/PlayerScreen';
 import {MathModeScreen} from '../screens/MathModeScreen';
 import {BackgroundAudioScreen} from '../screens/BackgroundAudioScreen';
@@ -24,6 +25,7 @@ const TABS: TabConfig[] = [
 
 export function MainTabs() {
   const [activeTab, setActiveTab] = useState<TabId>('engines');
+  const {bottom: bottomInset} = useSafeAreaInsets();
 
   useAudioBackgroundController();
 
@@ -36,7 +38,7 @@ export function MainTabs() {
         {activeTab === 'ai' && <AIParserScreen />}
       </View>
 
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, {paddingBottom: Math.max(bottomInset, 4)}]}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.id;
           return (

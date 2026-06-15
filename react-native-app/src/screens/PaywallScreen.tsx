@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,27 @@ import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const ENTITLEMENT_ID = REVENUECAT_ENTITLEMENT;
+
+const PAYWALL_STORE = Platform.select({
+  ios: {
+    legalDisclaimer:
+      'Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Settings → Apple ID → Subscriptions. Payment is charged to your Apple ID at confirmation of purchase. Free trials convert to paid plans at the end of the trial period.',
+    manageFallbackMessage:
+      'Open Settings → Apple ID → Subscriptions on your iPhone to manage billing.',
+    manageButtonLabel: 'Manage in App Store',
+    manageAccessibilityLabel: 'Manage subscription in App Store',
+    restoreEmptyMessage: 'No active Premium subscription found on this Apple ID.',
+  },
+  default: {
+    legalDisclaimer:
+      'Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current billing period. Manage or cancel in Google Play → Payments & subscriptions → Subscriptions. Payment is charged to your Google Play account at confirmation of purchase. Free trials convert to paid plans at the end of the trial period.',
+    manageFallbackMessage:
+      'Open Google Play → Payments & subscriptions → Subscriptions to manage billing.',
+    manageButtonLabel: 'Manage in Google Play',
+    manageAccessibilityLabel: 'Manage subscription in Google Play',
+    restoreEmptyMessage: 'No active Premium subscription found on this Google account.',
+  },
+})!;
 
 const GOLD = '#FBBF24';
 const GOLD_DIM = 'rgba(251,191,36,0.12)';
@@ -61,7 +83,11 @@ function StoreUnavailableCard({
 }) {
   return (
     <View style={styles.errorCard}>
-      <Text style={styles.errorText}>App Store products not available yet</Text>
+      <Text style={styles.errorText}>
+        {Platform.OS === 'android'
+          ? 'Google Play products not available yet'
+          : 'App Store products not available yet'}
+      </Text>
       <Text style={styles.errorHint}>{detail}</Text>
       <Pressable
         style={[styles.retryBtn, retrying && styles.retryBtnDisabled]}
@@ -84,7 +110,7 @@ function ActiveSubscriptionCard({summary}: {summary: ActiveSubscriptionSummary})
     if (!summary.managementURL) {
       Alert.alert(
         'Manage Subscription',
-        'Open Settings → Apple ID → Subscriptions on your iPhone to manage billing.',
+        PAYWALL_STORE.manageFallbackMessage,
         [{text: 'OK'}],
       );
       return;
@@ -112,8 +138,8 @@ function ActiveSubscriptionCard({summary}: {summary: ActiveSubscriptionSummary})
           style={styles.manageBtn}
           onPress={openManagement}
           accessibilityRole="button"
-          accessibilityLabel="Manage subscription in App Store">
-          <Text style={styles.manageBtnText}>Manage in App Store</Text>
+          accessibilityLabel={PAYWALL_STORE.manageAccessibilityLabel}>
+          <Text style={styles.manageBtnText}>{PAYWALL_STORE.manageButtonLabel}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -259,7 +285,9 @@ export function PaywallScreen() {
         break;
       case 'not_configured':
         setFetchError(
-          'RevenueCat API key missing. Add REVENUECAT_API_KEY_IOS to react-native-app/.env, rebuild the app, then reopen the paywall.',
+          Platform.OS === 'android'
+            ? 'RevenueCat Android API key missing. Add REVENUECAT_API_KEY_ANDROID (goog_…) to react-native-app/.env, rebuild the app, then reopen the paywall.'
+            : 'RevenueCat API key missing. Add REVENUECAT_API_KEY_IOS to react-native-app/.env, rebuild the app, then reopen the paywall.',
         );
         break;
       case 'store_unavailable':
@@ -331,7 +359,7 @@ export function PaywallScreen() {
         isActive ? 'Restored' : 'Nothing to Restore',
         isActive
           ? 'Your Premium subscription has been restored.'
-          : 'No active Premium subscription found on this Apple ID.',
+          : PAYWALL_STORE.restoreEmptyMessage,
         [{text: 'OK', onPress: isActive ? dismiss : undefined}],
       );
     } catch (e) {
@@ -430,12 +458,7 @@ export function PaywallScreen() {
           </Pressable>
 
           {/* Legal */}
-          <Text style={styles.legalText}>
-            Subscriptions auto-renew unless cancelled at least 24 hours before the end of the
-            current period. Manage or cancel in your App Store account settings. Payment is charged
-            to your Apple ID at confirmation of purchase. Free trials convert to paid plans at the
-            end of the trial period.
-          </Text>
+          <Text style={styles.legalText}>{PAYWALL_STORE.legalDisclaimer}</Text>
         </ScrollView>
         <LegalMenuBar />
       </View>

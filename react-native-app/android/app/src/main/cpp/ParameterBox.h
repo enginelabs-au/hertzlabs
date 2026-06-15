@@ -1,66 +1,109 @@
 #pragma once
 
-// ParameterBox.h — lock-free atomic parameter container (header-only).
-//
-// JNI control threads call store() to publish new targets.
-// The Oboe audio render callback calls load() once per quantum.
-// No mutexes, no locks, no heap allocations on the render path.
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdint>
 
-// Published parameter snapshot. All values are validated and clamped before
-// storage; the render thread reads this struct but never writes it.
-struct AudioParams {
-    double carrierHz = 200.0;  // carrier frequency (Hz)
-    double beatHz    = 10.0;   // binaural beat frequency (Hz), clamped in store()
-    float  gain      = 0.5f;   // linear gain, clamped [0.0, 0.501187]  (−6 dBFS ceiling)
-    float  balance   = 0.0f;   // stereo balance, clamped [−1.0, +1.0]
+namespace hertz {
+
+constexpr float kPeakCeilingLinear = 0.501187f;
+constexpr double kDefaultRampMs = 75.0;
+
+struct ParameterSnapshot {
+    double targetCarrierHz = 200.0;
+    double targetBeatHz = 10.0;
+    float targetGain = 0.0f;
+    float targetBalance = 0.0f;
+    double targetPhaseAngle = 0.0;
+    double targetTimingDiffMs = 0.0;
+    bool playIntent = false;
+    float noiseWhiteGain = 0.0f;
+    float noisePinkGain = 0.0f;
+    float noiseBrownGain = 0.0f;
+    uint64_t generationCounter = 0;
 };
 
 class ParameterBox {
 public:
-    // Verify pointer atomics are always lock-free so the render path is safe.
-    static_assert(std::atomic<AudioParams*>::is_always_lock_free,
-                  "std::atomic<AudioParams*> must be lock-free on this platform");
-
     ParameterBox() {
-        slots_[0] = AudioParams{};
-        slots_[1] = AudioParams{};
-        current_.store(&slots_[0], std::memory_order_relaxed);
+        slots_[0] = ParameterSnapshot{};
+        slots_[1] = ParameterSnapshot{};
+        publishedIndex_.store(0, std::memory_order_relaxed);
+        nextGeneration_.store(1, std::memory_order_relaxed);
     }
 
-    // Write a new parameter set.  Called on JNI / control threads only.
-    // Silently ignores non-finite inputs to preserve the last valid snapshot.
-    void store(const AudioParams& p) {
-        if (!std::isfinite(p.carrierHz) || !std::isfinite(p.beatHz) ||
-            !std::isfinite(p.gain)      || !std::isfinite(p.balance)) {
-            return;
+    ParameterSnapshot snapshot() const {
+        const int idx = publishedIndex_.load(std::memory_order_acquire);
+        return slots_[idx];
+    }
+
+    bool publish(double carrierHz,
+                 double beatHz,
+                 float gain,
+                 float balance,
+                 double /*rampDurationMs*/,
+                 bool playIntent) {
+        if (!std::isfinite(carrierHz) || !std::isfinite(beatHz) ||
+            !std::isfinite(gain) || !std::isfinite(balance)) {
+            return false;
         }
 
-        // Identify the inactive slot (the one the render thread is NOT reading).
-        AudioParams* active   = current_.load(std::memory_order_acquire);
-        AudioParams* inactive = (active == &slots_[0]) ? &slots_[1] : &slots_[0];
-
-        // Write clamped values into the inactive slot before publishing.
-        inactive->carrierHz = std::clamp(p.carrierHz, 0.001, 1'000'000.0);
-        inactive->beatHz    = std::clamp(p.beatHz, 1e-18, 1'000'000.0);
-        inactive->gain      = std::clamp(p.gain,   0.0f, 0.501187f);
-        inactive->balance   = std::clamp(p.balance, -1.0f, 1.0f);
-
-        // Atomically publish the inactive slot.  Release ensures all writes
-        // above are visible to any subsequent acquire-load on the render thread.
-        current_.store(inactive, std::memory_order_release);
+        const int currentIdx = publishedIndex_.load(std::memory_order_acquire);
+        const int writeIdx = 1 - currentIdx;
+        ParameterSnapshot s = slots_[currentIdx];
+        s.targetCarrierHz = std::clamp(carrierHz, 0.001, 1'000'000.0);
+        s.targetBeatHz = std::clamp(beatHz, 1e-18, 1'000'000.0);
+        s.targetGain = std::clamp(gain, 0.0f, 1.0f);
+        s.targetBalance = std::clamp(balance, -1.0f, 1.0f);
+        s.playIntent = playIntent;
+        s.generationCounter = nextGeneration_.fetch_add(1, std::memory_order_relaxed);
+        slots_[writeIdx] = s;
+        publishedIndex_.store(writeIdx, std::memory_order_release);
+        return true;
     }
 
-    // Read the current parameter snapshot.  Called on the audio render thread.
-    // Acquire ordering pairs with the release in store().
-    AudioParams load() const {
-        return *current_.load(std::memory_order_acquire);
+    void setPlayIntent(bool intent) {
+        const int currentIdx = publishedIndex_.load(std::memory_order_acquire);
+        const int writeIdx = 1 - currentIdx;
+        ParameterSnapshot s = slots_[currentIdx];
+        s.playIntent = intent;
+        s.generationCounter = nextGeneration_.fetch_add(1, std::memory_order_relaxed);
+        slots_[writeIdx] = s;
+        publishedIndex_.store(writeIdx, std::memory_order_release);
+    }
+
+    void setNoiseLevel(float level) {
+        setNoiseLayers(level, 0.0f, 0.0f);
+    }
+
+    void setNoiseLayers(float white, float pink, float brown) {
+        const int currentIdx = publishedIndex_.load(std::memory_order_acquire);
+        const int writeIdx = 1 - currentIdx;
+        ParameterSnapshot s = slots_[currentIdx];
+        s.noiseWhiteGain = std::clamp(white, 0.0f, kPeakCeilingLinear);
+        s.noisePinkGain = std::clamp(pink, 0.0f, kPeakCeilingLinear);
+        s.noiseBrownGain = std::clamp(brown, 0.0f, kPeakCeilingLinear);
+        s.generationCounter = nextGeneration_.fetch_add(1, std::memory_order_relaxed);
+        slots_[writeIdx] = s;
+        publishedIndex_.store(writeIdx, std::memory_order_release);
+    }
+
+    void setPhaseAndTiming(double phaseAngleDeg, double timingDiffMs) {
+        const int currentIdx = publishedIndex_.load(std::memory_order_acquire);
+        const int writeIdx = 1 - currentIdx;
+        ParameterSnapshot s = slots_[currentIdx];
+        s.targetPhaseAngle = std::clamp(phaseAngleDeg, 0.0, 360.0);
+        s.targetTimingDiffMs = std::clamp(timingDiffMs, -500.0, 500.0);
+        s.generationCounter = nextGeneration_.fetch_add(1, std::memory_order_relaxed);
+        slots_[writeIdx] = s;
+        publishedIndex_.store(writeIdx, std::memory_order_release);
     }
 
 private:
-    AudioParams              slots_[2];
-    std::atomic<AudioParams*> current_{nullptr};  // initialised in constructor
+    ParameterSnapshot slots_[2]{};
+    std::atomic<int> publishedIndex_{0};
+    std::atomic<uint64_t> nextGeneration_{1};
 };
+
+} // namespace hertz

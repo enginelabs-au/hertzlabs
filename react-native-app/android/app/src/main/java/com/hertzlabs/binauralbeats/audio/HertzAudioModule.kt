@@ -42,19 +42,22 @@ class HertzAudioModule(
         noiseBrown: Double,
     ) {
         nativeSetBinauralParameters(carrierHz, beatHz, gain, balance)
-        val noiseLevel = maxOf(noiseWhite, noisePink, noiseBrown)
-        nativeSetNoiseLevel(noiseLevel)
+        nativeSetNoiseLayers(noiseWhite, noisePink, noiseBrown)
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun setNoise(type: String, level: Double) {
-        nativeSetNoiseLevel(level)
+        when (type) {
+            "pink" -> nativeSetNoiseLayers(0.0, level, 0.0)
+            "brown" -> nativeSetNoiseLayers(0.0, 0.0, level)
+            "none" -> nativeSetNoiseLayers(0.0, 0.0, 0.0)
+            else -> nativeSetNoiseLayers(level, 0.0, 0.0)
+        }
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun setNoiseLayers(white: Double, pink: Double, brown: Double) {
-        val noiseLevel = maxOf(white, pink, brown)
-        nativeSetNoiseLevel(noiseLevel)
+        nativeSetNoiseLayers(white, pink, brown)
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
@@ -64,7 +67,7 @@ class HertzAudioModule(
 
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun setPhaseAndTiming(phase: Double, timingMs: Double) {
-        // Phase/timing native path is iOS-first; Android Oboe engine uses balance/beat only for now.
+        nativeSetPhaseAndTiming(phase, timingMs)
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
@@ -94,7 +97,9 @@ class HertzAudioModule(
             gain: Double,
             balance: Double
         ): Boolean
+        @JvmStatic private external fun nativeSetPhaseAndTiming(phaseAngleDeg: Double, timingDiffMs: Double)
         @JvmStatic private external fun nativeSetNoiseLevel(level: Double)
+        @JvmStatic private external fun nativeSetNoiseLayers(white: Double, pink: Double, brown: Double)
         @JvmStatic private external fun nativeFade(toGain: Double, durationMs: Int)
         @JvmStatic private external fun nativeSampleRate(): Int
     }

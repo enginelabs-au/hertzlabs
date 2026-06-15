@@ -98,6 +98,30 @@ Java_com_hertzlabs_binauralbeats_audio_HertzAudioModule_nativeSetBinauralParamet
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_hertzlabs_binauralbeats_audio_HertzAudioModule_nativeSetPhaseAndTiming(
+    JNIEnv * /*env*/,
+    jclass   /*cls*/,
+    jdouble  phaseAngleDeg,
+    jdouble  timingDiffMs)
+{
+    engine().setPhaseAndTiming(phaseAngleDeg, timingDiffMs);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_hertzlabs_binauralbeats_audio_HertzAudioModule_nativeSetNoiseLayers(
+    JNIEnv * /*env*/,
+    jclass   /*cls*/,
+    jdouble  white,
+    jdouble  pink,
+    jdouble  brown)
+{
+    engine().setNoiseLayers(
+        static_cast<float>(white),
+        static_cast<float>(pink),
+        static_cast<float>(brown));
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_hertzlabs_binauralbeats_audio_HertzAudioModule_nativeSetNoiseLevel(
     JNIEnv * /*env*/,
     jclass   /*cls*/,

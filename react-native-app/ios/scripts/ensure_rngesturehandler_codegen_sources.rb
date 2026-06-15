@@ -15,6 +15,7 @@ FABRIC_COMPONENTS = %w[
   rngesturehandler_codegen
   rnskia
   ReactNativeBlurViewSpec
+  safeareacontext
 ].freeze
 
 FABRIC_CPPS = %w[

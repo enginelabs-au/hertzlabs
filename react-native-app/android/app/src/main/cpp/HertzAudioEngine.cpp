@@ -1,9 +1,20 @@
 #include "HertzAudioEngine.h"
 
 #include <algorithm>
+#include <chrono>
 #include <thread>
+#include <android/log.h>
 
 namespace hertz {
+
+// TEMP POPTRACE diagnostics defined in BinauralOscillator.cpp.
+namespace diag {
+extern std::atomic<uint64_t> g_frameCounter;
+extern std::atomic<uint64_t> g_glitchCount;
+extern std::atomic<float> g_lastGlitchDelta;
+extern std::atomic<uint64_t> g_lastGlitchFrame;
+extern std::atomic<float> g_maxJump;
+}
 
 // ---------------------------------------------------------------------------
 HertzAudioEngine::HertzAudioEngine() = default;
@@ -36,27 +47,61 @@ bool HertzAudioEngine::play() {
             return false;
         }
     }
-    parameterBox_.setPlayIntent(true);
     state_.store(EngineState::Starting, std::memory_order_release);
-    if (stream_->requestStart() != oboe::Result::OK) {
+    if (stream_->getState() != oboe::StreamState::Started &&
+        stream_->requestStart() != oboe::Result::OK) {
         state_.store(EngineState::Error, std::memory_order_release);
         return false;
     }
+    const ParameterSnapshot snap = parameterBox_.snapshot();
+    if (snap.playIntent == false) {
+        oscillator_.snapSmoothedStateTo(snap);
+    }
+    parameterBox_.setPlayIntent(true);
     state_.store(EngineState::Playing, std::memory_order_release);
+
+    // TEMP POPTRACE: monitor xRun + signal discontinuities for the first few seconds.
+    diag::g_glitchCount.store(0, std::memory_order_relaxed);
+    diag::g_maxJump.store(0.0f, std::memory_order_relaxed);
+    std::thread([this] {
+        const double rate = std::max(1, actualSampleRate_.load(std::memory_order_relaxed));
+        uint64_t lastGlitch = 0;
+        for (int i = 0; i < 40; ++i) {
+            int32_t xr = -1;
+            {
+                std::lock_guard<std::mutex> lk(lifecycleMutex_);
+                if (stream_) {
+                    xr = stream_->getXRunCount().value();
+                }
+            }
+            const uint64_t gc = diag::g_glitchCount.load(std::memory_order_relaxed);
+            if (gc != lastGlitch) {
+                lastGlitch = gc;
+                const uint64_t frame = diag::g_lastGlitchFrame.load(std::memory_order_relaxed);
+                const float delta = diag::g_lastGlitchDelta.load(std::memory_order_relaxed);
+                __android_log_print(ANDROID_LOG_WARN, "POPTRACE_NATIVE",
+                    "*** GLITCH count=%llu atFrame=%llu (%.0fms) jump=%.4f xrun=%d",
+                    static_cast<unsigned long long>(gc),
+                    static_cast<unsigned long long>(frame),
+                    1000.0 * static_cast<double>(frame) / rate, delta, xr);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        __android_log_print(ANDROID_LOG_INFO, "POPTRACE_NATIVE",
+            "monitor done totalGlitches=%llu maxJump=%.5f rate=%d",
+            static_cast<unsigned long long>(diag::g_glitchCount.load(std::memory_order_relaxed)),
+            diag::g_maxJump.load(std::memory_order_relaxed),
+            actualSampleRate_.load(std::memory_order_relaxed));
+    }).detach();
+
     return true;
 }
 
 // ---------------------------------------------------------------------------
 void HertzAudioEngine::pause() {
-    std::lock_guard<std::mutex> lock(lifecycleMutex_);
-    // Signal the oscillator to ramp gain to zero.  The stream is paused
-    // immediately after; any residual samples in the driver buffer will be
-    // near-silent because gain ramps toward zero from this quantum onward.
+    // Mute via playIntent + gain ramp only. Do not requestPause() — stopping the
+    // Oboe stream causes an audible click on resume on many devices.
     parameterBox_.setPlayIntent(false);
-    state_.store(EngineState::Pausing, std::memory_order_release);
-    if (stream_) {
-        stream_->requestPause();
-    }
     state_.store(EngineState::Paused, std::memory_order_release);
 }
 
@@ -77,14 +122,21 @@ bool HertzAudioEngine::setBinauralParameters(double carrierHz, double beatHz,
                                  kDefaultRampMs, playIntent);
 }
 
+void HertzAudioEngine::setPhaseAndTiming(double phaseAngleDeg, double timingDiffMs) {
+    parameterBox_.setPhaseAndTiming(phaseAngleDeg, timingDiffMs);
+}
+
 void HertzAudioEngine::setNoiseLevel(float level) {
     parameterBox_.setNoiseLevel(level);
-    noiseGenerator_.setLevel(level);
+}
+
+void HertzAudioEngine::setNoiseLayers(float white, float pink, float brown) {
+    parameterBox_.setNoiseLayers(white, pink, brown);
 }
 
 void HertzAudioEngine::fade(float toGain, int32_t durationMs) {
     const ParameterSnapshot cur = parameterBox_.snapshot();
-    parameterBox_.publish(cur.carrierHz, cur.beatHz, toGain, cur.balance,
+    parameterBox_.publish(cur.targetCarrierHz, cur.targetBeatHz, toGain, cur.targetBalance,
                           static_cast<double>(durationMs), cur.playIntent);
 }
 
@@ -110,7 +162,7 @@ int32_t HertzAudioEngine::bufferSizeInFrames() const noexcept {
 // xRunCount() accesses stream_ which is lifecycle-mutex-protected.
 int32_t HertzAudioEngine::xRunCount() const {
     std::lock_guard<std::mutex> lock(lifecycleMutex_);
-    return stream_ ? stream_->getXRunCount() : 0;
+    return stream_ ? stream_->getXRunCount().value() : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,11 +180,8 @@ oboe::DataCallbackResult HertzAudioEngine::onAudioReady(
         return oboe::DataCallbackResult::Stop;
     }
 
-    // Read one parameter snapshot for the entire quantum (Plan 02 §2.1).
-    // No locks, no JNI, no logging inside this path.
-    auto *output           = static_cast<float *>(audioData);
-    const ParameterSnapshot snap = parameterBox_.snapshot();
-    oscillator_.render(output, numFrames, snap);
+    auto *output = static_cast<float *>(audioData);
+    oscillator_.render(output, numFrames, parameterBox_);
     return oboe::DataCallbackResult::Continue;
 }
 
@@ -143,7 +192,12 @@ oboe::DataCallbackResult HertzAudioEngine::onAudioReady(
 // Called before the stream is closed.  Mark the engine state and return true
 // to allow Oboe to proceed with closing the stream.
 bool HertzAudioEngine::onError(oboe::AudioStream * /*audioStream*/,
-                                oboe::Result       /*error*/) {
+                                oboe::Result       error) {
+    // #region agent log
+    __android_log_print(ANDROID_LOG_WARN, "POPTRACE_NATIVE",
+        "*** onError result=%d (%s) — stream being closed", static_cast<int>(error),
+        oboe::convertToText(error));
+    // #endregion
     state_.store(EngineState::Interrupted, std::memory_order_release);
     return true;   // let Oboe close the stream
 }
@@ -153,7 +207,11 @@ bool HertzAudioEngine::onError(oboe::AudioStream * /*audioStream*/,
 // The detached thread takes lifecycleMutex_ independently; onErrorAfterClose
 // must return quickly to not block the Oboe error-handling thread.
 void HertzAudioEngine::onErrorAfterClose(oboe::AudioStream * /*audioStream*/,
-                                          oboe::Result       /*error*/) {
+                                          oboe::Result       error) {
+    // #region agent log
+    __android_log_print(ANDROID_LOG_WARN, "POPTRACE_NATIVE",
+        "*** onErrorAfterClose result=%d — scheduling restart", static_cast<int>(error));
+    // #endregion
     restartFromError();
 }
 
@@ -164,6 +222,11 @@ void HertzAudioEngine::onErrorAfterClose(oboe::AudioStream * /*audioStream*/,
 bool HertzAudioEngine::openStreamLocked(int32_t requestedSampleRate,
                                          int32_t requestedBufferFrames) {
     oboe::AudioStreamBuilder builder;
+    // Shared sharing mode (not Exclusive/MMAP). The exclusive low-latency MMAP
+    // fast path produces a click ~1-2s after start on some devices (notably
+    // Samsung) when the HAL settles/switches the fast path. A continuous-tone
+    // app does not need MMAP latency, so route through the normal mixer, which
+    // is glitch-free from the first sample.
     builder.setDirection(oboe::Direction::Output)
            ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
            ->setSharingMode(oboe::SharingMode::Exclusive)
@@ -202,10 +265,20 @@ bool HertzAudioEngine::openStreamLocked(int32_t requestedSampleRate,
     // Buffer size: caller hint > 0 overrides; otherwise default to 2 bursts.
     const int32_t targetSize = (requestedBufferFrames > 0)
                                ? requestedBufferFrames
-                               : std::max(1, burstFrames) * 2;
+                               : std::max(1, burstFrames) * 3;
     stream_->setBufferSizeInFrames(targetSize);
     actualBufferSize_.store(stream_->getBufferSizeInFrames(),
                              std::memory_order_release);
+
+    // TEMP POPTRACE: confirm the granted sharing/perf mode + usage/contentType.
+    __android_log_print(ANDROID_LOG_INFO, "POPTRACE_NATIVE",
+        "stream opened: sharing=%d perf=%d usage=%d content=%d rate=%d burst=%d",
+        static_cast<int>(stream_->getSharingMode()),
+        static_cast<int>(stream_->getPerformanceMode()),
+        static_cast<int>(stream_->getUsage()),
+        static_cast<int>(stream_->getContentType()),
+        actualRate, burstFrames);
+
     return true;
 }
 

@@ -3,13 +3,13 @@ import {
   ActivityIndicator,
   BackHandler,
   Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {useHertzStore} from '../state/store';
 import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
 import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
@@ -103,7 +103,8 @@ function AppContent(): React.JSX.Element {
     if (!hydrated) { return; }
     // Configure native engine with default settings before subscribing.
     // 5 ms I/O on Simulator often crackles; use a safer buffer (still low-latency on device).
-    const bufferMs = __DEV__ && Platform.OS === 'ios' ? 23 : 10;
+    const bufferMs =
+      __DEV__ && Platform.OS === 'ios' ? 23 : Platform.OS === 'android' ? 23 : 10;
     // Request the highest sample rate the hardware will grant (Nyquist up to
     // ~96 kHz) so Experimental-mode ultrasonic tones render instead of aliasing
     // back down. The OS negotiates down to 48 kHz on devices that cap there.
@@ -142,14 +143,16 @@ function AppContent(): React.JSX.Element {
 
 export function App(): React.JSX.Element {
   return (
-    <RootErrorBoundary>
-      <GestureHandlerRootView style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={BG} />
-        <SafeAreaView style={styles.safe}>
-          <AppContent />
-        </SafeAreaView>
-      </GestureHandlerRootView>
-    </RootErrorBoundary>
+    <SafeAreaProvider>
+      <RootErrorBoundary>
+        <GestureHandlerRootView style={styles.root}>
+          <StatusBar barStyle="light-content" backgroundColor={BG} translucent={Platform.OS === 'android'} />
+          <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+            <AppContent />
+          </SafeAreaView>
+        </GestureHandlerRootView>
+      </RootErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 

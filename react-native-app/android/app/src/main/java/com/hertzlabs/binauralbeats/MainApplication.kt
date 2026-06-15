@@ -1,31 +1,35 @@
 package com.hertzlabs.binauralbeats
 
 import android.app.Application
+import android.preference.PreferenceManager
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
-import com.facebook.react.ReactNativeHost
-import com.facebook.react.ReactPackage
-import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
-import com.facebook.react.defaults.DefaultReactNativeHost
+import com.facebook.react.ReactHost
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.hertzlabs.binauralbeats.audio.HertzAudioPackage
 
 class MainApplication : Application(), ReactApplication {
-    override val reactNativeHost: ReactNativeHost =
-        object : DefaultReactNativeHost(this) {
-            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-            override fun getJSMainModuleName(): String = "index"
-            override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-            override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
 
-            override fun getPackages(): List<ReactPackage> {
-                return PackageList(this).packages + HertzAudioPackage()
-            }
-        }
+    override val reactHost: ReactHost by lazy {
+        getDefaultReactHost(
+            context = applicationContext,
+            packageList =
+                PackageList(this).packages.apply {
+                    add(HertzAudioPackage())
+                },
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-            load()
+        if (BuildConfig.DEBUG) {
+            // Some emulator images cannot reach the host at 10.0.2.2; adb reverse + localhost works.
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putString("debug_http_host", "localhost:8081")
+                .apply()
         }
+        loadReactNative(this)
     }
 }

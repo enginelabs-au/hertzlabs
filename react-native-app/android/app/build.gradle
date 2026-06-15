@@ -1,40 +1,57 @@
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.facebook.react")
-}
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
 
 react {
     autolinkLibrariesWithApp()
 }
 
 android {
-    namespace = "com.hertzlabs.binauralbeats"
-    compileSdk = 35
+    namespace "com.hertzlabs.binauralbeats"
+    compileSdk rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId = "com.hertzlabs.binauralbeats"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        applicationId "com.hertzlabs.binauralbeats"
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "0.1.0"
 
         externalNativeBuild {
             cmake {
-                cppFlags += listOf("-std=c++17", "-Wall", "-Wextra", "-Werror")
+                cppFlags "-std=c++17"
             }
         }
     }
 
     externalNativeBuild {
         cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
+            path "src/main/jni/CMakeLists.txt"
+            version "3.22.1"
         }
     }
 
     buildFeatures {
-        prefab = true
+        prefab true
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
     }
 }
 
