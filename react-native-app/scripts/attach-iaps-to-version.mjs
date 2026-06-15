@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Attach IAPs/subscriptions to app version 1.0 for App Store review.
+ * Submit IAPs/subscriptions for App Store review when stuck in DEVELOPER_ACTION_NEEDED.
+ * Creates subscriptionSubmissions / inAppPurchaseSubmissions (the API path that works).
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -10,11 +11,11 @@ import {fileURLToPath} from 'url';
 const envPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.env');
 const APP_ID = '6777604364';
 const VERSION_ID = '2bfc2fc7-31fc-44bd-8b3c-7a329172b40a';
-const SUBMISSION_ID = 'ee97cb14-791b-41fa-a4ab-f808e74283b6';
-const PRODUCTS = {
-  lifetime: '6777615569',
-  monthly: '6778755902',
-  annual: '6778755165',
+const GROUP_ID = '22147327';
+const PRODUCT_IDS = {
+  monthly: 'hertzlabs_bb_monthly',
+  annual: 'hertzlabs_bb_annual',
+  lifetime: 'hertzlabs_lifetime_ultra',
 };
 
 function parseEnv(filePath) {
@@ -84,98 +85,117 @@ async function asc(method, route, body) {
   return {status: res.status, json, text};
 }
 
+async function ascGetAll(route) {
+  const items = [];
+  let next = `${route}${route.includes('?') ? '&' : '?'}limit=200`;
+  while (next) {
+    const {status, json} = await asc('GET', next);
+    if (status >= 400) {
+      throw new Error(`ASC ${next} failed (${status}): ${JSON.stringify(json)}`);
+    }
+    items.push(...(json.data ?? []));
+    next = json.links?.next ? json.links.next.replace('https://api.appstoreconnect.apple.com', '') : null;
+  }
+  return items;
+}
+
 const env = parseEnv(envPath);
 const token = makeJwt({
   issuer: env.APPLE_CONNECT_ISSUER_ID.trim(),
-  keyId: env.APPLE_CONNECT_KEY_ID || 'LYRCN33Z95',
+  keyId: env.APPLE_CONNECT_KEY_ID.trim(),
   pem: env.APPLE_CONNECT_API_KEY,
 });
 
-console.log('--- Attach IAPs to version 1.0 ---');
+const NEEDS_SUBMIT = new Set(['DEVELOPER_ACTION_NEEDED', 'READY_TO_SUBMIT', 'MISSING_METADATA']);
 
-const version = await asc('GET', `/v1/appStoreVersions/${VERSION_ID}`);
-console.log(
-  `Version ${version.json?.data?.attributes?.versionString} state=${version.json?.data?.attributes?.appStoreState}`,
-);
-
-const items = await asc('GET', `/v1/reviewSubmissions/${SUBMISSION_ID}/items`);
-console.log(`Review submission items: ${items.json?.data?.length ?? 0}`);
-for (const item of items.json?.data ?? []) {
-  const rels = Object.entries(item.relationships ?? {})
-    .filter(([, v]) => v?.data?.id)
-    .map(([k, v]) => `${k}=${v.data.id}`);
-  console.log(`  item ${item.id}: ${rels.join(', ') || '(no linked artifact)'}`);
-}
-
-async function tryPost(label, body) {
-  const {status, json} = await asc('POST', '/v1/reviewSubmissionItems', body);
-  if (status < 300) {
-    console.log(`OK: ${label} attached (${json?.data?.id})`);
-    return true;
+async function submitSubscription(subscriptionId, productId, state) {
+  if (!NEEDS_SUBMIT.has(state) && state !== 'WAITING_FOR_REVIEW') {
+    console.log(`SKIP: ${productId} state=${state}`);
+    return;
   }
-  console.log(
-    `FAIL: ${label} (${status}) ${json?.errors?.[0]?.code ?? ''} — ${json?.errors?.[0]?.detail ?? ''}`,
-  );
-  return false;
-}
-
-// Lifetime non-consumable via inAppPurchases relationship
-await tryPost('lifetime (inAppPurchases)', {
-  data: {
-    type: 'reviewSubmissionItems',
-    relationships: {
-      reviewSubmission: {data: {type: 'reviewSubmissions', id: SUBMISSION_ID}},
-      inAppPurchases: {data: {type: 'inAppPurchases', id: PRODUCTS.lifetime}},
-    },
-  },
-});
-
-// Subscriptions — try inAppPurchases type (some ASC versions accept sub IDs here)
-for (const [label, id] of [
-  ['monthly subscription', PRODUCTS.monthly],
-  ['annual subscription', PRODUCTS.annual],
-]) {
-  await tryPost(`${label} (inAppPurchases)`, {
-    data: {
-      type: 'reviewSubmissionItems',
-      relationships: {
-        reviewSubmission: {data: {type: 'reviewSubmissions', id: SUBMISSION_ID}},
-        inAppPurchases: {data: {type: 'inAppPurchases', id}},
-      },
-    },
-  });
-}
-
-// Alternate: inAppPurchaseSubmissions for lifetime
-const iapSub = await asc('POST', '/v1/inAppPurchaseSubmissions', {
-  data: {
-    type: 'inAppPurchaseSubmissions',
-    relationships: {
-      inAppPurchaseV2: {data: {type: 'inAppPurchases', id: PRODUCTS.lifetime}},
-    },
-  },
-});
-console.log(
-  `inAppPurchaseSubmissions lifetime: ${iapSub.status} ${iapSub.json?.errors?.[0]?.detail ?? iapSub.json?.data?.id ?? 'ok'}`,
-);
-
-// Alternate: subscriptionSubmissions
-for (const [label, id] of [
-  ['monthly', PRODUCTS.monthly],
-  ['annual', PRODUCTS.annual],
-]) {
-  const sub = await asc('POST', '/v1/subscriptionSubmissions', {
+  if (state === 'WAITING_FOR_REVIEW') {
+    console.log(`OK: ${productId} already WAITING_FOR_REVIEW`);
+    return;
+  }
+  const {status, json} = await asc('POST', '/v1/subscriptionSubmissions', {
     data: {
       type: 'subscriptionSubmissions',
       relationships: {
-        subscription: {data: {type: 'subscriptions', id}},
+        subscription: {data: {type: 'subscriptions', id: subscriptionId}},
       },
     },
   });
+  if (status === 201) {
+    console.log(`FIXED: ${productId} submitted for review (${json?.data?.id})`);
+    return;
+  }
   console.log(
-    `subscriptionSubmissions ${label}: ${sub.status} ${sub.json?.errors?.[0]?.detail ?? sub.json?.data?.id ?? 'ok'}`,
+    `WARN: ${productId} subscriptionSubmissions (${status}) ${json?.errors?.[0]?.detail ?? ''}`,
   );
 }
 
-const itemsAfter = await asc('GET', `/v1/reviewSubmissions/${SUBMISSION_ID}/items`);
-console.log(`\nAfter: ${itemsAfter.json?.data?.length ?? 0} review submission items`);
+async function submitLifetime(iapId, productId, state) {
+  if (!NEEDS_SUBMIT.has(state) && state !== 'WAITING_FOR_REVIEW') {
+    console.log(`SKIP: ${productId} state=${state}`);
+    return;
+  }
+  if (state === 'WAITING_FOR_REVIEW') {
+    console.log(`OK: ${productId} already WAITING_FOR_REVIEW`);
+    return;
+  }
+  const {status, json} = await asc('POST', '/v1/inAppPurchaseSubmissions', {
+    data: {
+      type: 'inAppPurchaseSubmissions',
+      relationships: {
+        inAppPurchaseV2: {data: {type: 'inAppPurchases', id: iapId}},
+      },
+    },
+  });
+  if (status === 201) {
+    console.log(`FIXED: ${productId} submitted for review (${json?.data?.id})`);
+    return;
+  }
+  console.log(
+    `WARN: ${productId} inAppPurchaseSubmissions (${status}) ${json?.errors?.[0]?.detail ?? ''}`,
+  );
+}
+
+async function main() {
+  console.log('--- Submit IAPs for App Store review ---');
+
+  const version = await asc('GET', `/v1/appStoreVersions/${VERSION_ID}`);
+  console.log(
+    `Version ${version.json?.data?.attributes?.versionString} state=${version.json?.data?.attributes?.appStoreState}`,
+  );
+
+  const subs = await ascGetAll(`/v1/subscriptionGroups/${GROUP_ID}/subscriptions`);
+  for (const sub of subs) {
+    const productId = sub.attributes?.productId;
+    const state = sub.attributes?.state;
+    if (productId === PRODUCT_IDS.monthly || productId === PRODUCT_IDS.annual) {
+      await submitSubscription(sub.id, productId, state);
+      const refreshed = await asc('GET', `/v1/subscriptions/${sub.id}`);
+      console.log(`  → ${productId} now ${refreshed.json?.data?.attributes?.state ?? 'unknown'}`);
+    }
+  }
+
+  const iaps = await ascGetAll(`/v1/apps/${APP_ID}/inAppPurchasesV2`);
+  const lifetime = iaps.find(i => i.attributes?.productId === PRODUCT_IDS.lifetime);
+  if (lifetime) {
+    await submitLifetime(lifetime.id, PRODUCT_IDS.lifetime, lifetime.attributes?.state);
+    const refreshed = await asc('GET', `/v2/inAppPurchases/${lifetime.id}`);
+    console.log(
+      `  → ${PRODUCT_IDS.lifetime} now ${refreshed.json?.data?.attributes?.state ?? 'unknown'}`,
+    );
+  } else {
+    console.log(`WARN: lifetime IAP ${PRODUCT_IDS.lifetime} not found`);
+  }
+
+  console.log('\nRevenueCat “Developer action needed” clears after ASC products leave DEVELOPER_ACTION_NEEDED (often → WAITING_FOR_REVIEW).');
+  console.log('RC may take 15–60 min to refresh; live StoreKit prices appear after Apple approves the IAPs.');
+}
+
+main().catch(err => {
+  console.error(err.message);
+  process.exit(1);
+});

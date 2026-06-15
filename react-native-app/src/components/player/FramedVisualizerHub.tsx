@@ -143,6 +143,14 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     [setParam],
   );
 
+  const onHubDragBegin = useCallback(() => {
+    dialValues.gestureActive.value = true;
+  }, [dialValues.gestureActive]);
+
+  const onHubDragEnd = useCallback(() => {
+    dialValues.gestureActive.value = false;
+  }, [dialValues.gestureActive]);
+
   const onPhaseComplete = useCallback(
     (deg: number) => {
       setParam('phaseAngle', deg);
@@ -171,6 +179,8 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
       lockedNormStart={lockedNormStart}
       onLockedZonePress={premiumUnlocked ? undefined : openPaywall}
       onChangeComplete={onBeatSliderComplete}
+      onDragBegin={onHubDragBegin}
+      onDragEnd={onHubDragEnd}
       accent={bandHex}
       accentValue={liveAccent}
       resetBeatHz={DEFAULT_BEAT_HZ}
@@ -223,6 +233,7 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
                     absMax={AUDIBLE_CEILING_HZ}
                     defaultValue={DEFAULT_CARRIER_HZ}
                     onCommit={onCarrierCommit}
+                    gestureActive={dialValues.gestureActive}
                   />
                   <View style={styles.expSliderFlex}>{beatSlider}</View>
                   <ExperimentalDial
@@ -237,6 +248,7 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
                     absMax={AUDIBLE_CEILING_HZ}
                     defaultValue={DEFAULT_CARRIER_HZ}
                     onCommit={onCarrierCommit}
+                    gestureActive={dialValues.gestureActive}
                   />
                 </View>
               ) : (

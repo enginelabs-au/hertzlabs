@@ -6,6 +6,7 @@ import {ENGINE_CATALOG, type EngineMeta} from '../../audio/engineModes';
 import type {EngineMode} from '../../state/types';
 import type {EngineCategoryId} from '../layout/CategoryTabBar';
 import {ENGINE_CATEGORIES} from '../layout/CategoryTabBar';
+import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 import {HertzTheme} from '../../theme/hertzTheme';
 
 function HeadphonePill({required}: {required: boolean}) {
@@ -26,7 +27,7 @@ interface EngineRowProps {
 }
 
 function EngineRow({meta, isActive, isLocked, isComingSoon, onSelect, onUpgrade}: EngineRowProps) {
-  const [expanded, setExpanded] = React.useState(isActive);
+  const [expanded, setExpanded] = React.useState(false);
 
   if (isComingSoon) {
     return (
@@ -97,6 +98,12 @@ function EngineRow({meta, isActive, isLocked, isComingSoon, onSelect, onUpgrade}
         <Pressable style={styles.lockedCta} onPress={onUpgrade} accessibilityRole="button">
           <Text style={styles.lockedCtaText}>🔒 LOCKED — Upgrade to Premium</Text>
         </Pressable>
+      )}
+
+      {expanded && (
+        <View style={styles.seqWrap}>
+          <ProtocolSequencesSection foldStyle={styles.seqFold} engineMode={meta.mode} />
+        </View>
       )}
     </View>
   );
@@ -241,6 +248,17 @@ const styles = StyleSheet.create({
   },
   selectBtnTextActive: {
     color: HertzTheme.neon.cyan,
+  },
+  seqWrap: {
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  seqFold: {
+    marginHorizontal: 0,
+    marginBottom: 4,
   },
   comingSoonCard: {
     borderRadius: 14,

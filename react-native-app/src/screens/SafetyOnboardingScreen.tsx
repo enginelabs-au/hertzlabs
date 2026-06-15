@@ -1,10 +1,21 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {Linking, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {StaticWelcomeWaveHeader} from '../components/layout/StaticWelcomeWaveHeader';
+import Animated, {FadeInRight, FadeOutLeft} from 'react-native-reanimated';
+import {OnboardingBackgroundWaves} from '../components/layout/OnboardingBackgroundWaves';
+import {ScreenWaveHeader} from '../components/layout/ScreenWaveHeader';
 import {PRIVACY_URL, TERMS_URL} from '../constants/legalUrls';
 import {useHertzStore} from '../state/store';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {HertzTheme} from '../theme/hertzTheme';
+
+const STEP_COUNT = 3;
+const STEP_BEAT_HZ = [8, 10, 12] as const;
+
+const STEP_TITLES = [
+  'Medical & Liability',
+  'Hearing Safety',
+  'Frequency Bands',
+] as const;
 
 function Checkbox({
   checked,
@@ -35,128 +46,224 @@ function InlineLink({label, url}: {label: string; url: string}) {
   );
 }
 
+function StepDots({step}: {step: number}) {
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({length: STEP_COUNT}, (_, i) => (
+        <View key={i} style={[styles.dot, i === step && styles.dotActive, i < step && styles.dotDone]} />
+      ))}
+    </View>
+  );
+}
+
+function Step1Medical() {
+  return (
+    <>
+      <View style={styles.block}>
+        <Text style={styles.blockTitle}>Medical Disclaimer</Text>
+        <Text style={styles.blockBody}>
+          Binaural beats and audio-frequency stimulation are intended for relaxation, focus,
+          and personal wellness only. They are <Text style={styles.bold}>not</Text> a substitute
+          for medical diagnosis, treatment, therapy, or professional medical advice. Do not use
+          this app to self-treat any medical condition.
+        </Text>
+      </View>
+
+      <View style={[styles.block, styles.warningBlock]}>
+        <Text style={[styles.blockTitle, styles.warningTitle]}>
+          ⚠ Seizure & Photosensitivity Warning
+        </Text>
+        <Text style={styles.blockBody}>
+          Audio entrainment may affect brain wave activity. Do{' '}
+          <Text style={styles.bold}>not</Text> use this app if you have epilepsy,
+          photosensitivity disorder, or any condition that makes you susceptible to seizures.
+          If you are unsure of your sensitivity, consult a licensed physician before use.
+        </Text>
+      </View>
+
+      <View style={styles.block}>
+        <Text style={styles.blockTitle}>Age Requirement</Text>
+        <Text style={styles.blockBody}>
+          This app is intended for users{' '}
+          <Text style={styles.bold}>13 years of age or older</Text>. If you are under 13, do not
+          use this app.
+        </Text>
+      </View>
+    </>
+  );
+}
+
+function Step2Hearing() {
+  return (
+    <>
+      <View style={styles.block}>
+        <Text style={styles.blockTitle}>Hearing Safety</Text>
+        <Text style={styles.blockBody}>
+          Use headphones or speakers at a comfortable, moderate volume. Prolonged exposure to
+          high-volume audio may cause permanent hearing damage.
+        </Text>
+      </View>
+
+      <View style={[styles.block, styles.highlightBlock]}>
+        <Text style={[styles.blockTitle, styles.highlightTitle]}>Session Limits</Text>
+        <Text style={styles.blockBody}>
+          Hertz Labs recommends a maximum session duration of{' '}
+          <Text style={styles.bold}>60 minutes</Text>, followed by a minimum break of{' '}
+          <Text style={styles.bold}>15 minutes</Text> before starting another session.
+        </Text>
+      </View>
+
+      <View style={styles.block}>
+        <Text style={styles.blockBody}>
+          If you experience ringing, discomfort, or dizziness, stop playback immediately and lower
+          your device volume before resuming.
+        </Text>
+      </View>
+    </>
+  );
+}
+
+function Step3Frequency() {
+  return (
+    <>
+      <View style={styles.block}>
+        <Text style={styles.blockTitle}>Frequency Band Labels</Text>
+        <Text style={styles.blockBody}>
+          Band names follow common EEG terminology where it is scientifically established —{' '}
+          <Text style={styles.bold}>delta, theta, alpha, beta, gamma,</Text> and{' '}
+          <Text style={styles.bold}>high-gamma</Text>.
+        </Text>
+      </View>
+
+      <View style={[styles.block, styles.warningBlock]}>
+        <Text style={[styles.blockTitle, styles.warningTitle]}>Experimental Ranges</Text>
+        <Text style={styles.blockBody}>
+          Labels beyond high-gamma (very high-gamma, supra-gamma, omega) and beat rates above
+          roughly <Text style={styles.bold}>100 Hz</Text> describe{' '}
+          <Text style={styles.bold}>experimental</Text> audio modulation ranges, not standard
+          clinical EEG classifications.
+        </Text>
+      </View>
+
+      <View style={styles.block}>
+        <Text style={styles.blockBody}>
+          These ranges are provided for personal wellness and exploration only. Entrainment effects
+          at higher rates are not well established in peer-reviewed research.
+        </Text>
+      </View>
+    </>
+  );
+}
+
 /**
- * Mandatory legal gate — themed to match Engines / Math / Background tabs.
+ * Mandatory legal gate — 3-step wizard with pinned animated wave header.
  */
 export function SafetyOnboardingScreen() {
+  const [step, setStep] = useState(0);
   const [checkedTerms, setCheckedTerms] = useState(false);
   const [checkedMedical, setCheckedMedical] = useState(false);
   const setHasAccepted = useHertzStore(s => s.setHasAcceptedSafetyTerms);
 
   const ctaEnabled = checkedTerms && checkedMedical;
+  const beatHz = STEP_BEAT_HZ[Math.min(step, STEP_BEAT_HZ.length - 1)] ?? 10;
+  const isFinalStep = step === STEP_COUNT - 1;
+
+  const goNext = useCallback(() => {
+    setStep(s => Math.min(s + 1, STEP_COUNT - 1));
+  }, []);
+
+  const renderStepContent = () => {
+    if (step === 0) {
+      return <Step1Medical />;
+    }
+    if (step === 1) {
+      return <Step2Hearing />;
+    }
+    return <Step3Frequency />;
+  };
 
   return (
     <View style={styles.root}>
+      <OnboardingBackgroundWaves step={step} />
+
+      <View style={styles.headerPinned}>
+        <ScreenWaveHeader height={72} beatHz={beatHz} />
+        <Text style={styles.brand}>Hertz Labs</Text>
+        <Text style={styles.title}>Before You Begin</Text>
+        <Text style={styles.stepTitle}>{STEP_TITLES[step]}</Text>
+        <StepDots step={step} />
+        <Text style={styles.stepMeta}>
+          Step {step + 1} of {STEP_COUNT}
+        </Text>
+      </View>
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        <StaticWelcomeWaveHeader height={72} />
-
-        <Text style={styles.brand}>Hertz Labs</Text>
-        <Text style={styles.title}>Before You Begin</Text>
-        <Text style={styles.subtitle}>Please read the following carefully.</Text>
-
-        <View style={styles.divider} />
-
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>Medical Disclaimer</Text>
-          <Text style={styles.blockBody}>
-            Binaural beats and audio-frequency stimulation are intended for relaxation, focus,
-            and personal wellness only. They are <Text style={styles.bold}>not</Text> a substitute
-            for medical diagnosis, treatment, therapy, or professional medical advice. Do not use
-            this app to self-treat any medical condition.
-          </Text>
-        </View>
-
-        <View style={[styles.block, styles.warningBlock]}>
-          <Text style={[styles.blockTitle, styles.warningTitle]}>
-            ⚠ Seizure & Photosensitivity Warning
-          </Text>
-          <Text style={styles.blockBody}>
-            Audio entrainment may affect brain wave activity. Do{' '}
-            <Text style={styles.bold}>not</Text> use this app if you have epilepsy,
-            photosensitivity disorder, or any condition that makes you susceptible to seizures.
-            If you are unsure of your sensitivity, consult a licensed physician before use.
-          </Text>
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>Hearing Safety</Text>
-          <Text style={styles.blockBody}>
-            Use headphones or speakers at a comfortable, moderate volume. Prolonged exposure to
-            high-volume audio may cause permanent hearing damage. Hertz Labs recommends a maximum
-            session duration of <Text style={styles.bold}>60 minutes</Text> and a minimum break of{' '}
-            <Text style={styles.bold}>15 minutes</Text> between sessions.
-          </Text>
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>Age Requirement</Text>
-          <Text style={styles.blockBody}>
-            This app is intended for users{' '}
-            <Text style={styles.bold}>13 years of age or older</Text>. If you are under 13, do not
-            use this app.
-          </Text>
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>Frequency Band Labels</Text>
-          <Text style={styles.blockBody}>
-            Band names follow common EEG terminology where it is scientifically established —{' '}
-            <Text style={styles.bold}>delta, theta, alpha, beta, gamma,</Text> and{' '}
-            <Text style={styles.bold}>high-gamma</Text>. Labels beyond high-gamma (very high-gamma,
-            supra-gamma, omega) and beat rates above roughly <Text style={styles.bold}>100 Hz</Text>{' '}
-            describe <Text style={styles.bold}>experimental</Text> audio modulation ranges, not
-            standard clinical EEG classifications. They are provided for personal wellness and
-            exploration only; entrainment effects at these higher rates are not well established in
-            peer-reviewed research.
-          </Text>
-        </View>
-
-        <View style={styles.divider} />
-
-        <Pressable
-          style={styles.checkboxRow}
-          onPress={() => setCheckedTerms(v => !v)}
-          accessibilityRole="checkbox"
-          accessibilityState={{checked: checkedTerms}}>
-          <Checkbox checked={checkedTerms} onToggle={() => setCheckedTerms(v => !v)} />
-          <Text style={styles.checkboxLabel}>
-            I have read and agree to the <InlineLink label="Terms of Service" url={TERMS_URL} />{' '}
-            and <InlineLink label="Privacy Policy" url={PRIVACY_URL} />.
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.checkboxRow}
-          onPress={() => setCheckedMedical(v => !v)}
-          accessibilityRole="checkbox"
-          accessibilityState={{checked: checkedMedical}}>
-          <Checkbox checked={checkedMedical} onToggle={() => setCheckedMedical(v => !v)} />
-          <Text style={styles.checkboxLabel}>
-            I understand that Hertz Labs does not provide medical advice and I will not use it as
-            a substitute for professional medical care.
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.cta, !ctaEnabled && styles.ctaDisabled]}
-          onPress={() => {
-            if (ctaEnabled) {
-              setHasAccepted(true);
-            }
-          }}
-          disabled={!ctaEnabled}
-          accessibilityRole="button"
-          accessibilityState={{disabled: !ctaEnabled}}>
-          <Text style={[styles.ctaText, !ctaEnabled && styles.ctaTextDisabled]}>
-            Acknowledge & Enter
-          </Text>
-        </Pressable>
-
-        <View style={styles.bottomPad} />
+        <Animated.View
+          key={step}
+          entering={FadeInRight.duration(280)}
+          exiting={FadeOutLeft.duration(220)}
+          style={styles.stepPanel}>
+          {renderStepContent()}
+        </Animated.View>
       </ScrollView>
+
+      <View style={styles.footer}>
+        {!isFinalStep ? (
+          <Pressable
+            style={styles.nextBtn}
+            onPress={goNext}
+            accessibilityRole="button"
+            accessibilityLabel={`Next: ${STEP_TITLES[step + 1]}`}>
+            <Text style={styles.nextBtnText}>Next</Text>
+            <Text style={styles.nextBtnHint}>→ {STEP_TITLES[step + 1]}</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => setCheckedTerms(v => !v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{checked: checkedTerms}}>
+              <Checkbox checked={checkedTerms} onToggle={() => setCheckedTerms(v => !v)} />
+              <Text style={styles.checkboxLabel}>
+                I have read and agree to the <InlineLink label="Terms of Service" url={TERMS_URL} />{' '}
+                and <InlineLink label="Privacy Policy" url={PRIVACY_URL} />.
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => setCheckedMedical(v => !v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{checked: checkedMedical}}>
+              <Checkbox checked={checkedMedical} onToggle={() => setCheckedMedical(v => !v)} />
+              <Text style={styles.checkboxLabel}>
+                I understand that Hertz Labs does not provide medical advice and I will not use it as
+                a substitute for professional medical care.
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.cta, !ctaEnabled && styles.ctaDisabled]}
+              onPress={() => {
+                if (ctaEnabled) {
+                  setHasAccepted(true);
+                }
+              }}
+              disabled={!ctaEnabled}
+              accessibilityRole="button"
+              accessibilityState={{disabled: !ctaEnabled}}>
+              <Text style={[styles.ctaText, !ctaEnabled && styles.ctaTextDisabled]}>
+                Acknowledge & Enter
+              </Text>
+            </Pressable>
+          </>
+        )}
+      </View>
+
       <LegalMenuBar />
     </View>
   );
@@ -167,13 +274,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: HertzTheme.bg,
   },
+  headerPinned: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    zIndex: 2,
+  },
   scroll: {
     flex: 1,
+    zIndex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 40,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  stepPanel: {
+    gap: 12,
   },
   brand: {
     fontFamily: HertzTheme.mono,
@@ -186,23 +302,51 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: HertzTheme.text.primary,
     letterSpacing: -0.5,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  subtitle: {
+  stepTitle: {
     fontSize: 15,
-    color: HertzTheme.text.secondary,
+    fontWeight: '600',
+    color: HertzTheme.neon.cyan,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  divider: {
-    height: 1,
-    backgroundColor: HertzTheme.glassBorder,
-    marginVertical: 20,
+  stepMeta: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 10,
+    color: HertzTheme.text.muted,
+    textAlign: 'center',
+    letterSpacing: 1,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: HertzTheme.glassBorder,
+  },
+  dotActive: {
+    backgroundColor: HertzTheme.neon.cyan,
+    borderColor: HertzTheme.neon.cyan,
+    transform: [{scale: 1.15}],
+  },
+  dotDone: {
+    backgroundColor: 'rgba(92,225,255,0.35)',
+    borderColor: 'rgba(92,225,255,0.5)',
   },
   block: {
     backgroundColor: HertzTheme.glassFill,
@@ -216,6 +360,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(251,191,36,0.35)',
     backgroundColor: 'rgba(251,191,36,0.08)',
   },
+  highlightBlock: {
+    borderColor: 'rgba(92,225,255,0.35)',
+    backgroundColor: 'rgba(92,225,255,0.06)',
+  },
   blockTitle: {
     fontFamily: HertzTheme.mono,
     fontSize: 11,
@@ -228,6 +376,9 @@ const styles = StyleSheet.create({
   warningTitle: {
     color: HertzTheme.neon.amber,
   },
+  highlightTitle: {
+    color: HertzTheme.neon.cyan,
+  },
   blockBody: {
     fontSize: 14,
     color: HertzTheme.text.secondary,
@@ -237,11 +388,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: HertzTheme.text.primary,
   },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
+    backgroundColor: 'rgba(15,14,23,0.94)',
+    zIndex: 2,
+  },
+  nextBtn: {
+    borderRadius: 32,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: HertzTheme.neon.cyan,
+    backgroundColor: 'rgba(92,225,255,0.12)',
+  },
+  nextBtnText: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 14,
+    fontWeight: '700',
+    color: HertzTheme.neon.cyan,
+    letterSpacing: 1.5,
+  },
+  nextBtnHint: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 10,
+    color: HertzTheme.text.muted,
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   checkboxBox: {
     width: 22,
@@ -279,7 +462,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
     borderWidth: 1.5,
     borderColor: HertzTheme.neon.lime,
     backgroundColor: 'rgba(190,246,100,0.15)',
@@ -297,19 +480,5 @@ const styles = StyleSheet.create({
   },
   ctaTextDisabled: {
     color: HertzTheme.text.muted,
-  },
-  legalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 4,
-  },
-  legalSep: {
-    color: HertzTheme.text.muted,
-    fontSize: 13,
-  },
-  bottomPad: {
-    height: 20,
   },
 });

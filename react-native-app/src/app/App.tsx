@@ -17,6 +17,7 @@ import {MainTabs} from '../navigation/MainTabs';
 import {LegalScreen} from '../screens/LegalScreen';
 import {PaywallScreen} from '../screens/PaywallScreen';
 import {installAudioSync} from '../state/middleware/audioSync';
+import {installProtocolSync} from '../state/middleware/protocolSync';
 import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
 import {HertzTheme} from '../theme/hertzTheme';
@@ -109,8 +110,12 @@ function AppContent(): React.JSX.Element {
     // ~96 kHz) so Experimental-mode ultrasonic tones render instead of aliasing
     // back down. The OS negotiates down to 48 kHz on devices that cap there.
     HertzAudioClient.configure(192000, bufferMs);
-    const uninstall = installAudioSync(useHertzStore);
-    return uninstall;
+    const uninstallAudio = installAudioSync(useHertzStore);
+    const uninstallProtocol = installProtocolSync(useHertzStore);
+    return () => {
+      uninstallAudio();
+      uninstallProtocol();
+    };
   }, [hydrated]);
 
   if (!hydrated) {

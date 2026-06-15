@@ -1,12 +1,16 @@
 import React, {useState, useCallback, useMemo} from 'react';
-import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {ScrollView} from 'react-native-gesture-handler';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
-import {BRAINWAVE_BANDS} from '../components/ReadoutPanel/brainwaveBands';
 import {MathMode3DHeader} from '../components/math/MathMode3DHeader';
-import {CommandLineCard} from '../components/layout/CommandLineCard';
 import {MathModeGroupRow, type MathPresetItem} from '../components/math/MathModeGroupRow';
+import {getMathPresetFormula} from '../components/math/mathModeFormulas';
+import type {ActiveFormulaDisplay, FormulaAppliedPayload} from '../components/math/activeFormulaDisplay';
+import {ActiveTargetChip} from '../components/math/ActiveTargetChip';
+import {CustomFormulaSection} from '../components/math/CustomFormulaSection';
+import {AIFormulaSection} from '../components/math/AIFormulaSection';
+import {ProtocolSequencesSection} from '../components/protocol/ProtocolSequencesSection';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {DEFAULT_BEAT_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
@@ -41,81 +45,6 @@ const PRESET_GROUPS = [
   'Solfeggio',
 ] as const;
 
-function getBandColor(hz: number): string {
-  for (const band of BRAINWAVE_BANDS) {
-    if (hz >= band.minHz && hz < band.maxHz) {
-      return band.hexColor;
-    }
-  }
-  return BRAINWAVE_BANDS[BRAINWAVE_BANDS.length - 1].hexColor;
-}
-
-function getBandLabel(hz: number): string {
-  for (const band of BRAINWAVE_BANDS) {
-    if (hz >= band.minHz && hz < band.maxHz) {
-      return band.label;
-    }
-  }
-  return BRAINWAVE_BANDS[BRAINWAVE_BANDS.length - 1].label;
-}
-
-function PremiumFormulaCard({unlocked, onUpgrade}: {unlocked: boolean; onUpgrade: () => void}) {
-  const [formula, setFormula] = useState('');
-  const [result, setResult] = useState<string | null>(null);
-  const setParam = useHertzStore(s => s.setParam);
-
-  const evaluateFormula = useCallback(() => {
-    try {
-      const cleanFormula = formula
-        .replace(/\|([^|]+)\|/g, (_, expr) => `Math.abs(${expr})`)
-        .replace(/f_beat\s*=\s*/i, '')
-        .replace(/f_L\s*=\s*/i, '')
-        .replace(/f_R\s*=\s*/i, '');
-      const val = new Function(`return (${cleanFormula})`)() as number;
-      if (typeof val === 'number' && isFinite(val) && val > 0) {
-        const hz = Math.abs(val);
-        setResult(`→ ${hz.toFixed(4)} Hz (${getBandLabel(hz)})`);
-        setParam('beatHz', hz);
-      } else {
-        setResult('⚠ Result must be a positive number.');
-      }
-    } catch {
-      setResult('⚠ Invalid expression. Try: |440 - 432| or 7.83 * 2');
-    }
-  }, [formula, setParam]);
-
-  if (!unlocked) {
-    return (
-      <Pressable style={styles.formulaCardLocked} onPress={onUpgrade} accessibilityRole="button">
-        <Text style={styles.formulaLockedText}>
-          🔒 Custom Formula Input — Premium feature. Tap to upgrade.
-        </Text>
-      </Pressable>
-    );
-  }
-
-  return (
-    <View style={styles.formulaCard}>
-      <TextInput
-        style={styles.mathInput}
-        value={formula}
-        onChangeText={setFormula}
-        placeholder="Custom formula…"
-        placeholderTextColor={HertzTheme.text.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onSubmitEditing={evaluateFormula}
-      />
-      <Pressable style={styles.evalBtn} onPress={evaluateFormula}>
-        <Text style={styles.evalBtnText}>Apply →</Text>
-      </Pressable>
-      {result != null && (
-        <Text style={[styles.evalResult, result.startsWith('⚠') && styles.evalWarn]}>{result}</Text>
-      )}
-    </View>
-  );
-}
-
 export function MathModeScreen() {
   const tier = useHertzStore(s => s.tier);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
@@ -123,14 +52,24 @@ export function MathModeScreen() {
   const setParam = useHertzStore(s => s.setParam);
   const beatHz = useHertzStore(s => s.beatHz);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [liveFormula, setLiveFormula] = useState<ActiveFormulaDisplay | null>(null);
 
   const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
+
+  const handleFormulaApplied = useCallback((payload: FormulaAppliedPayload) => {
+    setActivePresetId(null);
+    setLiveFormula({
+      primary: payload.formula,
+      secondary: payload.explanation,
+      displayHz: payload.hz,
+      source: payload.source,
+    });
+  }, []);
 
   const handleSelect = useCallback(
     (preset: MathPresetItem) => {
       setActivePresetId(preset.id);
-      // Solfeggio labels are audible carrier tones; beat differential stays in the
-      // entrainment range (premium ceiling is 500 Hz — 639/741/852 were clamped).
+      setLiveFormula(null);
       if (preset.group === 'Solfeggio') {
         setParam('carrierHz', preset.beatHz);
         setParam('beatHz', DEFAULT_BEAT_HZ);
@@ -142,52 +81,82 @@ export function MathModeScreen() {
     [setParam],
   );
 
+  const activePreset = useMemo(
+    () => MATH_PRESETS.find(p => p.id === activePresetId) ?? null,
+    [activePresetId],
+  );
+
   const activeDisplayHz = useMemo(() => {
-    if (!activePresetId) {
+    if (liveFormula != null) {
+      return liveFormula.displayHz;
+    }
+    if (!activePreset) {
       return beatHz;
     }
-    const preset = MATH_PRESETS.find(p => p.id === activePresetId);
-    if (preset?.group === 'Solfeggio') {
-      return preset.beatHz;
+    if (activePreset.group === 'Solfeggio') {
+      return activePreset.beatHz;
     }
     return beatHz;
-  }, [activePresetId, beatHz]);
+  }, [liveFormula, activePreset, beatHz]);
+
+  const activeFormula = useMemo(() => {
+    if (liveFormula != null) {
+      return {
+        primary: liveFormula.primary,
+        secondary: liveFormula.secondary,
+      };
+    }
+    return getMathPresetFormula(activePreset);
+  }, [liveFormula, activePreset]);
 
   return (
     <View style={styles.root}>
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}>
-      <MathMode3DHeader />
-      <CommandLineCard />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
+        <MathMode3DHeader />
 
-      <View style={styles.activeChip}>
-        <Text style={styles.activeLabel}>ACTIVE TARGET Δ</Text>
-        <Text style={[styles.activeHz, {color: getBandColor(activeDisplayHz)}]}>
-          {activeDisplayHz.toFixed(2)} Hz
-        </Text>
-      </View>
-
-      <PremiumFormulaCard unlocked={unlocked} onUpgrade={openPaywall} />
-
-      <Text style={styles.sectionTitle}>Math Modes</Text>
-
-      {PRESET_GROUPS.map(group => (
-        <MathModeGroupRow
-          key={group}
-          group={group}
-          presets={MATH_PRESETS.filter(p => p.group === group)}
-          activePresetId={activePresetId}
-          unlocked={unlocked}
-          onSelect={handleSelect}
-          onUpgrade={openPaywall}
+        <ActiveTargetChip
+          hz={activeDisplayHz}
+          formulaPrimary={activeFormula.primary}
+          formulaSecondary={activeFormula.secondary}
         />
-      ))}
 
-      <View style={styles.bottomPad} />
-    </ScrollView>
-    <LegalMenuBar />
+        <Text style={styles.sectionTitle}>Math Modes</Text>
+
+        {PRESET_GROUPS.map(group => (
+          <MathModeGroupRow
+            key={group}
+            group={group}
+            presets={MATH_PRESETS.filter(p => p.group === group)}
+            activePresetId={activePresetId}
+            unlocked={unlocked}
+            onSelect={handleSelect}
+            onUpgrade={openPaywall}
+          />
+        ))}
+
+        <CustomFormulaSection
+          unlocked={unlocked}
+          formulaPrimary={activeFormula.primary}
+          formulaSubtitle={activeFormula.secondary}
+          onUpgrade={openPaywall}
+          onFormulaApplied={handleFormulaApplied}
+        />
+
+        <AIFormulaSection
+          unlocked={unlocked}
+          onUpgrade={openPaywall}
+          onFormulaApplied={handleFormulaApplied}
+          foldStyle={styles.aiFold}
+        />
+
+        <ProtocolSequencesSection foldStyle={styles.aiFold} />
+
+        <View style={styles.bottomPad} />
+      </ScrollView>
+      <LegalMenuBar />
     </View>
   );
 }
@@ -204,28 +173,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 24,
   },
-  activeChip: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: HertzTheme.glassBorder,
-    backgroundColor: HertzTheme.glassFill,
-    alignItems: 'center',
-  },
-  activeLabel: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 9,
-    color: HertzTheme.text.muted,
-    letterSpacing: 1,
-  },
-  activeHz: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 22,
-    fontWeight: '700',
-    marginTop: 4,
-  },
   sectionTitle: {
     fontFamily: HertzTheme.mono,
     fontSize: 11,
@@ -236,62 +183,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
-  formulaCard: {
+  aiFold: {
     marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: HertzTheme.glassBorder,
-    backgroundColor: HertzTheme.glassFill,
-  },
-  formulaCardLocked: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.25)',
-    backgroundColor: 'rgba(251,191,36,0.05)',
-    alignItems: 'center',
-  },
-  formulaLockedText: {
-    fontSize: 13,
-    color: 'rgba(251,191,36,0.8)',
-    textAlign: 'center',
-  },
-  mathInput: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 14,
-    color: HertzTheme.text.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: HertzTheme.glassBorder,
-    paddingVertical: 8,
-    marginBottom: 10,
-  },
-  evalBtn: {
-    alignSelf: 'flex-end',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(92,225,255,0.15)',
-    borderWidth: 1,
-    borderColor: HertzTheme.neon.cyan,
-  },
-  evalBtnText: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 11,
-    fontWeight: '700',
-    color: HertzTheme.neon.cyan,
-  },
-  evalResult: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 12,
-    color: HertzTheme.neon.cyan,
-    marginTop: 10,
-  },
-  evalWarn: {
-    color: HertzTheme.neon.amber,
+    marginBottom: 8,
   },
   bottomPad: {
     height: 16,

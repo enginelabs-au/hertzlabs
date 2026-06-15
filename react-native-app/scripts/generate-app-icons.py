@@ -6,6 +6,10 @@ Usage:
   python3 scripts/generate-app-icons.py [path-to-source-image]
 
 Defaults to assets/icons/source/app-icon-source.jpg under react-native-app/.
+
+Legacy screenshot cleanup (only if the source still has editor chrome or rounded
+corner letterboxing):
+  python3 scripts/generate-app-icons.py --strip-editor-ui --flatten-corners
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SRC = ROOT / "assets/icons/source/app-icon-source.jpg"
 
 IOS_SET = ROOT / "ios/HertzLabsBinauralBeats/Images.xcassets/AppIcon.appiconset"
+IOS_CLIP_SET = ROOT / "ios/HertzLabsBinauralBeatsClip/Assets.xcassets/AppIcon.appiconset"
 ANDROID_RES = ROOT / "android/app/src/main/res"
 
 ANDROID_DENSITIES: dict[str, int] = {
@@ -42,7 +47,8 @@ IOS_SIZES: list[tuple[str, int, str, str, str]] = [
 ]
 
 SAFE_ZONE_FRACTION = 0.66
-CORNER_LUMINANCE_THRESHOLD = 28
+CORNER_LUMINANCE_THRESHOLD = 12
+CORNER_BAND_FRACTION = 0.14
 EDITOR_UI_RIGHT_FRACTION = 0.82
 
 
@@ -101,12 +107,20 @@ def clean_editor_ui(im: Image.Image) -> Image.Image:
     return im
 
 
+def _in_corner_band(x: int, y: int, w: int, h: int, band: int) -> bool:
+    return (x < band or x >= w - band) and (y < band or y >= h - band)
+
+
 def flatten_rounded_screenshot_corners(im: Image.Image) -> Image.Image:
+    """Replace screenshot letterbox black only in the four corner cutout zones."""
     bg = sample_background_color(im)
     px = im.load()
     w, h = im.size
+    band = max(1, int(round(min(w, h) * CORNER_BAND_FRACTION)))
     for y in range(h):
         for x in range(w):
+            if not _in_corner_band(x, y, w, h, band):
+                continue
             r, g, b = px[x, y]
             if r + g + b < CORNER_LUMINANCE_THRESHOLD:
                 px[x, y] = bg
@@ -127,18 +141,34 @@ def save_android_png(im: Image.Image, path: Path) -> None:
     im.save(path, format="PNG", optimize=False)
 
 
-def prepare_artwork(im: Image.Image) -> Image.Image:
-    im = clean_editor_ui(im)
-    return flatten_rounded_screenshot_corners(im)
+def prepare_artwork(
+    im: Image.Image,
+    *,
+    strip_editor_ui: bool = False,
+    flatten_corners: bool = False,
+) -> Image.Image:
+    """Pass through clean master exports unchanged; optional legacy screenshot cleanup."""
+    if strip_editor_ui:
+        im = clean_editor_ui(im)
+    if flatten_corners:
+        im = flatten_rounded_screenshot_corners(im)
+    return im
 
 
 def make_ios_marketing(im: Image.Image) -> Image.Image:
-    im = prepare_artwork(im)
     return resize_square(im, 1024)
 
 
+def make_google_play_icon(im: Image.Image) -> Image.Image:
+    """512×512 full-bleed square for Google Play (no mask/shadow; RGBA sRGB)."""
+    marketing = resize_square(im, 512)
+    bg = sample_background_color(marketing)
+    rgba = Image.new("RGBA", (512, 512), (*bg, 255))
+    rgba.paste(marketing.convert("RGB"), (0, 0))
+    return rgba
+
+
 def make_android_foreground(im: Image.Image, canvas: int) -> Image.Image:
-    im = prepare_artwork(im)
     safe = max(1, int(round(canvas * SAFE_ZONE_FRACTION)))
     scaled = resize_square(im, safe)
     out = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
@@ -151,7 +181,7 @@ def make_android_background(canvas: int, color: tuple[int, int, int]) -> Image.I
     return Image.new("RGB", (canvas, canvas), color)
 
 
-def write_ios_contents() -> None:
+def write_ios_contents(icon_set: Path) -> None:
     images = []
     for filename, _size, idiom, size_label, scale in IOS_SIZES:
         images.append(
@@ -163,7 +193,14 @@ def write_ios_contents() -> None:
             }
         )
     contents = {"images": images, "info": {"author": "xcode", "version": 1}}
-    (IOS_SET / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n", encoding="utf-8")
+    (icon_set / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n", encoding="utf-8")
+
+
+def generate_ios_icon_set(icon_set: Path, marketing: Image.Image) -> None:
+    icon_set.mkdir(parents=True, exist_ok=True)
+    for filename, size, *_rest in IOS_SIZES:
+        save_ios_png(resize_square(marketing, size), icon_set / filename)
+    write_ios_contents(icon_set)
 
 
 def write_android_adaptive_xml() -> None:
@@ -182,19 +219,29 @@ def write_android_adaptive_xml() -> None:
 
 
 def main() -> None:
-    src = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SRC
+    args = [a for a in sys.argv[1:] if a.startswith("--")]
+    positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+    strip_editor_ui = "--strip-editor-ui" in args
+    flatten_corners = "--flatten-corners" in args
+
+    src = Path(positional[0]) if positional else DEFAULT_SRC
     if not src.is_file():
         print(f"Source not found: {src}", file=sys.stderr)
         sys.exit(1)
 
     square = load_square_rgb(src)
-    square = prepare_artwork(square)
+    square = prepare_artwork(
+        square,
+        strip_editor_ui=strip_editor_ui,
+        flatten_corners=flatten_corners,
+    )
     bg_color = sample_background_color(square)
     marketing = make_ios_marketing(square)
 
     masters = ROOT / "assets/icons"
     masters.mkdir(parents=True, exist_ok=True)
     save_ios_png(marketing, masters / "ios-AppIcon-1024.png")
+    save_android_png(make_google_play_icon(square), masters / "google-play-AppIcon-512.png")
     save_android_png(
         make_android_foreground(square, 1024),
         masters / "android-foreground-1024.png",
@@ -204,10 +251,8 @@ def main() -> None:
         masters / "android-background-1024.png",
     )
 
-    IOS_SET.mkdir(parents=True, exist_ok=True)
-    for filename, size, *_rest in IOS_SIZES:
-        save_ios_png(resize_square(marketing, size), IOS_SET / filename)
-    write_ios_contents()
+    generate_ios_icon_set(IOS_SET, marketing)
+    generate_ios_icon_set(IOS_CLIP_SET, marketing)
 
     fg_master = make_android_foreground(square, 1024)
     bg_master = make_android_background(1024, bg_color)
@@ -226,6 +271,7 @@ def main() -> None:
     write_android_adaptive_xml()
 
     print(f"Generated iOS icons in {IOS_SET}")
+    print(f"Generated App Clip icons in {IOS_CLIP_SET}")
     print(f"Generated Android mipmaps in {ANDROID_RES}")
 
 

@@ -1,6 +1,5 @@
 import React, {useCallback, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {BlurView} from '@sbaiahmed1/react-native-blur';
 import {AmbientNoiseSelector} from '../components/EngineSelector/AmbientNoiseSelector';
 import {EngineSelector} from '../components/EngineSelector/EngineSelector';
 import {EngineDialSection} from '../components/engines/EngineDialSection';
@@ -38,8 +37,8 @@ function KineticIndicator({active}: {active: boolean}) {
 }
 
 /**
- * Engines tab — reference layout: L/TARGET/R readouts, dial hub, category tabs,
- * accordion engine list, play + kinetic controls.
+ * Engines tab — L/TARGET/R readouts, dial hub, category tabs, accordion engine list,
+ * kinetic/experimental toggles. Playback lives in the global TransportBar above tabs.
  */
 export function PlayerScreen() {
   const [category, setCategory] = useState<EngineCategoryId>('entrainment');
@@ -52,9 +51,6 @@ export function PlayerScreen() {
   const updateSettings = useHertzStore(s => s.updateSettings);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const setParam = useHertzStore(s => s.setParam);
-  const isPlaying = useHertzStore(s => s.isPlaying);
-  const requestPlay = useHertzStore(s => s.requestPlay);
-  const requestPause = useHertzStore(s => s.requestPause);
 
   const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
@@ -95,33 +91,7 @@ export function PlayerScreen() {
           <EngineSelector category={category} />
         )}
 
-        <LegalMenuBar />
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <BlurView
-          style={StyleSheet.absoluteFill}
-          blurType="systemChromeMaterialDark"
-          blurAmount={22}
-          overlayColor="rgba(8,10,18,0.28)"
-          reducedTransparencyFallbackColor="#0A0C12"
-        />
-        <Pressable
-          style={[styles.playBtn, isPlaying && styles.playBtnActive]}
-          onPress={() => (isPlaying ? requestPause() : requestPlay())}
-          accessibilityRole="button"
-          accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-          {isPlaying ? (
-            <View style={styles.pauseIcon}>
-              <View style={styles.pauseBar} />
-              <View style={styles.pauseBar} />
-            </View>
-          ) : (
-            <Text style={styles.playBtnIcon}>▶</Text>
-          )}
-          <Text style={styles.playBtnLabel}>{isPlaying ? 'PAUSE' : 'PLAY'}</Text>
-        </Pressable>
-        <View style={styles.bottomControls}>
+        <View style={styles.engineControls}>
           <KineticIndicator active={isKineticModeEnabled} />
           <Pressable
             style={[styles.kineticToggle, isKineticModeEnabled && styles.kineticToggleActive]}
@@ -156,7 +126,9 @@ export function PlayerScreen() {
             </Text>
           </Pressable>
         </View>
-      </View>
+
+        <LegalMenuBar />
+      </ScrollView>
     </View>
   );
 }
@@ -171,7 +143,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 8,
-    paddingBottom: 124,
+    paddingBottom: 16,
   },
   volWarningBanner: {
     backgroundColor: 'rgba(251,191,36,0.1)',
@@ -187,72 +159,14 @@ const styles = StyleSheet.create({
     color: HertzTheme.neon.amber,
     textAlign: 'center',
   },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopWidth: 1,
-    borderTopColor: HertzTheme.glassBorder,
-    paddingTop: 10,
-    paddingBottom: 8,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    overflow: 'hidden',
-  },
-  playBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: 'rgba(167,139,250,0.45)',
-    backgroundColor: 'rgba(167,139,250,0.12)',
-  },
-  playBtnActive: {
-    borderColor: HertzTheme.neon.lime,
-    backgroundColor: 'rgba(190,246,100,0.15)',
-  },
-  playBtnIcon: {
-    fontSize: 18,
-    lineHeight: 20,
-    height: 20,
-    width: 20,
-    textAlign: 'center',
-    color: HertzTheme.neon.lime,
-  },
-  pauseIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 20,
-    width: 20,
-    gap: 4,
-  },
-  pauseBar: {
-    width: 4,
-    height: 15,
-    borderRadius: 2,
-    backgroundColor: HertzTheme.neon.lime,
-  },
-  playBtnLabel: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 13,
-    fontWeight: '700',
-    color: HertzTheme.neon.lime,
-    letterSpacing: 2,
-    width: 54,
-    textAlign: 'center',
-  },
-  bottomControls: {
+  engineControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 8,
+    marginTop: 12,
+    marginBottom: 4,
     paddingHorizontal: 16,
   },
   kineticBadge: {

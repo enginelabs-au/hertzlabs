@@ -38,7 +38,7 @@ function NoiseRow({
   onSelect: () => void;
   onMixChange: (mix: number) => void;
 }) {
-  const [expanded, setExpanded] = React.useState(isActive);
+  const [expanded, setExpanded] = React.useState(false);
 
   const handleSliderChange = useCallback(
     (norm: number) => onMixChange(sliderNormToNoiseMix(norm, beatSliderScale)),

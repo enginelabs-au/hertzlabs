@@ -1,5 +1,5 @@
 import type {CustomerInfo, PurchasesEntitlementInfo} from 'react-native-purchases';
-import {IAP_PRODUCT_IDS, REVENUECAT_ENTITLEMENT} from './iapCatalog';
+import {IAP_PRODUCT_IDS, REVENUECAT_ENTITLEMENT, normalizeStoreProductId} from './iapCatalog';
 import type {PaywallPlanKey} from './loadPaywallPackages';
 
 export type ActiveSubscriptionSummary = {
@@ -17,13 +17,14 @@ export type ActiveSubscriptionSummary = {
 };
 
 function productIdToPlanKey(productId: string): PaywallPlanKey | null {
-  if (productId === IAP_PRODUCT_IDS.monthly) {
+  const id = normalizeStoreProductId(productId);
+  if (id === IAP_PRODUCT_IDS.monthly) {
     return 'monthly';
   }
-  if (productId === IAP_PRODUCT_IDS.annual) {
+  if (id === IAP_PRODUCT_IDS.annual) {
     return 'annual';
   }
-  if (productId === IAP_PRODUCT_IDS.lifetime) {
+  if (id === IAP_PRODUCT_IDS.lifetime) {
     return 'lifetime';
   }
   return null;
@@ -65,7 +66,9 @@ function buildStatusLines(entitlement: PurchasesEntitlementInfo): {
 } {
   const expirationLabel = formatRcDate(entitlement.expirationDate);
   const detailLines: string[] = [];
-  const isLifetime = entitlement.expirationDate == null && entitlement.productIdentifier === IAP_PRODUCT_IDS.lifetime;
+  const isLifetime =
+    entitlement.expirationDate == null &&
+    normalizeStoreProductId(entitlement.productIdentifier) === IAP_PRODUCT_IDS.lifetime;
 
   if (isLifetime) {
     return {

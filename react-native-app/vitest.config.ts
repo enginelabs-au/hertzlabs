@@ -7,10 +7,12 @@ const mockReactNative = fileURLToPath(
 const mockMmkv = fileURLToPath(
   new URL('./__tests__/__mocks__/react-native-mmkv.ts', import.meta.url),
 );
+const mockEnv = fileURLToPath(new URL('./__tests__/__mocks__/env.ts', import.meta.url));
 
 export default defineConfig({
   resolve: {
     alias: [
+      {find: /^@env$/, replacement: mockEnv},
       // Order/regex matters: match the more specific package before bare `react-native`.
       {find: /^react-native-mmkv$/, replacement: mockMmkv},
       {find: /^react-native$/, replacement: mockReactNative},

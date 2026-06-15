@@ -8,6 +8,7 @@ type ScreenWaveHeaderProps = {
   height?: number;
   variant?: 'hero' | 'stacked';
   showAxes?: boolean;
+  beatHz?: number;
 };
 
 /** Top waveform panel — used on Math, Background, and optional headers. */
@@ -15,6 +16,7 @@ export function ScreenWaveHeader({
   height = 100,
   variant = 'stacked',
   showAxes = true,
+  beatHz,
 }: ScreenWaveHeaderProps) {
   return (
     <GlassCard style={styles.wrap} padding={0}>
@@ -24,7 +26,7 @@ export function ScreenWaveHeader({
           <Text style={styles.axisLabelRight}>Frequency →</Text>
         </View>
       )}
-      <RadiantWaveStrip height={height} variant={variant} />
+      <RadiantWaveStrip height={height} variant={variant} beatHz={beatHz} />
     </GlassCard>
   );
 }

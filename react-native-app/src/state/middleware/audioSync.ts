@@ -101,32 +101,64 @@ export function installAudioSync(store: SelectorStore): () => void {
 
   let lastNativePositionMs = 0;
   const positionSub = HertzAudioClient.onPosition(event => {
+    if (store.getState().protocolRunning) {
+      return;
+    }
     lastNativePositionMs = Date.now();
     store.getState().setElapsedSec(event.elapsedSec);
   });
 
   let playbackSim: ReturnType<typeof setInterval> | null = null;
-  const unsubscribePlaybackSim = store.subscribe(s => s.isPlaying, isPlaying => {
+  let simAnchor = {wallMs: Date.now(), elapsedSec: 0};
+
+  const reanchorPlaybackSim = () => {
+    simAnchor = {wallMs: Date.now(), elapsedSec: store.getState().elapsedSec};
+  };
+
+  const restartPlaybackSim = () => {
     if (playbackSim != null) {
       clearInterval(playbackSim);
       playbackSim = null;
     }
-    if (!isPlaying) {
+    if (!store.getState().isPlaying) {
       return;
     }
-    const playStartMs = Date.now();
-    const playStartElapsed = store.getState().elapsedSec;
+    reanchorPlaybackSim();
     playbackSim = setInterval(() => {
       if (!store.getState().isPlaying) {
         return;
       }
       const nativeFresh = Date.now() - lastNativePositionMs < 300;
-      if (!nativeFresh) {
-        const t = playStartElapsed + (Date.now() - playStartMs) / 1000;
+      if (!nativeFresh || store.getState().protocolRunning) {
+        const t = simAnchor.elapsedSec + (Date.now() - simAnchor.wallMs) / 1000;
         store.getState().setElapsedSec(t);
       }
     }, 80);
+  };
+
+  const unsubscribeProtocolSeek = store.subscribe(s => s.elapsedSec, (elapsed, prev) => {
+    if (!store.getState().protocolRunning || !store.getState().isPlaying) {
+      return;
+    }
+    if (prev == null) {
+      return;
+    }
+    const predicted = simAnchor.elapsedSec + (Date.now() - simAnchor.wallMs) / 1000;
+    if (Math.abs(elapsed - predicted) > 0.2) {
+      reanchorPlaybackSim();
+    }
   });
+
+  const unsubscribePlaybackSim = store.subscribe(
+    s => ({isPlaying: s.isPlaying, epoch: s.elapsedClockEpoch}),
+    ({isPlaying}) => {
+      restartPlaybackSim();
+      if (!isPlaying && playbackSim != null) {
+        clearInterval(playbackSim);
+        playbackSim = null;
+      }
+    },
+  );
 
   const errorSub = HertzAudioClient.onError(event => {
     store.getState()._ingestNativeError(`${event.code}: ${event.message}`);
@@ -140,6 +172,7 @@ export function installAudioSync(store: SelectorStore): () => void {
     unsubscribeParams();
     unsubscribePlayback();
     unsubscribePlaybackSim();
+    unsubscribeProtocolSeek();
     if (playbackSim != null) {
       clearInterval(playbackSim);
     }

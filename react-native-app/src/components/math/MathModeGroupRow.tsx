@@ -29,15 +29,17 @@ export function MathModeGroupRow({
   onSelect,
   onUpgrade,
 }: MathModeGroupRowProps) {
-  const [expanded, setExpanded] = useState(false);
+  const isGroupActive = presets.some(p => p.id === activePresetId);
+  const [expanded, setExpanded] = useState(isGroupActive);
   const meta = MATH_GROUP_META[group] ?? {
     icon: '∑',
     title: group,
     blurb: 'Mathematical entrainment preset.',
+    deepDive: 'Mathematically derived entrainment targets for this family.',
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isGroupActive && styles.cardActive]}>
       <Pressable
         style={styles.header}
         onPress={() => setExpanded(v => !v)}
@@ -49,7 +51,11 @@ export function MathModeGroupRow({
         <View style={styles.textCol}>
           <Text style={styles.title}>{meta.title}</Text>
           <Text style={styles.blurb}>{meta.blurb}</Text>
+          {expanded && (
+            <Text style={styles.deepDive}>{meta.deepDive}</Text>
+          )}
         </View>
+        {isGroupActive && <View style={styles.activeDot} />}
       </Pressable>
 
       {expanded && (
@@ -92,9 +98,13 @@ const styles = StyleSheet.create({
     backgroundColor: HertzTheme.glassFill,
     overflow: 'hidden',
   },
+  cardActive: {
+    borderColor: HertzTheme.neon.cyan,
+    backgroundColor: 'rgba(92,225,255,0.06)',
+  },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 14,
     gap: 12,
   },
@@ -134,6 +144,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: HertzTheme.text.secondary,
     marginTop: 3,
+  },
+  deepDive: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 11,
+    lineHeight: 17,
+    color: HertzTheme.neon.cyan,
+    opacity: 0.9,
+    marginTop: 6,
+  },
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: HertzTheme.neon.cyan,
+    marginTop: 6,
   },
   body: {
     borderTopWidth: 1,

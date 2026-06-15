@@ -9,6 +9,7 @@ import {
   IAP_PRODUCT_IDS,
   REVENUECAT_OFFERING,
   REVENUECAT_PACKAGES,
+  iapProductId,
 } from './iapCatalog';
 import {ensureRevenueCatConfigured} from './revenueCatReady';
 
@@ -91,12 +92,13 @@ function planFromStoreProduct(key: PaywallPlanKey, product: PurchasesStoreProduc
 
 async function loadStoreProducts(): Promise<Map<string, PurchasesStoreProduct>> {
   const map = new Map<string, PurchasesStoreProduct>();
+  const os = Platform.OS === 'android' ? 'android' : 'ios';
   const [subs, inApp] = await Promise.all([
     Purchases.getProducts(
-      [IAP_PRODUCT_IDS.monthly, IAP_PRODUCT_IDS.annual],
+      [iapProductId('monthly', os), iapProductId('annual', os)],
       PRODUCT_CATEGORY.SUBSCRIPTION,
     ),
-    Purchases.getProducts([IAP_PRODUCT_IDS.lifetime], PRODUCT_CATEGORY.NON_SUBSCRIPTION),
+    Purchases.getProducts([iapProductId('lifetime', os)], PRODUCT_CATEGORY.NON_SUBSCRIPTION),
   ]);
   for (const product of [...subs, ...inApp]) {
     map.set(product.productIdentifier, product);
@@ -165,15 +167,16 @@ async function resolveOfferingPackages(): Promise<{
     }
 
     if (offering) {
+      const os = Platform.OS === 'android' ? 'android' : 'ios';
       const defs: Array<{
         key: PaywallPlanKey;
         rcId: string;
         type: Package['packageType'];
         productId: string;
       }> = [
-        {key: 'monthly', rcId: REVENUECAT_PACKAGES.monthly, type: 'MONTHLY', productId: IAP_PRODUCT_IDS.monthly},
-        {key: 'annual', rcId: REVENUECAT_PACKAGES.annual, type: 'ANNUAL', productId: IAP_PRODUCT_IDS.annual},
-        {key: 'lifetime', rcId: REVENUECAT_PACKAGES.lifetime, type: 'LIFETIME', productId: IAP_PRODUCT_IDS.lifetime},
+        {key: 'monthly', rcId: REVENUECAT_PACKAGES.monthly, type: 'MONTHLY', productId: iapProductId('monthly', os)},
+        {key: 'annual', rcId: REVENUECAT_PACKAGES.annual, type: 'ANNUAL', productId: iapProductId('annual', os)},
+        {key: 'lifetime', rcId: REVENUECAT_PACKAGES.lifetime, type: 'LIFETIME', productId: iapProductId('lifetime', os)},
       ];
       for (const def of defs) {
         const pkg = findOfferingPackage(offering, def.rcId, def.type, def.productId);
@@ -215,7 +218,8 @@ export async function loadPaywallPackages(): Promise<PaywallLoadResult> {
           );
         }
         for (const key of missingKeys) {
-          const productId = IAP_PRODUCT_IDS[key];
+          const os = Platform.OS === 'android' ? 'android' : 'ios';
+          const productId = iapProductId(key, os);
           const product = storeProducts.get(productId);
           if (product) {
             packagePlans[key] = planFromStoreProduct(key, product);

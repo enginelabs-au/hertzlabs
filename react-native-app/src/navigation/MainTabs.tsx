@@ -5,6 +5,7 @@ import {PlayerScreen} from '../screens/PlayerScreen';
 import {MathModeScreen} from '../screens/MathModeScreen';
 import {BackgroundAudioScreen} from '../screens/BackgroundAudioScreen';
 import {AIParserScreen} from '../screens/AIParserScreen';
+import {TransportBar} from '../components/layout/TransportBar';
 import {useAudioBackgroundController} from '../hooks/useAudioBackgroundController';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -37,6 +38,8 @@ export function MainTabs() {
         {activeTab === 'background' && <BackgroundAudioScreen />}
         {activeTab === 'ai' && <AIParserScreen />}
       </View>
+
+      <TransportBar />
 
       <View style={[styles.tabBar, {paddingBottom: Math.max(bottomInset, 4)}]}>
         {TABS.map(tab => {

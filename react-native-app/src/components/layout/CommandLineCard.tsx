@@ -1,15 +1,23 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View, type ViewStyle} from 'react-native';
 import {GlassCard} from '../player/GlassCard';
 import {HertzTheme} from '../../theme/hertzTheme';
 
 type CommandLineCardProps = {
+  formula: string;
+  subtitle: string;
   onClose?: () => void;
+  style?: ViewStyle;
 };
 
-export function CommandLineCard({onClose}: CommandLineCardProps) {
+export function CommandLineCard({
+  formula,
+  subtitle,
+  onClose,
+  style,
+}: CommandLineCardProps) {
   return (
-    <GlassCard style={styles.card}>
+    <GlassCard style={[styles.card, style]}>
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Command line</Text>
         {onClose != null && (
@@ -18,10 +26,8 @@ export function CommandLineCard({onClose}: CommandLineCardProps) {
           </Pressable>
         )}
       </View>
-      <Text style={styles.formula}>f_target = |f_L − f_R|</Text>
-      <Text style={styles.sub}>
-        π · φ · √available · f_target = (f_L + f_R) / 2
-      </Text>
+      <Text style={styles.formula}>{formula}</Text>
+      <Text style={styles.sub}>{subtitle}</Text>
     </GlassCard>
   );
 }

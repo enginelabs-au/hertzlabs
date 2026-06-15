@@ -26,6 +26,8 @@ type ExperimentalDialProps = {
   defaultValue: number;
   /** Commit the value to the store (e.g. setParam('carrierHz', hz)). */
   onCommit: (hz: number) => void;
+  /** When set, enables live native audio updates during drag via useLiveAudioParamBridge. */
+  gestureActive?: SharedValue<boolean>;
 };
 
 function clamp(v: number, min: number, max: number): number {
@@ -57,9 +59,8 @@ export function formatExperimentalUnit(hz: number): string {
  * the Ω− side up to 20 kHz on the Ω+ side; the text field accepts any value within
  * the absolute clamp. A tap (no drag) resets the pitch to its default.
  *
- * Perf: a drag writes only the live shared value (waveform / readouts / audio
- * follow with no hub re-render) plus this component's own display state, then
- * commits to the store once on release — matching the main slider's model.
+ * Perf: a drag writes the live shared value (waveform / readouts / audio bridge)
+ * on every frame, commits to the store on release.
  */
 export function ExperimentalDial({
   label,
@@ -73,6 +74,7 @@ export function ExperimentalDial({
   absMax,
   defaultValue,
   onCommit,
+  gestureActive,
 }: ExperimentalDialProps) {
   const [liveDisplay, setLiveDisplay] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
@@ -83,8 +85,11 @@ export function ExperimentalDial({
   const pct = logNorm(displayHz, dialMin, dialMax);
 
   const captureStart = useCallback(() => {
+    if (gestureActive != null) {
+      gestureActive.value = true;
+    }
     startNorm.current = logNorm(committedValue, dialMin, dialMax);
-  }, [committedValue, dialMin, dialMax]);
+  }, [committedValue, dialMin, dialMax, gestureActive]);
 
   const applyDrag = useCallback(
     (translationY: number) => {
@@ -96,14 +101,21 @@ export function ExperimentalDial({
     [valueLive, dialMin, dialMax],
   );
 
-  const commitDrag = useCallback(() => {
+  const endDrag = useCallback(() => {
+    if (gestureActive != null) {
+      gestureActive.value = false;
+    }
     setLiveDisplay(prev => {
       if (prev != null) {
         onCommit(clamp(prev, absMin, absMax));
       }
       return null;
     });
-  }, [absMin, absMax, onCommit]);
+  }, [absMin, absMax, gestureActive, onCommit]);
+
+  const commitDrag = useCallback(() => {
+    endDrag();
+  }, [endDrag]);
 
   const resetToDefault = useCallback(() => {
     valueLive.value = defaultValue;

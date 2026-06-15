@@ -53,6 +53,8 @@ export type SessionPlan = {
   presets: Preset[];
 };
 
+export type {ProtocolStep, SessionProtocol, ProtocolEvalState} from '../protocol/types';
+
 export type AudioParamsSlice = AudioParamsValues & {
   setParam<K extends keyof AudioParamsValues>(key: K, value: AudioParamsValues[K]): void;
   toggleNoiseLayer(layer: keyof NoiseLayers): void;
@@ -67,10 +69,13 @@ export type SessionSlice = {
   isPaused: boolean;
   durationSec: number;
   elapsedSec: number;
+  /** Bumped when elapsed is seeked so playback sim restarts its anchor. */
+  elapsedClockEpoch: number;
   requestPlay(): void;
   requestPause(): void;
   requestStop(): void;
   setElapsedSec(elapsedSec: number): void;
+  seekElapsedSec(elapsedSec: number): void;
 };
 
 export type EngineSlice = {
@@ -141,6 +146,37 @@ export type SubscriptionSlice = {
   _hydrateFromRC(info: CustomerInfo, entitlementId?: string): void;
 };
 
+export type ProtocolSlice = {
+  activeProtocol: import('../protocol/types').SessionProtocol | null;
+  protocolRunning: boolean;
+  protocolStartedAtMs: number | null;
+  /** Latest AI/manual import for the sequencing UI draft (when idle). */
+  protocolDraftSeed: import('../protocol/types').SessionProtocol | null;
+  protocolDraftSeedVersion: number;
+  /** True while the user is dragging the protocol ring (pauses protocol sync). */
+  protocolScrubbing: boolean;
+  setProtocolScrubbing(scrubbing: boolean): void;
+  startProtocol(protocol: import('../protocol/types').SessionProtocol): void;
+  stopProtocol(): void;
+  setProtocolDraftSeed(protocol: import('../protocol/types').SessionProtocol): void;
+  updateProtocolStep(
+    stepId: string,
+    patch: Partial<import('../protocol/types').ProtocolStep>,
+  ): void;
+  setProtocolTotalMin(minutes: number): void;
+  setProtocolAutoStop(enabled: boolean): void;
+  updateProtocolFadeOut(
+    patch: Partial<
+      Pick<
+        import('../protocol/types').SessionProtocol,
+        'fadeOutDurationSec' | 'fadeOutStartGain' | 'fadeOutEndGain'
+      >
+    >,
+  ): void;
+  replaceActiveProtocol(protocol: import('../protocol/types').SessionProtocol): void;
+  seekProtocolElapsed(elapsedSec: number): void;
+};
+
 export type AppStore = AudioParamsSlice &
   SessionSlice &
   EngineSlice &
@@ -149,4 +185,6 @@ export type AppStore = AudioParamsSlice &
   UiSlice &
   SettingsSlice &
   SubscriptionSlice &
-  TelemetrySlice;
+  TelemetrySlice &
+  ProtocolSlice &
+  import('./slices/aiChat').AiChatSlice;

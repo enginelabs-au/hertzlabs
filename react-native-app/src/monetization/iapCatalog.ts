@@ -11,6 +11,27 @@ export const IAP_PRODUCT_IDS = {
   lifetime: 'hertzlabs_lifetime_ultra',
 } as const;
 
+/** Play subscriptions use `subscriptionId:basePlanId` (must match setup-play-iap.mjs). */
+export const PLAY_SUBSCRIPTION_BASE_PLAN_ID = 'default';
+
+export const PLAY_IAP_PRODUCT_IDS = {
+  monthly: `${IAP_PRODUCT_IDS.monthly}:${PLAY_SUBSCRIPTION_BASE_PLAN_ID}`,
+  annual: `${IAP_PRODUCT_IDS.annual}:${PLAY_SUBSCRIPTION_BASE_PLAN_ID}`,
+  lifetime: IAP_PRODUCT_IDS.lifetime,
+} as const;
+
+export type IapProductKey = keyof typeof IAP_PRODUCT_IDS;
+
+export function iapProductId(key: IapProductKey, os: 'ios' | 'android'): string {
+  return os === 'android' ? PLAY_IAP_PRODUCT_IDS[key] : IAP_PRODUCT_IDS[key];
+}
+
+/** Strip `:basePlanId` suffix when comparing Play subscription IDs to catalog keys. */
+export function normalizeStoreProductId(productId: string): string {
+  const colon = productId.indexOf(':');
+  return colon >= 0 ? productId.slice(0, colon) : productId;
+}
+
 export const REVENUECAT_ENTITLEMENT = 'premium';
 export const REVENUECAT_OFFERING = 'default';
 
@@ -38,7 +59,7 @@ export const IAP_SETUP_CHECKLIST = APP_STORE_SETUP_CHECKLIST;
 
 /** Google Play + RevenueCat Android — required before plans load on Android. */
 export const PLAY_STORE_SETUP_CHECKLIST = [
-  `Google Play Console → Monetize → Subscriptions: create ${IAP_PRODUCT_IDS.monthly} and ${IAP_PRODUCT_IDS.annual} (same IDs as iOS).`,
+  `Google Play Console → Monetize → Subscriptions: create ${IAP_PRODUCT_IDS.monthly} and ${IAP_PRODUCT_IDS.annual} with base plan "${PLAY_SUBSCRIPTION_BASE_PLAN_ID}" (RevenueCat store IDs: ${PLAY_IAP_PRODUCT_IDS.monthly}, ${PLAY_IAP_PRODUCT_IDS.annual}).`,
   `Google Play Console → Monetize → In-app products: create ${IAP_PRODUCT_IDS.lifetime} as a one-time product.`,
   'Google Play Console → link a payments profile and publish the app to at least Internal testing (draft SKUs alone are not enough).',
   'RevenueCat → add Android app (package com.hertzlabs.binauralbeats) with the Google Play service credentials JSON.',

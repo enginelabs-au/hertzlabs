@@ -5,6 +5,7 @@ android/app/build/
 ios/Pods/
 ios/build/
 .env
+.secrets/
 scripts/.iap-review-screenshot.png
 .env.*
 !.env.example

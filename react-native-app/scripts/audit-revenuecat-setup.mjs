@@ -20,6 +20,11 @@ const EXPECTED = {
     annual: 'hertzlabs_bb_annual',
     lifetime: 'hertzlabs_lifetime_ultra',
   },
+  playProducts: {
+    monthly: 'hertzlabs_bb_monthly:default',
+    annual: 'hertzlabs_bb_annual:default',
+    lifetime: 'hertzlabs_lifetime_ultra',
+  },
   packages: {
     monthly: '$rc_monthly',
     annual: '$rc_annual',
@@ -91,13 +96,13 @@ async function listAll(secret, route) {
   return items;
 }
 
-async function v1Offerings(publicKey) {
+async function v1Offerings(publicKey, platform) {
   const res = await fetch(
     'https://api.revenuecat.com/v1/subscribers/rc-audit-probe/offerings',
     {
       headers: {
         Authorization: `Bearer ${publicKey}`,
-        'X-Platform': 'ios',
+        'X-Platform': platform,
       },
     },
   );
@@ -108,6 +113,7 @@ async function v1Offerings(publicKey) {
 const env = parseEnv(envPath);
 const secret = (env.REVENUECAT_API_KEY_WEB || '').trim();
 const iosPublic = (env.REVENUECAT_API_KEY_IOS || '').trim();
+const androidPublic = (env.REVENUECAT_API_KEY_ANDROID || '').trim();
 
 const issues = [];
 const actions = [];
@@ -132,6 +138,9 @@ if (!secret.startsWith('sk_')) {
 if (!iosPublic) {
   issue('REVENUECAT_API_KEY_IOS missing');
 }
+if (!androidPublic || androidPublic.includes('REPLACE')) {
+  issue('REVENUECAT_API_KEY_ANDROID missing or placeholder');
+}
 
 console.log('--- RevenueCat audit ---');
 
@@ -153,6 +162,7 @@ ok(`Project: ${project.name ?? project.id} (${project.id})`);
 
 const apps = await listAll(secret, `/projects/${project.id}/apps`);
 const iosApp = apps.find(a => a.type === 'app_store' || a.type === 'ios');
+const playApp = apps.find(a => a.type === 'play_store');
 if (!iosApp) {
   issue('No iOS App Store app configured in RevenueCat.');
 } else {
@@ -163,21 +173,35 @@ if (!iosApp) {
     issue(`Bundle ID mismatch: RC has "${bundle}", repo expects "${EXPECTED.bundleId}"`);
   }
 }
+if (!playApp) {
+  issue('No Google Play app configured in RevenueCat — run npm run fix:revenuecat:android');
+} else {
+  const pkg =
+    playApp.play_store?.package_name ?? playApp.package_name ?? '(unknown)';
+  ok(`Play app: ${playApp.name ?? playApp.id} package=${pkg}`);
+  if (pkg !== EXPECTED.bundleId) {
+    issue(`Package name mismatch: RC has "${pkg}", repo expects "${EXPECTED.bundleId}"`);
+  }
+}
 
 const products = await listAll(secret, `/projects/${project.id}/products?expand=items.app`);
-const productByStoreId = new Map(
-  products.map(p => [p.store_identifier, p]),
-);
+function findProduct(storeId, appId) {
+  return products.find(p => p.store_identifier === storeId && (!appId || p.app_id === appId));
+}
 
 for (const [label, storeId] of Object.entries(EXPECTED.products)) {
-  const p = productByStoreId.get(storeId);
-  if (!p) {
-    issue(`Missing RC product for ${label}: ${storeId}`);
+  const playStoreId = EXPECTED.playProducts[label];
+  const iosProduct = iosApp ? findProduct(storeId, iosApp.id) : null;
+  const playProduct = playApp ? findProduct(playStoreId, playApp.id) : null;
+  if (!iosProduct) {
+    issue(`Missing RC iOS product for ${label}: ${storeId}`);
   } else {
-    ok(`Product ${storeId} (${p.type ?? 'unknown type'}, id=${p.id})`);
-    if (iosApp && p.app_id && p.app_id !== iosApp.id) {
-      issue(`Product ${storeId} attached to wrong app (${p.app_id})`);
-    }
+    ok(`iOS product ${storeId} (${iosProduct.type ?? 'unknown type'}, id=${iosProduct.id})`);
+  }
+  if (!playProduct) {
+    issue(`Missing RC Play product for ${label}: ${EXPECTED.playProducts[label]}`);
+  } else {
+    ok(`Play product ${EXPECTED.playProducts[label]} (${playProduct.type ?? 'unknown type'}, id=${playProduct.id})`);
   }
 }
 
@@ -188,7 +212,7 @@ const staleIds = [
   'hertzlabs_premium_annual',
 ];
 for (const stale of staleIds) {
-  if (productByStoreId.has(stale)) {
+  if (products.some(p => p.store_identifier === stale)) {
     issue(`Stale product still in RC (wrong ASC type): ${stale}`);
   }
 }
@@ -262,27 +286,56 @@ for (const [label, lookup] of Object.entries(EXPECTED.packages)) {
 }
 
 if (iosPublic) {
-  const {status, json} = await v1Offerings(iosPublic);
+  const {status, json} = await v1Offerings(iosPublic, 'ios');
   if (status >= 400) {
-    issue(`SDK offerings probe failed (${status}): ${json?.message ?? JSON.stringify(json)}`);
+    issue(`iOS SDK offerings probe failed (${status}): ${json?.message ?? JSON.stringify(json)}`);
   } else {
     const current = json?.current_offering_id ?? json?.offerings?.[0]?.identifier;
     const offering =
       json?.offerings?.find(o => o.identifier === current || o.identifier === 'default') ??
       json?.offerings?.[0];
     const pkgs = offering?.available_packages ?? offering?.packages ?? [];
-    ok(`SDK offerings probe: current=${current ?? 'none'}, packages=${pkgs.length}`);
+    ok(`iOS SDK offerings probe: current=${current ?? 'none'}, packages=${pkgs.length}`);
     if (!pkgs.length) {
-      issue('SDK sees zero packages — paywall will show Not Ready');
-    } else {
-      for (const p of pkgs) {
-        console.log(
-          `  package ${p.identifier}: ${p.platform_product_identifier ?? p.product?.identifier ?? '?'}`,
-        );
-      }
+      issue('iOS SDK sees zero packages — paywall will show Not Ready on iOS');
     }
   }
 }
+
+if (androidPublic && !androidPublic.includes('REPLACE')) {
+  const {status, json} = await v1Offerings(androidPublic, 'android');
+  if (status >= 400) {
+    issue(`Android SDK offerings probe failed (${status}): ${json?.message ?? JSON.stringify(json)}`);
+  } else {
+    const current = json?.current_offering_id ?? json?.offerings?.[0]?.identifier;
+    const offering =
+      json?.offerings?.find(o => o.identifier === current || o.identifier === 'default') ??
+      json?.offerings?.[0];
+    const pkgs = offering?.available_packages ?? offering?.packages ?? [];
+    ok(`Android SDK offerings probe: current=${current ?? 'none'}, packages=${pkgs.length}`);
+    if (!pkgs.length) {
+      issue('Android SDK sees zero packages — paywall will show Not Ready on Android');
+    }
+  }
+}
+
+const saPath = (env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH || '.secrets/speedy-crawler-499309-s7-7d911ab4f0e8.json').trim();
+const saEmail = (env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL || '').trim();
+if (!saEmail) {
+  action('Set GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL in .env');
+}
+if (!env.GOOGLE_PLAY_GCP_PROJECT_ID?.trim()) {
+  action('Set GOOGLE_PLAY_GCP_PROJECT_ID in .env');
+}
+action(
+  'Enable Google Play Android Developer API on GCP project speedy-crawler-499309-s7 (API console) if setup:play-iap fails with SERVICE_DISABLED',
+);
+action(
+  `RevenueCat → Android app → Service credentials: upload react-native-app/${saPath} (dashboard only — no API upload)`,
+);
+action(
+  `Play Console → Users and permissions → invite ${saEmail || 'service account email'} with View financial data + Manage orders and subscriptions`,
+);
 
 const hasAscApi = !!(env.APPLE_CONNECT_API_KEY || '').includes('BEGIN PRIVATE KEY');
 const hasAscSub = !!(env.APPLE_CONNECT_SUBSCRIPTION_KEY || '').includes('BEGIN PRIVATE KEY');
