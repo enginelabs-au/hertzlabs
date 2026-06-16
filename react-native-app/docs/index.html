@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Hertz Labs Binaural Beats — precision brainwave entrainment, Math Mode, Protocol Sequences, and native frequency synthesis." />
+  <meta property="og:title" content="Hertz Labs — Binaural Beats &amp; Frequency Generator" />
+  <meta property="og:description" content="Precision brainwave entrainment with seven engines, Math Mode, and Protocol Sequences. Available on the App Store." />
+  <meta property="og:image" content="https://enginelabs-au.github.io/hertzlabs/assets/press/app-icon-1024.png" />
+  <meta property="og:url" content="https://enginelabs-au.github.io/hertzlabs/" />
   <title>Hertz Labs — Binaural Beats &amp; Frequency Generator</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,18 +21,43 @@
     nav .brand { font-family: monospace; font-size: 13px; font-weight: 700; color: var(--cyan); letter-spacing: 2px; text-decoration: none; }
     nav a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
     nav a:hover { color: var(--text); }
-    .hero { text-align: center; padding: 80px 24px 60px; }
-    .hero-eyebrow { font-family: monospace; font-size: 12px; font-weight: 700; color: var(--cyan); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; }
-    .hero h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 700; letter-spacing: -1px; margin-bottom: 20px; background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .hero p { font-size: 18px; color: var(--muted); max-width: 540px; margin: 0 auto 36px; }
-    .badge { display: inline-block; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.3); border-radius: 20px; padding: 6px 16px; font-size: 13px; color: var(--cyan); font-family: monospace; font-weight: 700; letter-spacing: 1px; margin-bottom: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+    .hero { text-align: center; padding: 64px 24px 48px; }
+    .hero-icon { width: 88px; height: 88px; border-radius: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(34,211,238,0.15); }
+    .hero-eyebrow { font-family: monospace; font-size: 12px; font-weight: 700; color: var(--cyan); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; }
+    .hero h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 700; letter-spacing: -1px; margin-bottom: 16px; background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 18px; color: var(--muted); max-width: 560px; margin: 0 auto 28px; }
+    .hero-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .badge { display: inline-block; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.3); border-radius: 20px; padding: 6px 16px; font-size: 13px; color: var(--cyan); font-family: monospace; font-weight: 700; letter-spacing: 1px; }
+    .btn-primary { display: inline-block; background: rgba(34,211,238,0.15); border: 1px solid rgba(34,211,238,0.45); border-radius: 10px; padding: 12px 22px; color: var(--cyan); text-decoration: none; font-weight: 700; font-size: 14px; transition: background 0.2s, border-color 0.2s; }
+    .btn-primary:hover { background: rgba(34,211,238,0.25); border-color: var(--cyan); }
+    .btn-secondary { display: inline-block; background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 12px 22px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 14px; transition: border-color 0.2s; }
+    .btn-secondary:hover { border-color: rgba(255,255,255,0.25); }
+    .section { max-width: 960px; margin: 0 auto; padding: 0 24px 64px; }
+    .section-head { text-align: center; margin-bottom: 28px; }
+    .section-head h2 { font-size: 13px; font-family: monospace; font-weight: 700; color: var(--cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+    .section-head p { color: var(--muted); font-size: 15px; max-width: 520px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .feature-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
     .feature-card .icon { font-size: 28px; margin-bottom: 12px; }
     .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
     .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
-    .links { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; padding: 0 24px 80px; }
-    .link-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 28px; text-align: center; text-decoration: none; color: var(--text); transition: border-color 0.2s; min-width: 160px; }
+    .store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .store-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; position: relative; overflow: hidden; }
+    .store-card.featured { border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.04); }
+    .store-card .tier { font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .store-card.featured .tier { color: var(--gold); }
+    .store-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .store-card .price { font-size: 28px; font-weight: 700; margin-bottom: 12px; color: #fff; }
+    .store-card .price span { font-size: 14px; font-weight: 500; color: var(--muted); }
+    .store-card ul { list-style: none; padding: 0; margin: 0; }
+    .store-card li { font-size: 13px; color: rgba(255,255,255,0.7); padding: 6px 0; border-top: 1px solid var(--border); }
+    .store-card li:first-child { border-top: none; }
+    .brand-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; padding: 32px 24px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 64px; }
+    .brand-stat { text-align: center; min-width: 100px; }
+    .brand-stat .num { font-size: 28px; font-weight: 700; color: var(--cyan); font-family: monospace; }
+    .brand-stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+    .links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+    .link-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 28px; text-align: center; text-decoration: none; color: var(--text); transition: border-color 0.2s; min-width: 150px; }
     .link-card:hover { border-color: var(--cyan); }
     .link-card .lc-label { font-family: monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
     .link-card .lc-title { font-size: 16px; font-weight: 700; }
@@ -39,69 +69,154 @@
 <body>
 <nav>
   <a class="brand" href="./">HERTZ LABS</a>
+  <a href="./press/">Press</a>
   <a href="./privacy/">Privacy</a>
   <a href="./terms/">Terms</a>
   <a href="./support/">Support</a>
 </nav>
 
 <div class="hero">
-  <div class="badge">Available on the App Store</div>
+  <img class="hero-icon" src="./assets/press/app-icon-1024.png" alt="Hertz Labs app icon" width="88" height="88" />
+  <div class="hero-eyebrow">Brainwave entrainment · Native synthesis</div>
   <h1>Precision Frequency<br/>Generation</h1>
   <p>Hertz Labs is a dedicated binaural beats and audio frequency generator built for focus, meditation, sleep, and personal wellness exploration.</p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="https://apps.apple.com/app/id6777604364">Download on the App Store</a>
+    <a class="btn-secondary" href="./press/">Press kit</a>
+  </div>
+  <div style="margin-top:16px"><span class="badge">Available on iPhone · iPad · Mac</span></div>
 </div>
 
-<div class="grid">
-  <div class="feature-card">
-    <div class="icon">〰️</div>
-    <h3>7 Engine Modes</h3>
-    <p>Binaural, Monaural, Hemispheric Sync, Phase, Pitch Shift, Music, and Ambient — each with full manual control.</p>
+<div class="brand-strip">
+  <div class="brand-stat"><div class="num">7</div><div class="label">Engines</div></div>
+  <div class="brand-stat"><div class="num">11</div><div class="label">Brainwave bands</div></div>
+  <div class="brand-stat"><div class="num">0–500</div><div class="label">Hz range</div></div>
+  <div class="brand-stat"><div class="num">Native</div><div class="label">On-device audio</div></div>
+</div>
+
+<div class="section">
+  <div class="section-head">
+    <h2>Features</h2>
+    <p>Lab-grade control over every session—not pre-recorded meditation tracks.</p>
   </div>
-  <div class="feature-card">
-    <div class="icon">∑</div>
-    <h3>Math Mode</h3>
-    <p>Generate frequencies from mathematical constants — Fibonacci, Golden Ratio, Solfeggio, Schumann resonance, and more.</p>
-  </div>
-  <div class="feature-card">
-    <div class="icon">✦</div>
-    <h3>AI Guide</h3>
-    <p>Describe how you want to feel. The AI Guide suggests frequency settings tailored to your goal.</p>
-  </div>
-  <div class="feature-card">
-    <div class="icon">⏵</div>
-    <h3>Background Audio</h3>
-    <p>Premium: keep your session running when the screen is locked or the app is minimised.</p>
-  </div>
-  <div class="feature-card">
-    <div class="icon">⚡</div>
-    <h3>0–500 Hz Range</h3>
-    <p>Full spectrum coverage from sub-delta through supra-gamma. No software guards on the upper range.</p>
-  </div>
-  <div class="feature-card">
-    <div class="icon">🎵</div>
-    <h3>Plays Alongside Any App</h3>
-    <p>Mix Hertz Labs with Spotify, Apple Music, or any podcast app — audio sessions blend automatically.</p>
+  <div class="grid">
+    <div class="feature-card">
+      <div class="icon">〰️</div>
+      <h3>7 Engine Modes</h3>
+      <p>Binaural, Monaural, Hemispheric Sync, Phase, Pitch Shift, Music, and Ambient — each with full manual control.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">∑</div>
+      <h3>Math Mode</h3>
+      <p>Generate frequencies from mathematical constants — Fibonacci, Golden Ratio, Solfeggio, Schumann resonance, and more.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⏱</div>
+      <h3>Protocol Sequences</h3>
+      <p>Multi-step timed frequency journeys — focus, sleep, and reset presets with editable duration, Hz ramps, and volume.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">✦</div>
+      <h3>AI Guide</h3>
+      <p>Describe how you want to feel. The AI Guide suggests entrainment settings or builds a Protocol Sequence for you.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⏵</div>
+      <h3>Background Audio</h3>
+      <p>Premium: keep your session running when the screen is locked or the app is minimised.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⚡</div>
+      <h3>0–500 Hz Range</h3>
+      <p>Full spectrum coverage from sub-delta through supra-gamma. No software guards on the upper range.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🎵</div>
+      <h3>Plays Alongside Any App</h3>
+      <p>Mix Hertz Labs with Spotify, Apple Music, or any podcast app — audio sessions blend automatically.</p>
+    </div>
   </div>
 </div>
 
-<div style="text-align:center; padding: 0 24px 32px;">
-  <p style="font-size:14px; color:var(--muted); margin-bottom: 24px;">Legal &amp; Support</p>
+<div class="section">
+  <div class="section-head">
+    <h2>Hertz Labs Store</h2>
+    <p>Start free with core engines. Upgrade to Premium for the full lab.</p>
+  </div>
+  <div class="store-grid">
+    <div class="store-card">
+      <div class="tier">Free</div>
+      <h3>Core Lab</h3>
+      <div class="price">$0</div>
+      <ul>
+        <li>Binaural &amp; Monaural engines</li>
+        <li>Beat range 0.5–40 Hz</li>
+        <li>AI Guide suggestions</li>
+        <li>Mix with other apps</li>
+      </ul>
+    </div>
+    <div class="store-card featured">
+      <div class="tier">Premium · Best value</div>
+      <h3>Annual</h3>
+      <div class="price">$24.99 <span>/ year</span></div>
+      <ul>
+        <li>7-day free trial</li>
+        <li>All 7 engine modes</li>
+        <li>Math Mode &amp; Protocol Sequences</li>
+        <li>0–500 Hz · Background audio</li>
+      </ul>
+    </div>
+    <div class="store-card">
+      <div class="tier">Premium</div>
+      <h3>Monthly</h3>
+      <div class="price">$4.99 <span>/ month</span></div>
+      <ul>
+        <li>7-day free trial</li>
+        <li>Cancel anytime in App Store</li>
+        <li>Full Premium feature set</li>
+      </ul>
+    </div>
+    <div class="store-card">
+      <div class="tier">Premium · One-time</div>
+      <h3>Lifetime Ultra</h3>
+      <div class="price">$19.99 <span>once</span></div>
+      <ul>
+        <li>All Premium features forever</li>
+        <li>No subscription</li>
+        <li>Restore on any device</li>
+      </ul>
+    </div>
+  </div>
+  <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:20px">Prices in USD. Subscriptions auto-renew unless cancelled 24h before period end. Manage in Settings → Apple ID → Subscriptions.</p>
 </div>
-<div class="links">
-  <a class="link-card" href="./privacy/">
-    <div class="lc-label">Legal</div>
-    <div class="lc-title">Privacy Policy</div>
-  </a>
-  <a class="link-card" href="./terms/">
-    <div class="lc-label">Legal</div>
-    <div class="lc-title">Terms of Service</div>
-  </a>
-  <a class="link-card" href="./support/">
-    <div class="lc-label">Help</div>
-    <div class="lc-title">Support</div>
-  </a>
+
+<div class="section">
+  <div class="section-head">
+    <h2>Resources</h2>
+    <p>Support, legal, and media assets.</p>
+  </div>
+  <div class="links">
+    <a class="link-card" href="./press/">
+      <div class="lc-label">Media</div>
+      <div class="lc-title">Press Kit</div>
+    </a>
+    <a class="link-card" href="./support/">
+      <div class="lc-label">Help</div>
+      <div class="lc-title">Support</div>
+    </a>
+    <a class="link-card" href="./privacy/">
+      <div class="lc-label">Legal</div>
+      <div class="lc-title">Privacy Policy</div>
+    </a>
+    <a class="link-card" href="./terms/">
+      <div class="lc-label">Legal</div>
+      <div class="lc-title">Terms of Service</div>
+    </a>
+  </div>
 </div>
 
 <footer>
+  <a href="./press/">Press</a>
   <a href="./privacy/">Privacy Policy</a>
   <a href="./terms/">Terms of Service</a>
   <a href="./support/">Support</a>
