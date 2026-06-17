@@ -43,7 +43,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "android": "node scripts/sync-native-secrets.js && node scripts/fix-android-codegen.mjs && (adb reverse tcp:8081 tcp:8081 || true) && react-native run-android",
-    "ios": "node scripts/sync-native-secrets.js && react-native run-ios"
+    "ios": "node scripts/sync-native-secrets.js && react-native run-ios",
+    "update:pricing": "node scripts/update-pricing.mjs"
   },
   "dependencies": {
     "@react-native/codegen": "latest",
@@ -53,6 +54,7 @@
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-gesture-handler": "^3.0.0",
+    "react-native-in-app-review": "^4.4.2",
     "react-native-mmkv": "^3.0.0",
     "react-native-nitro-modules": "0.35.9",
     "react-native-nitro-speech": "^0.4.6",

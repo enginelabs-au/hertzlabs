@@ -1,0 +1,5 @@
+#!/bin/sh
+# Block local commits while UPDATES.md has open `- [ ]` issues or features.
+# Enable: ./scripts/install-git-hooks.sh
+set -e
+node scripts/check-updates-md.mjs

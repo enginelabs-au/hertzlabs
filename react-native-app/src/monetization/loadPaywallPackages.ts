@@ -66,8 +66,8 @@ function findOfferingPackage(
 
 function fallbackPrice(key: PaywallPlanKey): string {
   if (key === 'monthly') return '$4.99';
-  if (key === 'annual') return '$24.99';
-  return '$19.99';
+  if (key === 'annual') return '$29.99';
+  return '$59.99';
 }
 
 function planFromPackage(key: PaywallPlanKey, pkg: Package): PaywallPlan {

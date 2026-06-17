@@ -42,7 +42,7 @@ const CATALOG = {
       title: 'Hertz Labs Premium Annual',
       description: 'Premium frequencies, AI suggestions, and controls.',
       period: 'P1Y',
-      priceUsd: 24.99,
+      priceUsd: 29.99,
       trialDays: 7,
     },
   ],
@@ -50,7 +50,7 @@ const CATALOG = {
     productId: 'hertzlabs_lifetime_ultra',
     title: 'Hertz Labs Lifetime Ultra',
     description: 'One-time purchase for lifetime premium access.',
-    priceUsd: 19.99,
+    priceUsd: 59.99,
   },
 };
 

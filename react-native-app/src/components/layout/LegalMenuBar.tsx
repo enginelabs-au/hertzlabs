@@ -1,19 +1,27 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {LayoutModeToggle} from './LayoutModeToggle';
 
+type LegalMenuBarProps = {
+  /** Hide layout toggle on pre-app gates (e.g. safety onboarding). */
+  showLayoutToggle?: boolean;
+};
+
 /** Plans + Legal + layout mode — pinned at the bottom of each screen. */
-export function LegalMenuBar() {
+export function LegalMenuBar({showLayoutToggle = true}: LegalMenuBarProps) {
+  const insets = useSafeAreaInsets();
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const tier = useHertzStore(s => s.tier);
   const premium = isPremiumUnlocked(tier);
+  const bottomPad = Math.max(insets.bottom, 4);
 
   return (
-    <View style={styles.container}>
-      <LayoutModeToggle />
+    <View style={[styles.container, {paddingBottom: bottomPad}]}>
+      {showLayoutToggle && <LayoutModeToggle />}
       <View style={styles.row}>
         <Pressable
           style={styles.menuBtn}
@@ -21,6 +29,14 @@ export function LegalMenuBar() {
           accessibilityRole="button"
           accessibilityLabel="View subscription plans">
           <Text style={[styles.menuLabel, premium && styles.menuLabelActive]}>Plans</Text>
+        </Pressable>
+        <Text style={styles.separator}>·</Text>
+        <Pressable
+          style={styles.menuBtn}
+          onPress={() => setActiveModal('feedback')}
+          accessibilityRole="button"
+          accessibilityLabel="Send feedback or report a bug">
+          <Text style={styles.menuLabel}>Feedback</Text>
         </Pressable>
         <Text style={styles.separator}>·</Text>
         <Pressable
@@ -40,7 +56,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 4,
-    paddingBottom: 2,
     backgroundColor: 'rgba(12,14,22,0.96)',
   },
   row: {

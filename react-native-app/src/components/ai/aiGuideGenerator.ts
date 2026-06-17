@@ -6,7 +6,22 @@ import {
   getLastAppliedHz,
   isFollowUpPrompt,
 } from '../../ai/aiPromptParsing';
-import {geminiGuideRecommendation} from '../../ai/geminiChatClient';
+import {geminiGuideRecommendation, clearOutageAfterSuccessfulFallback, getGeminiOutageReason, geminiUnavailableExplanation, isTransientGeminiOutage, resetGeminiOutageForRetry} from '../../ai/geminiChatClient';
+import {inferBeatHzFromPrompt} from '../../ai/parseProtocolFromPrompt';
+import {buildExperientialGuide, classifyExperientialIntent} from '../../ai/experientialIntent';
+import {promptMentionsCarrierOrPitch, sanitizeBeatHzFromModel, parseCarrierHzFromPrompt} from '../../ai/beatHzSanitize';
+import type {EngineMode} from '../../state/types';
+import type {GuideAdvancedSettings} from '../../state/slices/aiChat';
+
+const GUIDE_ENGINE_MODES: EngineMode[] = [
+  'binaural',
+  'monaural',
+  'isochronic',
+  'hemisphericSync',
+  'phaseModulated',
+  'pitchPanning',
+];
+const NOISE_LAYER_VALUES = ['none', 'white', 'pink', 'brown'] as const;
 
 export interface SessionRecommendation {
   brainwaveState: string;
@@ -15,6 +30,10 @@ export interface SessionRecommendation {
   entrainmentStyle: 'Binaural' | 'Isochronic' | 'Monaural';
   intensityScale: number;
   explanationShort: string;
+  /** Optional explicit engine mode (overrides entrainmentStyle when set). */
+  engineMode?: EngineMode;
+  /** Optional advanced engine settings; only present keys are applied. */
+  advanced?: GuideAdvancedSettings;
 }
 
 export type GuideGenerationOptions = {
@@ -24,6 +43,7 @@ export type GuideGenerationOptions = {
   carrierHz?: number;
   engineType?: string;
   experimental?: boolean;
+  premium?: boolean;
 };
 
 interface IntentProfile {
@@ -134,6 +154,26 @@ const INTENT_PROFILES: IntentProfile[] = [
     },
   },
   {
+    id: 'epsilon',
+    keywords: ['epsilon', 'infra-slow', 'nervous system', 'recovery', 'deep recovery', 'reset', 'nervous'],
+    rec: {
+      brainwaveState: 'Epsilon', targetFrequencyHz: 0.5,
+      targetedBrainRegions: ['Thalamus', 'Default Mode Network'],
+      entrainmentStyle: 'Binaural', intensityScale: 0.25,
+      explanationShort: 'Epsilon (infra-slow, ~0.5 Hz) supports deep nervous system recovery and autonomic reset.',
+    },
+  },
+  {
+    id: 'lambda',
+    keywords: ['lambda', 'hyper-gamma', 'hypergamma', 'supra', 'supra-gamma', 'supragamma', 'high gamma', 'ultra-high', 'intense processing'],
+    rec: {
+      brainwaveState: 'Lambda', targetFrequencyHz: 100.0,
+      targetedBrainRegions: ['Prefrontal Cortex', 'Parietal Lobe'],
+      entrainmentStyle: 'Monaural', intensityScale: 0.65,
+      explanationShort: 'Lambda/Hyper-Gamma (100 Hz+) is associated with intense cognitive engagement and peak-state processing.',
+    },
+  },
+  {
     id: 'energy',
     keywords: ['energy', 'energize', 'energise', 'wake', 'awake', 'alert', 'motivat', 'workout', 'exercise', 'gym', 'run', 'running', 'training', 'pump', 'active', 'boost'],
     rec: {
@@ -166,6 +206,10 @@ const DEFAULT_PROFILE: IntentProfile = {
   },
 };
 
+function sessionBeatHz(options: GuideGenerationOptions): number {
+  return options.currentBeatHz ?? 10;
+}
+
 const STRONGER_CUES = ['intense', 'strong', 'strongly', 'maximum', 'powerful', 'louder', 'increase'];
 const GENTLER_CUES = ['gentle', 'subtle', 'mild', 'slight', 'soft', 'little', 'easy', 'quieter', 'decrease'];
 const SPEAKER_CUES = ['speaker', 'speakers', 'out loud', 'without headphones', 'no headphones'];
@@ -189,7 +233,7 @@ function countHits(haystack: string, needles: string[]): number {
   }, 0);
 }
 
-function pickProfileFromPrompt(prompt: string): IntentProfile {
+function pickProfileFromPrompt(prompt: string): {profile: IntentProfile; score: number} {
   const lower = ` ${prompt.toLowerCase()} `;
   let best = DEFAULT_PROFILE;
   let bestScore = 0;
@@ -200,7 +244,31 @@ function pickProfileFromPrompt(prompt: string): IntentProfile {
       best = profile;
     }
   }
-  return best;
+  return {profile: best, score: bestScore};
+}
+
+function recommendationWhenGeminiUnavailable(baseHz: number, reason: NonNullable<ReturnType<typeof getGeminiOutageReason>>): SessionRecommendation {
+  return {
+    brainwaveState: bandForHz(baseHz),
+    targetFrequencyHz: baseHz,
+    targetedBrainRegions: ['Prefrontal Cortex', 'Occipital Lobe'],
+    entrainmentStyle: 'Binaural',
+    intensityScale: 0.45,
+    explanationShort: geminiUnavailableExplanation(reason),
+  };
+}
+
+function recommendationWhenUnclear(prompt: string, baseHz: number): SessionRecommendation {
+  return {
+    brainwaveState: bandForHz(baseHz),
+    targetFrequencyHz: baseHz,
+    targetedBrainRegions: ['Prefrontal Cortex', 'Occipital Lobe'],
+    entrainmentStyle: 'Binaural',
+    intensityScale: 0.45,
+    explanationShort:
+      `I couldn't confidently map that to a specific entrainment target, so your session stays at ${baseHz.toFixed(1)} Hz. ` +
+      'Try naming a band (alpha, theta, beta, delta), an exact Hz, or a timed sequence (e.g. "20 min alpha then glide to theta").',
+  };
 }
 
 function bandForHz(hz: number): string {
@@ -213,7 +281,7 @@ function bandForHz(hz: number): string {
 }
 
 function recommendationFromExplicitHz(hz: number, prompt: string): SessionRecommendation {
-  const clamped = clamp(hz, 0.5, 50);
+  const clamped = clamp(hz, 0.1, 500);
   return {
     brainwaveState: bandForHz(clamped),
     targetFrequencyHz: clamped,
@@ -240,19 +308,63 @@ function applyPromptModifiers(rec: SessionRecommendation, prompt: string): Sessi
     out.entrainmentStyle = 'Isochronic';
   }
 
-  out.targetFrequencyHz = clamp(out.targetFrequencyHz, 0.5, 50);
+  out.targetFrequencyHz = clamp(out.targetFrequencyHz, 0.1, 500);
   out.intensityScale = clamp(out.intensityScale, 0, 1);
   return out;
 }
 
-function parseGeminiGuidePayload(raw: unknown): SessionRecommendation | null {
+function readFiniteNumber(obj: Record<string, unknown>, key: string): number | undefined {
+  const v = obj[key];
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+/** Extract the optional advanced engine settings the model may include. */
+function parseGuideAdvanced(
+  obj: Record<string, unknown>,
+  prompt: string,
+): GuideAdvancedSettings | undefined {
+  const adv: GuideAdvancedSettings = {};
+  const mentionsCarrier = promptMentionsCarrierOrPitch(prompt);
+
+  const carrierHz = readFiniteNumber(obj, 'carrierHz');
+  if (carrierHz != null && mentionsCarrier) {
+    adv.carrierHz = Math.min(Math.max(carrierHz, 20), 20_000);
+  }
+  const phaseAngle = readFiniteNumber(obj, 'phaseAngle');
+  if (phaseAngle != null) {
+    adv.phaseAngle = phaseAngle;
+  }
+  const leftDriftHz = readFiniteNumber(obj, 'leftDriftHz');
+  if (leftDriftHz != null) {
+    adv.leftDriftHz = leftDriftHz;
+  }
+  const rightDriftHz = readFiniteNumber(obj, 'rightDriftHz');
+  if (rightDriftHz != null) {
+    adv.rightDriftHz = rightDriftHz;
+  }
+  const balance = readFiniteNumber(obj, 'balance');
+  if (balance != null) {
+    adv.balance = balance;
+  }
+  const noiseMix = readFiniteNumber(obj, 'noiseMix');
+  if (noiseMix != null) {
+    adv.noiseMix = clamp(noiseMix, 0, 1);
+  }
+  if (NOISE_LAYER_VALUES.includes(obj.noiseLayer as (typeof NOISE_LAYER_VALUES)[number])) {
+    adv.noiseLayer = obj.noiseLayer as GuideAdvancedSettings['noiseLayer'];
+  }
+  return Object.keys(adv).length > 0 ? adv : undefined;
+}
+
+function parseGeminiGuidePayload(raw: unknown, prompt: string): SessionRecommendation | null {
   if (typeof raw !== 'object' || raw == null || Array.isArray(raw)) {
     return null;
   }
   const obj = raw as Record<string, unknown>;
-  const hz = obj.targetFrequencyHz;
+  const hzRaw = obj.targetFrequencyHz;
   const explanation = obj.explanationShort;
-  if (typeof hz !== 'number' || !Number.isFinite(hz) || typeof explanation !== 'string') {
+  const hzSanitized = sanitizeBeatHzFromModel(hzRaw);
+  if (hzSanitized == null || typeof explanation !== 'string') {
     return null;
   }
   const style = obj.entrainmentStyle;
@@ -266,15 +378,20 @@ function parseGeminiGuidePayload(raw: unknown): SessionRecommendation | null {
     typeof obj.intensityScale === 'number' && Number.isFinite(obj.intensityScale)
       ? clamp(obj.intensityScale, 0, 1)
       : 0.45;
+  const engineMode = GUIDE_ENGINE_MODES.includes(obj.engineMode as EngineMode)
+    ? (obj.engineMode as EngineMode)
+    : undefined;
 
   return applyPromptModifiers(
     {
-      brainwaveState: typeof obj.brainwaveState === 'string' ? obj.brainwaveState : bandForHz(hz),
-      targetFrequencyHz: clamp(hz, 0.5, 50),
+      brainwaveState: typeof obj.brainwaveState === 'string' ? obj.brainwaveState : bandForHz(hzSanitized),
+      targetFrequencyHz: hzSanitized,
       targetedBrainRegions: regions.length > 0 ? regions : ['Prefrontal Cortex'],
       entrainmentStyle,
       intensityScale: intensity,
       explanationShort: explanation,
+      engineMode,
+      advanced: parseGuideAdvanced(obj, prompt),
     },
     '',
   );
@@ -285,7 +402,7 @@ function generateGuidanceLocal(
   options: GuideGenerationOptions,
 ): SessionRecommendation {
   const history = options.history ?? [];
-  const baseHz = getLastAppliedHz(history, options.currentBeatHz ?? 10);
+  const baseHz = getLastAppliedHz(history, sessionBeatHz(options));
 
   const explicit = extractTargetHzFromPrompt(prompt);
   if (explicit != null) {
@@ -297,9 +414,37 @@ function generateGuidanceLocal(
     return applyPromptModifiers(recommendationFromExplicitHz(relative, prompt), prompt);
   }
 
-  const profile = pickProfileFromPrompt(prompt);
-  const rec: SessionRecommendation = {...profile.rec, targetedBrainRegions: [...profile.rec.targetedBrainRegions]};
-  return applyPromptModifiers(rec, prompt);
+  const experiential = classifyExperientialIntent(prompt);
+  if (experiential != null) {
+    const g = buildExperientialGuide(experiential.id, prompt);
+    return applyPromptModifiers(
+      {
+        brainwaveState: g.brainwaveState,
+        targetFrequencyHz: g.targetFrequencyHz,
+        targetedBrainRegions: g.targetedBrainRegions,
+        entrainmentStyle: g.entrainmentStyle,
+        intensityScale: g.intensityScale,
+        explanationShort: g.explanationShort,
+        engineMode: g.engineMode,
+      },
+      prompt,
+    );
+  }
+
+  const inferred = inferBeatHzFromPrompt(prompt);
+  if (inferred != null) {
+    const rec = recommendationFromExplicitHz(inferred, prompt);
+    rec.explanationShort = `Mapped your request to ${rec.brainwaveState} around ${inferred.toFixed(1)} Hz based on the bands and states you described.`;
+    return applyPromptModifiers(rec, prompt);
+  }
+
+  const {profile, score} = pickProfileFromPrompt(prompt);
+  if (score > 0) {
+    const rec: SessionRecommendation = {...profile.rec, targetedBrainRegions: [...profile.rec.targetedBrainRegions]};
+    return applyPromptModifiers(rec, prompt);
+  }
+
+  return applyPromptModifiers(recommendationWhenUnclear(prompt, baseHz), prompt);
 }
 
 export function getBandColor(hz: number): string {
@@ -331,22 +476,56 @@ export async function generateGuidance(
   const history = options.history ?? [];
   const trimmed = prompt.trim();
   if (!trimmed) {
-    return generateGuidanceLocal('balance', options);
+    return recommendationWhenUnclear('', sessionBeatHz(options));
   }
 
-  const geminiRaw = await geminiGuideRecommendation(history, trimmed, {
-    beatHz: options.currentBeatHz ?? 10,
-    carrierHz: options.carrierHz ?? 220,
-    gain: options.currentGain ?? 0.45,
-    engineType: options.engineType ?? 'binaural',
-    experimental: options.experimental ?? false,
-  });
+  // kHz/MHz pitch requests are carrier changes — route before Gemini can confuse them with beat Hz.
+  const carrierFromPrompt = parseCarrierHzFromPrompt(trimmed);
+  if (carrierFromPrompt != null) {
+    const beat =
+      sanitizeBeatHzFromModel(extractTargetHzFromPrompt(trimmed)) ?? sessionBeatHz(options);
+    clearOutageAfterSuccessfulFallback();
+    return applyPromptModifiers(
+      {
+        brainwaveState: bandForHz(beat),
+        targetFrequencyHz: beat,
+        targetedBrainRegions: ['Auditory Cortex'],
+        entrainmentStyle: 'Binaural',
+        intensityScale: 0.45,
+        explanationShort: `Set carrier pitch to ${(carrierFromPrompt / 1000).toFixed(1)} kHz while keeping entrainment at ${beat.toFixed(1)} Hz.`,
+        advanced: {carrierHz: carrierFromPrompt},
+      },
+      trimmed,
+    );
+  }
 
-  const parsed = geminiRaw != null ? parseGeminiGuidePayload(geminiRaw) : null;
+  const priorOutage = getGeminiOutageReason();
+  if (isTransientGeminiOutage(priorOutage)) {
+    resetGeminiOutageForRetry();
+  }
+
+  const geminiRaw =
+    getGeminiOutageReason() == null
+      ? await geminiGuideRecommendation(history, trimmed, {
+          beatHz: options.currentBeatHz ?? sessionBeatHz(options),
+          carrierHz: options.carrierHz ?? 220,
+          gain: options.currentGain ?? 0.45,
+          engineType: options.engineType ?? 'binaural',
+          experimental: options.experimental ?? false,
+          premium: options.premium ?? false,
+        })
+      : null;
+
+  const parsed = geminiRaw != null ? parseGeminiGuidePayload(geminiRaw, trimmed) : null;
   if (parsed != null) {
     return applyPromptModifiers(parsed, trimmed);
   }
 
-  await new Promise<void>(resolve => setTimeout(() => resolve(), 400));
-  return generateGuidanceLocal(trimmed, options);
+  const outage = getGeminiOutageReason();
+  if (outage != null) {
+    return recommendationWhenGeminiUnavailable(sessionBeatHz(options), outage);
+  }
+
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
+  return applyPromptModifiers(generateGuidanceLocal(trimmed, options), trimmed);
 }

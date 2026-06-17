@@ -1,9 +1,11 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useRef, useState} from 'react';
 import {Keyboard, Platform} from 'react-native';
-import {useRecognizer, useRecognizerIsActive, PermissionStatus} from 'react-native-nitro-speech';
+import {useRecognizer, PermissionStatus} from 'react-native-nitro-speech';
 
 type UseSpeechToTextOptions = {
   onTranscript: (text: string) => void;
+  /** Called when recognition stops; receives the final transcript if any. */
+  onRecordingComplete?: (text: string) => void;
   locale?: string;
 };
 
@@ -15,33 +17,53 @@ const SPEECH_CONFIG = {
   resetAutoFinishVoiceSensitivity: 0.35,
 };
 
-export function useSpeechToText({onTranscript, locale = 'en-US'}: UseSpeechToTextOptions) {
+export function useSpeechToText({
+  onTranscript,
+  onRecordingComplete,
+  locale = 'en-US',
+}: UseSpeechToTextOptions) {
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+  const onRecordingCompleteRef = useRef(onRecordingComplete);
+  onRecordingCompleteRef.current = onRecordingComplete;
+  const lastTranscriptRef = useRef('');
 
   const [error, setError] = useState<string | null>(null);
   const [pendingListen, setPendingListen] = useState(false);
+  // Own state — NOT useRecognizerIsActive() which returns true before any recording starts.
+  const [ourIsListening, setOurIsListening] = useState(false);
 
   const callbacksRef = useRef({
     onReadyForSpeech: () => {
       setError(null);
       setPendingListen(false);
+      setOurIsListening(true);
+      lastTranscriptRef.current = '';
     },
     onResult: (textBatches: string[]) => {
       const text = textBatches.join(' ').replace(/\s+/g, ' ').trim();
       if (text.length > 0) {
+        lastTranscriptRef.current = text;
         onTranscriptRef.current(text);
       }
     },
     onRecordingStopped: () => {
       setPendingListen(false);
+      setOurIsListening(false);
+      const finalText = lastTranscriptRef.current.trim();
+      if (finalText.length > 0) {
+        onRecordingCompleteRef.current?.(finalText);
+      }
+      lastTranscriptRef.current = '';
     },
     onError: (err: string) => {
       setPendingListen(false);
+      setOurIsListening(false);
       setError(err || 'Speech recognition failed');
     },
     onPermissionDenied: () => {
       setPendingListen(false);
+      setOurIsListening(false);
       setError(
         Platform.OS === 'ios'
           ? 'Allow Microphone and Speech Recognition in Settings → Hertz Labs'
@@ -63,14 +85,7 @@ export function useSpeechToText({onTranscript, locale = 'en-US'}: UseSpeechToTex
     [],
   );
 
-  const isListening = useRecognizerIsActive();
-  const isActive = isListening || pendingListen;
-
-  useEffect(() => {
-    if (isListening) {
-      setPendingListen(false);
-    }
-  }, [isListening]);
+  const isActive = ourIsListening || pendingListen;
 
   const startSpeech = useCallback(async () => {
     setError(null);
@@ -94,8 +109,11 @@ export function useSpeechToText({onTranscript, locale = 'en-US'}: UseSpeechToTex
 
   const stopSpeech = useCallback(() => {
     setPendingListen(false);
-    stopListening();
-  }, [stopListening]);
+    setOurIsListening(false);
+    if (ourIsListening) {
+      stopListening();
+    }
+  }, [ourIsListening, stopListening]);
 
   const toggleSpeech = useCallback(() => {
     if (isActive) {

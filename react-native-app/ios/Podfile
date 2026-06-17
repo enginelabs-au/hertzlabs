@@ -44,6 +44,20 @@ target 'HertzLabsBinauralBeats' do
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath])
 
+    # Align Pods with Podfile platform + Xcode recommended build settings.
+    installer.pods_project.build_configurations.each do |build_config|
+      build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+    end
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+        build_config.build_settings['DEAD_CODE_STRIPPING'] = 'YES'
+        build_config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+      end
+    end
+    installer.pods_project.root_object.attributes['LastUpgradeCheck'] = '2630'
+    installer.pods_project.root_object.attributes['LastSwiftUpdateCheck'] = '2630'
+
     # Stale RN codegen under Pods/build/ (e.g. 4-arg setBinauralParameters) must not
     # shadow ios/build/generated/ios/ReactCodegen used by the ReactCodegen pod.
     stale_pods_codegen = File.join(installer.sandbox.root, 'build', 'generated')

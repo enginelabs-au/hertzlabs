@@ -16,6 +16,8 @@ import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {LegalScreen} from '../screens/LegalScreen';
 import {PaywallScreen} from '../screens/PaywallScreen';
+import {FeedbackScreen} from '../screens/FeedbackScreen';
+import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
 import {installAudioSync} from '../state/middleware/audioSync';
 import {installBreathPacerSync} from '../state/middleware/breathPacerSync';
 import {installProtocolSync} from '../state/middleware/protocolSync';
@@ -92,6 +94,8 @@ function AppContent(): React.JSX.Element {
   const hydrated = useStoreHydrated();
   const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
 
+  useGrowthEngagement(hydrated && hasAcceptedSafetyTerms);
+
   useEffect(() => {
     if (!hydrated || hasAcceptedSafetyTerms) {
       return;
@@ -151,6 +155,7 @@ function AppContent(): React.JSX.Element {
       {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
       {activeModal === 'legal' && <LegalScreen />}
       {activeModal === 'paywall' && <PaywallScreen />}
+      {activeModal === 'feedback' && <FeedbackScreen />}
     </>
   );
 }

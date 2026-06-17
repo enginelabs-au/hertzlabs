@@ -151,6 +151,7 @@ export type FormulaGenerationOptions = {
   history?: ChatTurn[];
   engineType?: string;
   experimental?: boolean;
+  premium?: boolean;
 };
 
 function escapeRegex(s: string): string {
@@ -299,6 +300,7 @@ export async function generateFormulaFromPrompt(
     gain: 0.45,
     engineType: options.engineType ?? 'binaural',
     experimental: options.experimental ?? false,
+    premium: options.premium ?? false,
     f_L: ctx.f_L,
     f_R: ctx.f_R,
     f_beat: ctx.f_beat,
@@ -310,6 +312,6 @@ export async function generateFormulaFromPrompt(
     return evaluateFormulaReply(parsed.formula, parsed.reply, ctx);
   }
 
-  await new Promise<void>(resolve => setTimeout(() => resolve(), 400));
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
   return generateFormulaLocal(trimmed, ctx, options);
 }

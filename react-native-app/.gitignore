@@ -4,6 +4,12 @@ android/build/
 android/app/build/
 ios/Pods/
 ios/build/
+ios/build-device/
+build-device/
+build-sim/
+android/app/.cxx/
+ios/HertzLabsBinauralBeats/main.jsbundle
+ios/HertzLabsBinauralBeats/main.jsbundle.map
 .env
 .secrets/
 scripts/.iap-review-screenshot.png

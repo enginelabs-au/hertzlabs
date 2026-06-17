@@ -1,6 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import {Linking, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Animated, {FadeInRight, FadeOutLeft} from 'react-native-reanimated';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {OnboardingBackgroundWaves} from '../components/layout/OnboardingBackgroundWaves';
 import {ScreenWaveHeader} from '../components/layout/ScreenWaveHeader';
 import {PRIVACY_URL, TERMS_URL} from '../constants/legalUrls';
@@ -155,10 +156,71 @@ function Step3Frequency() {
   );
 }
 
+function AcceptanceSection({
+  checkedTerms,
+  checkedMedical,
+  ctaEnabled,
+  onToggleTerms,
+  onToggleMedical,
+  onAccept,
+}: {
+  checkedTerms: boolean;
+  checkedMedical: boolean;
+  ctaEnabled: boolean;
+  onToggleTerms: () => void;
+  onToggleMedical: () => void;
+  onAccept: () => void;
+}) {
+  return (
+    <View style={styles.acceptanceSection}>
+      <Pressable
+        style={styles.checkboxRow}
+        onPress={onToggleTerms}
+        accessibilityRole="checkbox"
+        accessibilityState={{checked: checkedTerms}}>
+        <Checkbox checked={checkedTerms} onToggle={onToggleTerms} />
+        <Text style={styles.checkboxLabel}>
+          I have read and agree to the <InlineLink label="Terms of Service" url={TERMS_URL} /> and{' '}
+          <InlineLink label="Privacy Policy" url={PRIVACY_URL} />.
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.checkboxRow}
+        onPress={onToggleMedical}
+        accessibilityRole="checkbox"
+        accessibilityState={{checked: checkedMedical}}>
+        <Checkbox checked={checkedMedical} onToggle={onToggleMedical} />
+        <Text style={styles.checkboxLabel}>
+          I understand that Hertz Labs does not provide medical advice and I will not use it as a
+          substitute for professional medical care.
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={[styles.cta, !ctaEnabled && styles.ctaDisabled]}
+        onPress={() => {
+          if (ctaEnabled) {
+            onAccept();
+          }
+        }}
+        disabled={!ctaEnabled}
+        accessibilityRole="button"
+        accessibilityState={{disabled: !ctaEnabled}}
+        accessibilityLabel="Acknowledge safety terms and enter the app">
+        <Text style={[styles.ctaText, !ctaEnabled && styles.ctaTextDisabled]}>
+          Acknowledge & Enter
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 /**
  * Mandatory legal gate — 3-step wizard with pinned animated wave header.
  */
 export function SafetyOnboardingScreen() {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [checkedTerms, setCheckedTerms] = useState(false);
   const [checkedMedical, setCheckedMedical] = useState(false);
@@ -167,6 +229,7 @@ export function SafetyOnboardingScreen() {
   const ctaEnabled = checkedTerms && checkedMedical;
   const beatHz = STEP_BEAT_HZ[Math.min(step, STEP_BEAT_HZ.length - 1)] ?? 10;
   const isFinalStep = step === STEP_COUNT - 1;
+  const bottomInset = Math.max(insets.bottom, 8);
 
   const goNext = useCallback(() => {
     setStep(s => Math.min(s + 1, STEP_COUNT - 1));
@@ -199,8 +262,13 @@ export function SafetyOnboardingScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={[
+          styles.scrollContent,
+          isFinalStep && styles.scrollContentFinal,
+        ]}
+        showsVerticalScrollIndicator={isFinalStep}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled>
         <Animated.View
           key={step}
           entering={FadeInRight.duration(280)}
@@ -208,10 +276,21 @@ export function SafetyOnboardingScreen() {
           style={styles.stepPanel}>
           {renderStepContent()}
         </Animated.View>
+
+        {isFinalStep && (
+          <AcceptanceSection
+            checkedTerms={checkedTerms}
+            checkedMedical={checkedMedical}
+            ctaEnabled={ctaEnabled}
+            onToggleTerms={() => setCheckedTerms(v => !v)}
+            onToggleMedical={() => setCheckedMedical(v => !v)}
+            onAccept={() => setHasAccepted(true)}
+          />
+        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        {!isFinalStep ? (
+      {!isFinalStep && (
+        <View style={[styles.footer, {paddingBottom: bottomInset}]}>
           <Pressable
             style={styles.nextBtn}
             onPress={goNext}
@@ -220,51 +299,10 @@ export function SafetyOnboardingScreen() {
             <Text style={styles.nextBtnText}>Next</Text>
             <Text style={styles.nextBtnHint}>→ {STEP_TITLES[step + 1]}</Text>
           </Pressable>
-        ) : (
-          <>
-            <Pressable
-              style={styles.checkboxRow}
-              onPress={() => setCheckedTerms(v => !v)}
-              accessibilityRole="checkbox"
-              accessibilityState={{checked: checkedTerms}}>
-              <Checkbox checked={checkedTerms} onToggle={() => setCheckedTerms(v => !v)} />
-              <Text style={styles.checkboxLabel}>
-                I have read and agree to the <InlineLink label="Terms of Service" url={TERMS_URL} />{' '}
-                and <InlineLink label="Privacy Policy" url={PRIVACY_URL} />.
-              </Text>
-            </Pressable>
+        </View>
+      )}
 
-            <Pressable
-              style={styles.checkboxRow}
-              onPress={() => setCheckedMedical(v => !v)}
-              accessibilityRole="checkbox"
-              accessibilityState={{checked: checkedMedical}}>
-              <Checkbox checked={checkedMedical} onToggle={() => setCheckedMedical(v => !v)} />
-              <Text style={styles.checkboxLabel}>
-                I understand that Hertz Labs does not provide medical advice and I will not use it as
-                a substitute for professional medical care.
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.cta, !ctaEnabled && styles.ctaDisabled]}
-              onPress={() => {
-                if (ctaEnabled) {
-                  setHasAccepted(true);
-                }
-              }}
-              disabled={!ctaEnabled}
-              accessibilityRole="button"
-              accessibilityState={{disabled: !ctaEnabled}}>
-              <Text style={[styles.ctaText, !ctaEnabled && styles.ctaTextDisabled]}>
-                Acknowledge & Enter
-              </Text>
-            </Pressable>
-          </>
-        )}
-      </View>
-
-      <LegalMenuBar />
+      <LegalMenuBar showLayoutToggle={false} />
     </View>
   );
 }
@@ -287,6 +325,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  scrollContentFinal: {
+    paddingBottom: 24,
+  },
+  acceptanceSection: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
   },
   stepPanel: {
     gap: 12,

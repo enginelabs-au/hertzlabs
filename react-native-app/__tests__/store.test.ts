@@ -191,8 +191,14 @@ describe('persist policy (Plan 01 §6) — partialize', () => {
     const keys = Object.keys(persisted).sort();
     expect(keys).toEqual(
       [
+        'appLaunchCount',
         'backgroundAudio',
         'beatSliderScale',
+        'breathDeltaDb',
+        'breathGainAnchor',
+        'breathPacerEnabled',
+        'breathPatternId',
+        'cumulativePlaybackSec',
         'custom',
         'defaultDurationSec',
         'engineType',
@@ -200,10 +206,13 @@ describe('persist policy (Plan 01 §6) — partialize', () => {
         'experimentalMode',
         'haptics',
         'hasAcceptedSafetyTerms',
+        'isAdvancedMode',
         'isKineticModeEnabled',
         'keepAwake',
         'lastUsedParams',
         'onboardingDone',
+        'paywallSoftPromptShown',
+        'reviewPromptedForVersion',
         'theme',
         'tier',
       ].sort(),

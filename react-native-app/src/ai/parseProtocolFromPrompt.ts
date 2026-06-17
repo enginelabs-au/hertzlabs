@@ -24,7 +24,19 @@ export function bandNameToHz(name: string): number | null {
 }
 
 const STEP_SPLIT =
-  /\s+(?:then|→|->|,\s*then|;\s*|\bstep\s+\d+\s*:?\s*|\bphase\s+\d+\s*:?\s*|\bstage\s+\d+\s*:?\s*)/i;
+  /\s+(?:then|→|->|,\s*(?:then\s+)?|;\s*|\bstep\s+\d+\s*:?\s*|\bphase\s+\d+\s*:?\s*|\bstage\s+\d+\s*:?\s*|\bafter\s+that\s*|\bfollowed\s+by\s*|\bnext\s*,?\s*|\bfinally\s*,?\s*|\bbefore\s+(?:winding|wind(?:ing)?\s+down|the\s+final|the\s+last)\s*)/i;
+
+/** Comma boundaries between phase clauses ("alpha for 10 min, glide to theta, hold delta 30 min"). */
+const PHASE_COMMA_SPLIT =
+  /,\s*(?=(?:\d+\s*(?:min|sec|hour)|hold|stay|maintain|start|begin|glide|ramp|transition|wind|sustain|alpha|beta|theta|delta|gamma|smr|epsilon|lambda)\b)/i;
+
+const MOOD_BAND_PHRASES: {re: RegExp; hz: number; label: string}[] = [
+  {re: /\bdeep(?:ly)?[\s-]?(?:restorative[\s-])?(?:sleep|delta)\b/i, hz: 2.5, label: 'Delta'},
+  {re: /\brelaxed[\s-]?alpha\b/i, hz: 10, label: 'Alpha'},
+  {re: /\bhyper[\s-]?focus(?:ed)?\b/i, hz: 22, label: 'Beta'},
+  {re: /\bopen[\s-]?awareness\b/i, hz: 10, label: 'Alpha'},
+  {re: /\bwind(?:ing)?[\s-]?down\b/i, hz: 8, label: 'Alpha'},
+];
 
 const FUZZY_DURATIONS: {re: RegExp; sec: number}[] = [
   {re: /\ba\s+few\s+(?:seconds?|secs?)\b/i, sec: 30},
@@ -58,6 +70,101 @@ export function buildUserConversationText(history: ChatTurn[], latest: string): 
     userLines.push(tail);
   }
   return userLines.join('\n');
+}
+
+/**
+ * True when the latest message refines or modifies the prior turn — not a fresh topic.
+ * New topics in the same chat must be parsed from the latest message only.
+ */
+export function isConversationContinuation(history: ChatTurn[], latest: string): boolean {
+  if (history.filter(t => t.role === 'user').length === 0) {
+    return false;
+  }
+  const lower = latest.toLowerCase().trim();
+  if (!lower) {
+    return false;
+  }
+  if (
+    /\b(reverse|flip|invert|opposite|other[\s-]way|backwards|longer|shorter|extend|continue)\b/i.test(
+      lower,
+    )
+  ) {
+    return true;
+  }
+  if (/\b(that|this|it|those|the sequence|the journey|the protocol|previous|last one)\b/i.test(lower)) {
+    return true;
+  }
+  if (/\b(instead|rather|swap|change it|adjust|tweak|refine|more|less|gentler|stronger)\b/i.test(lower)) {
+    return true;
+  }
+  if (/\b(\+|\-|by)\s*\d+(?:\.\d+)?\s*(?:hz|hertz|min|minutes?|mins?)\b/i.test(lower)) {
+    return true;
+  }
+  if (lower.length <= 48 && /\b(now|same|again|keep)\b/i.test(lower)) {
+    return true;
+  }
+  return false;
+}
+
+/** Text used for intent/sequencer parsing — latest-only unless continuing prior output. */
+export function buildIntentParsingText(history: ChatTurn[], latest: string): string {
+  const tail = latest.trim();
+  if (!tail) {
+    return '';
+  }
+  if (isConversationContinuation(history, latest)) {
+    return buildUserConversationText(history, latest);
+  }
+  return tail;
+}
+
+/** Broad state/band inference when the user did not give an exact Hz. Returns null if nothing matched. */
+export function inferBeatHzFromPrompt(text: string): number | null {
+  const normalized = normalizeConversationForParsing(text);
+  if (!normalized) {
+    return null;
+  }
+
+  const explicit = extractTargetHzFromConversationText(normalized);
+  if (explicit != null) {
+    return explicit;
+  }
+
+  const bands = extractOrderedBandTargets(normalized);
+  if (bands.length > 0) {
+    const towardEnd = /\b(to|into|toward|towards|ending|end(?:\s+at)?|finish(?:\s+at)?|settle(?:\s+in)?)\b/i.test(
+      normalized,
+    );
+    return (towardEnd && bands.length > 1 ? bands[bands.length - 1] : bands[0]).hz;
+  }
+
+  const stateRules: {re: RegExp; hz: number}[] = [
+    {re: /\b(epsilon|infra[\s-]?slow|autonomic reset|nervous system reset)\b/i, hz: 0.5},
+    {re: /\b(deep sleep|restorative sleep|insomnia|bedtime|asleep|slumber|pass out)\b/i, hz: 2.5},
+    {re: /\b(sleep|delta|dream(?:ing)?|drowsy|night(?:time)?)\b/i, hz: 2.5},
+    {re: /\b(power nap|quick nap|short rest)\b/i, hz: 4.5},
+    {re: /\b(nap|doze)\b/i, hz: 4.5},
+    {re: /\b(lucid|hypnagog|twilight state)\b/i, hz: 5},
+    {re: /\b(meditat\w*|mindful|inner peace|spiritual|grounding)\b/i, hz: 6},
+    {re: /\b(anxiety|anxious|panic|racing thoughts|overwhelm|worried|stressful)\b/i, hz: 8},
+    {re: /\b(relax|unwind|calm(?: down)?|soothe|peaceful|de[\s-]?stress|wind down)\b/i, hz: 9.5},
+    {re: /\b(creativ\w*|brainstorm|imagination|artistic flow)\b/i, hz: 10},
+    {re: /\b(flow state|in the zone|open awareness)\b/i, hz: 12},
+    {re: /\b(adhd|hyper[\s-]?focus|concentrat\w*|study(?:ing)?|deep work|productiv\w*|deadline|exam)\b/i, hz: 14},
+    {re: /\b(focus(?:ed)?|work(?:ing)?|task|attention|alert(?:ness)?)\b/i, hz: 18},
+    {re: /\b(energy|energiz\w*|workout|exercise|motivat\w*|wake(?: up)?)\b/i, hz: 20},
+    {re: /\b(memory|learn(?:ing)?|cognition|cognitive|mental clarity)\b/i, hz: 40},
+    {re: /\b(gamma|peak performance|intense focus)\b/i, hz: 40},
+    {re: /\b(lambda|hyper[\s-]?gamma|supra[\s-]?gamma)\b/i, hz: 100},
+  ];
+
+  for (const {re, hz} of stateRules) {
+    if (re.test(normalized)) {
+      return hz;
+    }
+  }
+
+  return null;
 }
 
 function parseDurationSecFromMatch(value: number, unit: 'min' | 'sec' | 'hour'): number {
@@ -255,7 +362,7 @@ function parseHzValues(chunk: string): number[] {
 
 function parseBandGlide(chunk: string): {start: number; end: number; curve: RampCurve} | null {
   const bandRe = new RegExp(
-    `(?:from|start(?:ing)?\\s+(?:at)?\\s*|ramp(?:s|ing)?\\s+(?:from\\s+)?)(${BAND_NAMES}).{0,40}(?:to|→|->|down\\s+to|up\\s+to|into)\\s+(${BAND_NAMES})`,
+    `(?:from|start(?:ing)?\\s+(?:at|in)?\\s*|ramp(?:s|ing)?\\s+(?:from\\s+)?|glide(?:\\s+(?:down|up|through))?\\s+(?:from\\s+)?|transition(?:ing)?\\s+(?:from\\s+)?)(${BAND_NAMES}).{0,60}(?:to|→|->|down\\s+to|up\\s+to|into|through)\\s+(${BAND_NAMES})`,
     'i',
   );
   const m = chunk.match(bandRe);
@@ -269,6 +376,250 @@ function parseBandGlide(chunk: string): {start: number; end: number; curve: Ramp
   }
   const curve: RampCurve = /log|smooth|gradual|sleep|wind/i.test(chunk) ? 'logarithmic' : 'linear';
   return {start, end, curve};
+}
+
+/** Ordered band / mood targets as they appear in the prompt (deduped when adjacent). */
+export function extractOrderedBandTargets(text: string): {hz: number; label: string}[] {
+  const normalized = normalizeConversationForParsing(text);
+  const hits: {index: number; hz: number; label: string}[] = [];
+
+  for (const {re, hz, label} of MOOD_BAND_PHRASES) {
+    const m = normalized.match(re);
+    if (m?.index != null) {
+      hits.push({index: m.index, hz, label});
+    }
+  }
+
+  const bandRe = new RegExp(`\\b(${BAND_NAMES})\\b`, 'gi');
+  for (const m of normalized.matchAll(bandRe)) {
+    if (m.index == null) {
+      continue;
+    }
+    const hz = bandNameToHz(m[1]);
+    if (hz == null) {
+      continue;
+    }
+    hits.push({index: m.index, hz, label: m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()});
+  }
+
+  hits.sort((a, b) => a.index - b.index);
+  const out: {hz: number; label: string}[] = [];
+  for (const hit of hits) {
+    const last = out[out.length - 1];
+    if (last == null || Math.abs(last.hz - hit.hz) > 0.05) {
+      out.push({hz: hit.hz, label: hit.label});
+    }
+  }
+  return out;
+}
+
+function splitIntoPhases(normalized: string): string[] {
+  const byThen = normalized
+    .split(STEP_SPLIT)
+    .map(c => c.trim())
+    .filter(Boolean);
+  if (byThen.length >= 2) {
+    return byThen;
+  }
+  const byComma = normalized
+    .split(PHASE_COMMA_SPLIT)
+    .map(c => c.trim())
+    .filter(Boolean);
+  if (byComma.length >= 2) {
+    return byComma;
+  }
+  return byThen.length > 0 ? byThen : [normalized];
+}
+
+function parseStepChunkWithDuration(
+  chunk: string,
+  durationSec: number,
+  carryHz: number,
+  engine: EngineMode,
+  index: number,
+): ProtocolStep | null {
+  const glide = parseGlide(chunk);
+  const hzValues = parseHzValues(chunk);
+
+  if (glide != null) {
+    return buildStep(
+      {
+        durationSec,
+        startBeatHz: glide.start,
+        endBeatHz: glide.end,
+        curve: glide.curve,
+      },
+      engine,
+      index,
+    );
+  }
+
+  if (hzValues.length >= 2) {
+    return buildStep(
+      {
+        durationSec,
+        startBeatHz: hzValues[0],
+        endBeatHz: hzValues[1],
+        curve: hzValues[0] !== hzValues[1] ? 'logarithmic' : 'linear',
+      },
+      engine,
+      index,
+    );
+  }
+
+  if (hzValues.length === 1) {
+    const hz = hzValues[0];
+    const isHold = /\b(hold|stay|maintain|keep|sustain)\b/i.test(chunk);
+    if (isHold || Math.abs(hz - carryHz) < 0.05 || carryHz <= 0) {
+      return buildStep(
+        {durationSec, startBeatHz: hz, endBeatHz: hz, curve: 'linear', label: `${hz} Hz hold`},
+        engine,
+        index,
+      );
+    }
+    return buildStep(
+      {
+        durationSec,
+        startBeatHz: carryHz > 0 ? carryHz : hz,
+        endBeatHz: hz,
+        curve: 'logarithmic',
+      },
+      engine,
+      index,
+    );
+  }
+
+  if (carryHz > 0) {
+    return buildStep(
+      {durationSec, startBeatHz: carryHz, endBeatHz: carryHz, curve: 'linear'},
+      engine,
+      index,
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Multi-phase natural language ("alpha for 10 min, glide to theta, hold delta 30 min").
+ * Uses duration mentions in order when a phase clause omits its own timing.
+ */
+export function parseNarrativeJourneyFromText(
+  prompt: string,
+  engine: EngineMode,
+): SessionProtocol | null {
+  const normalized = normalizeConversationForParsing(prompt);
+  const durationQueue = collectDurationSecMentions(normalized);
+  const phases = splitIntoPhases(normalized);
+
+  if (phases.length < 2 && durationQueue.length < 2) {
+    return buildBandChainProtocol(normalized, engine);
+  }
+
+  const steps: ProtocolStep[] = [];
+  let carryHz = 0;
+
+  const phaseDurations: (number | null)[] = phases.map(p => parseDurationSec(p));
+  const explicitTotal = inferTargetTotalSecFromPrompt(normalized);
+  let assigned = phaseDurations.reduce((sum, d) => sum + (d ?? 0), 0);
+  const unassignedIdx = phaseDurations
+    .map((d, i) => (d == null ? i : -1))
+    .filter(i => i >= 0);
+
+  if (unassignedIdx.length > 0) {
+    let pool =
+      explicitTotal != null && explicitTotal > assigned
+        ? explicitTotal - assigned
+        : durationQueue.filter((_, i) => i >= phaseDurations.filter(d => d != null).length).reduce((a, b) => a + b, 0);
+
+    if (pool <= 0 && durationQueue.length === 1 && phases.length === 2) {
+      pool = durationQueue[0];
+    }
+
+    if (pool > 0) {
+      const each = Math.max(pool / unassignedIdx.length, 1);
+      for (const idx of unassignedIdx) {
+        phaseDurations[idx] = each;
+      }
+      assigned += each * unassignedIdx.length;
+    }
+  }
+
+  for (let i = 0; i < phases.length; i++) {
+    const durationSec = phaseDurations[i];
+    if (durationSec == null) {
+      continue;
+    }
+    const step = parseStepChunkWithDuration(phases[i], durationSec, carryHz, engine, steps.length);
+    if (step != null) {
+      steps.push(step);
+      carryHz = step.endBeatHz;
+    }
+  }
+
+  if (steps.length >= 2) {
+    return mergeFadeOut(normalized, {
+      id: `ai-narrative-${Date.now()}`,
+      title: inferProtocolTitle(normalized),
+      description: 'Built from your multi-phase journey description.',
+      stopAfterSec: 0,
+      stopAfterPlayback: true,
+      fadeOutDurationSec: 30,
+      fadeOutStartGain: steps[steps.length - 1]?.endGain ?? 0.35,
+      fadeOutEndGain: 0.04,
+      steps,
+    });
+  }
+
+  return buildBandChainProtocol(normalized, engine);
+}
+
+function inferProtocolTitle(normalized: string): string {
+  const titleMatch = normalized.match(
+    /(?:create|build|make|design)\s+(?:a\s+)?(.{0,48}?)(?:\s+sequence|\s+protocol|\s+journey|$)/i,
+  );
+  const title = titleMatch?.[1]?.trim();
+  return title != null && title.length > 2 ? title : 'Custom Sequence';
+}
+
+/** Chain 2+ named bands across one total duration (e.g. alpha→theta→delta over 45 min). */
+function buildBandChainProtocol(normalized: string, engine: EngineMode): SessionProtocol | null {
+  const targets = extractOrderedBandTargets(normalized);
+  const totalSec = inferTargetTotalSecFromPrompt(normalized);
+  if (targets.length < 2 || totalSec == null) {
+    return null;
+  }
+
+  const fadeSec = /\b(exact(?:ly)?|precise(?:ly)?)\b/i.test(normalized) ? 0 : 30;
+  const playableSec = Math.max(totalSec - fadeSec, targets.length - 1);
+  const stepSec = Math.max(playableSec / (targets.length - 1), 1);
+
+  const steps = targets.slice(0, -1).map((start, i) => {
+    const end = targets[i + 1];
+    return buildStep(
+      {
+        durationSec: stepSec,
+        startBeatHz: start.hz,
+        endBeatHz: end.hz,
+        curve: end.hz < start.hz ? 'logarithmic' : 'linear',
+        label: `${start.label}→${end.label}`,
+      },
+      engine,
+      i,
+    );
+  });
+
+  return mergeFadeOut(normalized, {
+    id: `ai-chain-${Date.now()}`,
+    title: inferProtocolTitle(normalized),
+    description: `${targets.map(t => t.label).join(' → ')}, ${Math.round(totalSec / 60)} min total.`,
+    stopAfterSec: 0,
+    stopAfterPlayback: true,
+    fadeOutDurationSec: fadeSec,
+    fadeOutStartGain: steps[steps.length - 1]?.endGain ?? 0.35,
+    fadeOutEndGain: 0.04,
+    steps,
+  });
 }
 
 function parseGlide(chunk: string): {start: number; end: number; curve: RampCurve} | null {
@@ -394,8 +745,11 @@ function parseStepChunk(chunk: string, carryHz: number, engine: EngineMode, inde
 /** True when text contains concrete timing and/or Hz values worth parsing locally. */
 export function promptHasExplicitSequenceNumbers(prompt: string): boolean {
   const normalized = normalizeConversationForParsing(prompt);
+  const durations = collectDurationSecMentions(normalized);
+  const bands = extractOrderedBandTargets(normalized);
   return (
-    collectDurationSecMentions(normalized).length > 0 ||
+    durations.length > 0 ||
+    bands.length >= 2 ||
     /(\d+(?:\.\d+)?)\s*(?:hz|hertz)\b/i.test(normalized) ||
     /\bat\s+\d+(?:\.\d+)?\b/i.test(normalized) ||
     /\d+\s*(?:to|→|->)\s*\d+/i.test(normalized) ||
@@ -405,6 +759,14 @@ export function promptHasExplicitSequenceNumbers(prompt: string): boolean {
 
 function parseExplicitProtocolFromText(prompt: string, engine: EngineMode): SessionProtocol | null {
   const normalized = normalizeConversationForParsing(prompt);
+  const bandTargets = extractOrderedBandTargets(normalized);
+  if (bandTargets.length >= 3 && inferTargetTotalSecFromPrompt(normalized) != null) {
+    const chain = buildBandChainProtocol(normalized, engine);
+    if (chain != null) {
+      return chain;
+    }
+  }
+
   const chunks = normalized
     .split(STEP_SPLIT)
     .map(c => c.trim())
@@ -426,13 +788,9 @@ function parseExplicitProtocolFromText(prompt: string, engine: EngineMode): Sess
   }
 
   if (steps.length > 0) {
-    const titleMatch = normalized.match(
-      /(?:create|build|make|design)\s+(?:a\s+)?(.{0,48}?)(?:\s+sequence|\s+protocol|\s+journey|$)/i,
-    );
-    const title = titleMatch?.[1]?.trim() || 'Custom Sequence';
     return mergeFadeOut(normalized, {
       id: `ai-parsed-${Date.now()}`,
-      title: title.length > 2 ? title : 'Custom Sequence',
+      title: inferProtocolTitle(normalized),
       description: 'Built from your explicit timings and frequencies.',
       stopAfterSec: 0,
       stopAfterPlayback: true,
@@ -443,7 +801,37 @@ function parseExplicitProtocolFromText(prompt: string, engine: EngineMode): Sess
     });
   }
 
+  const narrative = parseNarrativeJourneyFromText(prompt, engine);
+  if (narrative != null) {
+    return narrative;
+  }
+
   const totalSec = inferTargetTotalSecFromPrompt(normalized);
+  const glide = parseGlide(normalized);
+  if (totalSec != null && glide != null) {
+    return mergeFadeOut(normalized, {
+      id: `ai-parsed-${Date.now()}`,
+      title: inferProtocolTitle(normalized),
+      description: 'Built from your requested duration and frequency journey.',
+      stopAfterSec: 0,
+      stopAfterPlayback: true,
+      fadeOutDurationSec: 30,
+      fadeOutStartGain: 0.35,
+      fadeOutEndGain: 0.04,
+      steps: [
+        buildStep(
+          {
+            durationSec: totalSec,
+            startBeatHz: glide.start,
+            endBeatHz: glide.end,
+            curve: glide.curve,
+          },
+          engine,
+          0,
+        ),
+      ],
+    });
+  }
   const hz = extractTargetHzFromConversationText(normalized);
   if (totalSec != null && hz != null) {
     return mergeFadeOut(normalized, {
@@ -460,10 +848,14 @@ function parseExplicitProtocolFromText(prompt: string, engine: EngineMode): Sess
   }
 
   if (totalSec != null) {
+    const inferredHz = inferBeatHzFromPrompt(normalized);
+    if (inferredHz == null) {
+      return null;
+    }
     return mergeFadeOut(normalized, {
       id: `ai-parsed-${Date.now()}`,
-      title: 'Custom Sequence',
-      description: 'Built from your requested duration.',
+      title: inferProtocolTitle(normalized),
+      description: 'Built from your requested duration and inferred brainwave target.',
       stopAfterSec: 0,
       stopAfterPlayback: true,
       fadeOutDurationSec: 30,
@@ -471,7 +863,13 @@ function parseExplicitProtocolFromText(prompt: string, engine: EngineMode): Sess
       fadeOutEndGain: 0.04,
       steps: [
         buildStep(
-          {durationSec: totalSec, startBeatHz: 10, endBeatHz: 10, curve: 'linear', label: 'Hold · 10 Hz'},
+          {
+            durationSec: totalSec,
+            startBeatHz: inferredHz,
+            endBeatHz: inferredHz,
+            curve: 'linear',
+            label: `${inferredHz} Hz hold`,
+          },
           engine,
           0,
         ),

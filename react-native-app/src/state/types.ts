@@ -196,6 +196,8 @@ export type BreathPacerSlice = {
   setBreathGainAnchor(anchor: number): void;
 };
 
+export type {GrowthSlice} from './slices/growth';
+
 export type AppStore = AudioParamsSlice &
   SessionSlice &
   EngineSlice &
@@ -208,4 +210,5 @@ export type AppStore = AudioParamsSlice &
   TelemetrySlice &
   ProtocolSlice &
   BreathPacerSlice &
+  import('./slices/growth').GrowthSlice &
   import('./slices/aiChat').AiChatSlice;

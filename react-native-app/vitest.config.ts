@@ -10,6 +10,10 @@ const mockMmkv = fileURLToPath(
 const mockEnv = fileURLToPath(new URL('./__tests__/__mocks__/env.ts', import.meta.url));
 
 export default defineConfig({
+  // React Native code references the `__DEV__` global; define it for the node test env.
+  define: {
+    __DEV__: false,
+  },
   resolve: {
     alias: [
       {find: /^@env$/, replacement: mockEnv},

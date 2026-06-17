@@ -5,6 +5,7 @@ import {
   inferTargetTotalSecFromPrompt,
   parseExplicitProtocolFromConversation,
   parseExplicitProtocolFromPrompt,
+  parseNarrativeJourneyFromText,
   promptHasExplicitSequenceNumbers,
 } from '../src/ai/parseProtocolFromPrompt';
 import {
@@ -107,6 +108,39 @@ describe('band name parsing', () => {
     expect(p!.steps[0].durationSec).toBe(45 * 60);
     expect(p!.steps[0].startBeatHz).toBe(10);
     expect(p!.steps[0].endBeatHz).toBe(2.5);
+  });
+
+  it('parses alpha to theta to delta chain over one total duration', () => {
+    const p = parseExplicitProtocolFromPrompt(
+      'Design a 45 minute sleep sequence that ramps from alpha to theta to delta',
+      'binaural',
+    );
+    expect(p).not.toBeNull();
+    expect(p!.steps.length).toBeGreaterThanOrEqual(2);
+    expect(p!.steps[0].startBeatHz).toBe(10);
+    expect(p!.steps[p!.steps.length - 1].endBeatHz).toBe(2.5);
+  });
+});
+
+describe('parseNarrativeJourneyFromText', () => {
+  it('parses hold → glide → hold with comma-separated phases', () => {
+    const p = parseNarrativeJourneyFromText(
+      'Start in relaxed alpha for 10 minutes, glide down through theta, hold in deep delta for 30 minutes',
+      'binaural',
+    );
+    expect(p).not.toBeNull();
+    expect(p!.steps.length).toBeGreaterThanOrEqual(2);
+    expect(p!.steps[0].startBeatHz).toBeCloseTo(10, 0);
+    expect(p!.steps[p!.steps.length - 1].endBeatHz).toBeCloseTo(2.5, 0);
+  });
+
+  it('parses focus sequence with ramp, sustain, and wind-down', () => {
+    const p = parseNarrativeJourneyFromText(
+      'Build a 50 minute focus sequence ramping into beta then sustaining gamma before winding down to alpha',
+      'binaural',
+    );
+    expect(p).not.toBeNull();
+    expect(p!.steps.length).toBeGreaterThanOrEqual(2);
   });
 });
 

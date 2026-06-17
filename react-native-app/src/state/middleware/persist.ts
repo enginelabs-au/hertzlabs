@@ -99,6 +99,10 @@ export const persistedStoreOptions = {
     breathPatternId: state.breathPatternId,
     breathDeltaDb: state.breathDeltaDb,
     breathGainAnchor: state.breathGainAnchor,
+    appLaunchCount: state.appLaunchCount,
+    cumulativePlaybackSec: state.cumulativePlaybackSec,
+    reviewPromptedForVersion: state.reviewPromptedForVersion,
+    paywallSoftPromptShown: state.paywallSoftPromptShown,
   }),
 };
 

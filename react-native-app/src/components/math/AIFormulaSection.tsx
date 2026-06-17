@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import {useHertzStore} from '../../state/store';
 import {getStereoFrequencies} from '../../audio/paramMapping';
-import {isExperimentalModeActive} from '../../monetization/isPremiumUnlocked';
+import {isExperimentalModeActive, isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MathFoldSection} from './MathFoldSection';
 import {AI_FORMULA_CHIPS, generateFormulaFromPrompt} from './aiFormulaGenerator';
@@ -21,6 +21,11 @@ import {useChatAutoScroll} from '../ai/useChatAutoScroll';
 import type {ChatTurn} from '../../ai/aiPromptParsing';
 import {generateProtocolFromPrompt} from '../../ai/protocolGeneration';
 import type {AiApplyPayload, AiChatMessage} from '../../state/slices/aiChat';
+import {
+  evaluateAiRateLimit,
+  formatCooldownMessage,
+  formatNearLimitHint,
+} from '../../ai/aiRateLimit';
 
 type AIFormulaSectionProps = {
   unlocked: boolean;
@@ -42,11 +47,13 @@ export function AIFormulaSection({
   const resetChat = useHertzStore(s => s.resetFormulaChat);
   const startProtocol = useHertzStore(s => s.startProtocol);
   const setProtocolDraftSeed = useHertzStore(s => s.setProtocolDraftSeed);
+  const noteAiCall = useHertzStore(s => s.noteAiCall);
 
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [appliedId, setAppliedId] = useState<string | null>(null);
   const {chatScrollRef, onChatContentSizeChange} = useChatAutoScroll(messages.length, loading);
+  const inputRef = useRef<TextInput>(null);
 
   const applyPayload = useCallback(
     (payload: AiApplyPayload) => {
@@ -81,6 +88,17 @@ export function AIFormulaSection({
       const history: ChatTurn[] = messages.map(m => ({role: m.role, text: m.text}));
       appendMessages([{id: `u-${Date.now()}`, role: 'user', text: trimmed}]);
       setPrompt('');
+
+      // Rolling-window guard: cut off before the provider rate limit, then cool down.
+      const rate = evaluateAiRateLimit(useHertzStore.getState().aiCallLog, Date.now());
+      if (!rate.allowed) {
+        appendMessages([
+          {id: `a-${Date.now()}`, role: 'assistant', text: formatCooldownMessage(rate.retryAfterMs)},
+        ]);
+        return;
+      }
+      noteAiCall();
+      const nearLimitHint = rate.nearLimit ? formatNearLimitHint(rate.remaining) : '';
       setLoading(true);
 
       try {
@@ -100,7 +118,7 @@ export function AIFormulaSection({
             {
               id: `a-${Date.now()}`,
               role: 'assistant',
-              text: protocolResult.summary,
+              text: protocolResult.summary + nearLimitHint,
               apply: {type: 'protocol', protocol: protocolResult.protocol},
             },
           ]);
@@ -114,6 +132,7 @@ export function AIFormulaSection({
           history,
           engineType: s.engineType,
           experimental,
+          premium: isPremiumUnlocked(s.tier),
         });
 
         let assistantText = result.reply;
@@ -136,7 +155,7 @@ export function AIFormulaSection({
           {
             id: `a-${Date.now()}`,
             role: 'assistant',
-            text: assistantText,
+            text: assistantText + nearLimitHint,
             formula: result.formula?.trim() ? result.formula : undefined,
             apply,
           },
@@ -145,7 +164,7 @@ export function AIFormulaSection({
         setLoading(false);
       }
     },
-    [appendMessages, loading, messages, onFormulaApplied, setProtocolDraftSeed, startProtocol],
+    [appendMessages, loading, messages, noteAiCall, onFormulaApplied, setProtocolDraftSeed, startProtocol],
   );
 
   return (
@@ -220,12 +239,14 @@ export function AIFormulaSection({
       </View>
 
       <TextInput
+        ref={inputRef}
         style={styles.input}
         value={prompt}
         onChangeText={setPrompt}
         placeholder="Ask for a formula or follow up to adjust…"
         placeholderTextColor={HertzTheme.text.muted}
         multiline
+        scrollEnabled={false}
         editable={!loading}
       />
       <Pressable
@@ -349,6 +370,38 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 8,
   },
+  sendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  micBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: HertzTheme.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micBtnActive: {
+    backgroundColor: 'rgba(255,80,180,0.15)',
+    borderColor: HertzTheme.neon.magenta,
+  },
+  speechListening: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 10,
+    color: HertzTheme.neon.magenta,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  speechError: {
+    fontSize: 10,
+    color: HertzTheme.neon.amber,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
   sendBtn: {
     backgroundColor: 'rgba(92,225,255,0.15)',
     borderRadius: 10,
@@ -356,6 +409,9 @@ const styles = StyleSheet.create({
     borderColor: HertzTheme.neon.cyan,
     paddingVertical: 11,
     alignItems: 'center',
+  },
+  sendBtnFlex: {
+    flex: 1,
   },
   sendBtnDisabled: {
     opacity: 0.45,

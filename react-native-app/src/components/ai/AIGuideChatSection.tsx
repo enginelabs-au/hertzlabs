@@ -1,18 +1,16 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useRef, useState, type RefObject} from 'react';
 import {
   ActivityIndicator,
-  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type RefObject,
   type ViewStyle,
 } from 'react-native';
 import {useHertzStore} from '../../state/store';
-import {isExperimentalModeActive} from '../../monetization/isPremiumUnlocked';
+import {isExperimentalModeActive, isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import type {EngineMode} from '../../state/types';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MathFoldSection} from '../math/MathFoldSection';
@@ -24,17 +22,38 @@ import {
 } from './aiGuideGenerator';
 import {applyFormulaEvalToSession, pushNativeAudioNow} from '../math/applyFormulaEvalToSession';
 import type {ChatTurn} from '../../ai/aiPromptParsing';
-import {generateProtocolFromPrompt} from '../../ai/protocolGeneration';
-import type {AiApplyPayload, AiChatMessage} from '../../state/slices/aiChat';
+import {generateProtocolFromPrompt, isSequenceRequestInConversation} from '../../ai/protocolGeneration';
+import {experientialPrefersProtocol} from '../../ai/experientialIntent';
+import {
+  getGeminiOutageReason,
+  resetGeminiOutage,
+  resetGeminiOutageForRetry,
+  shouldShowOutageNotice,
+  geminiUnavailableExplanation,
+  messageExplainsGeminiOutage,
+  type GeminiOutageReason,
+} from '../../ai/geminiChatClient';
+import type {AiApplyPayload, AiChatMessage, GuideAdvancedSettings} from '../../state/slices/aiChat';
+import {
+  evaluateAiRateLimit,
+  formatCooldownMessage,
+  formatNearLimitHint,
+} from '../../ai/aiRateLimit';
 import {HOME_QUICK_CLIPS} from '../home/homeQuickClips';
-import {MicIcon} from '../icons/MicIcon';
-import {useSpeechToText} from '../../hooks/useSpeechToText';
 import {useChatAutoScroll} from './useChatAutoScroll';
 
 type QuickStartIntent = {
   label: string;
   prompt: string;
 };
+
+/**
+ * Honest, user-appropriate banner when the Gemini service itself failed this
+ * turn — so a built-in fallback is never silently presented as the AI's answer.
+ */
+function formatOutageNotice(reason: GeminiOutageReason): string {
+  return `⚠️ ${geminiUnavailableExplanation(reason)}\n\n`;
+}
 
 const ADVANCED_QUICK_START: QuickStartIntent[] = [
   {label: 'ADHD Focus', prompt: 'Help me clear my mind and stay hyper-focused for a tough task'},
@@ -85,23 +104,37 @@ function entrainmentStyleToMode(style: SessionRecommendation['entrainmentStyle']
   }
 }
 
+/** Prefer an explicit engineMode from the AI; fall back to the entrainment style. */
+function resolveEngineMode(rec: SessionRecommendation): EngineMode {
+  return rec.engineMode ?? entrainmentStyleToMode(rec.entrainmentStyle);
+}
+
 export type AIGuideLayoutMode = 'advanced' | 'simple' | 'home' | 'homeInline';
 
 type AIGuideChatSectionProps = {
   foldStyle?: ViewStyle;
   layoutMode?: AIGuideLayoutMode;
   inputRef?: RefObject<TextInput | null>;
+  /** Receives the submit function so the parent can trigger sends from outside (e.g. a TextInput outside a ScrollView). */
+  submitRef?: RefObject<((text: string) => void) | null>;
+  /** Receives the loading flag so the parent can disable an external input while a request is in flight. */
+  loadingRef?: RefObject<boolean>;
 };
 
 export function AIGuideChatSection({
   foldStyle,
   layoutMode = 'advanced',
   inputRef,
+  submitRef,
+  loadingRef,
 }: AIGuideChatSectionProps) {
   const setParam = useHertzStore(s => s.setParam);
   const setEngineType = useHertzStore(s => s.setEngineType);
+  const toggleNoiseLayer = useHertzStore(s => s.toggleNoiseLayer);
+  const setNoiseMix = useHertzStore(s => s.setNoiseMix);
   const startProtocol = useHertzStore(s => s.startProtocol);
   const setProtocolDraftSeed = useHertzStore(s => s.setProtocolDraftSeed);
+  const noteAiCall = useHertzStore(s => s.noteAiCall);
   const messages = useHertzStore(s => s.guideMessages);
   const appendMessages = useHertzStore(s => s.appendGuideMessages);
   const resetChat = useHertzStore(s => s.resetGuideChat);
@@ -112,20 +145,15 @@ export function AIGuideChatSection({
   const tier = useHertzStore(s => s.tier);
   const experimentalMode = useHertzStore(s => s.experimentalMode);
   const experimental = isExperimentalModeActive(tier, experimentalMode);
+  const premium = isPremiumUnlocked(tier);
 
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [appliedId, setAppliedId] = useState<string | null>(null);
   const [appliedClip, setAppliedClip] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const {chatScrollRef, onChatContentSizeChange} = useChatAutoScroll(messages.length, loading);
 
-  const onSpeechTranscript = useCallback((text: string) => {
-    setPrompt(text);
-  }, []);
-
-  const speech = useSpeechToText({
-    onTranscript: onSpeechTranscript,
-  });
 
   const applyHomeClip = useCallback(
     (clip: (typeof HOME_QUICK_CLIPS)[number]) => {
@@ -144,12 +172,53 @@ export function AIGuideChatSection({
   const isSimple = layoutMode === 'simple';
   const isHomeInline = layoutMode === 'homeInline';
 
+  const applyGuideSettings = useCallback(
+    (adv?: GuideAdvancedSettings) => {
+      if (adv == null) {
+        return;
+      }
+      if (adv.carrierHz != null) {
+        setParam('carrierHz', adv.carrierHz);
+      }
+      if (adv.phaseAngle != null) {
+        setParam('phaseAngle', adv.phaseAngle);
+      }
+      if (adv.leftDriftHz != null) {
+        setParam('leftDriftHz', adv.leftDriftHz);
+      }
+      if (adv.rightDriftHz != null) {
+        setParam('rightDriftHz', adv.rightDriftHz);
+      }
+      if (adv.balance != null) {
+        setParam('balance', adv.balance);
+      }
+      if (adv.noiseLayer != null) {
+        // toggleNoiseLayer turns the chosen layer on (others off); only act when state differs.
+        const layers = useHertzStore.getState().noiseLayers;
+        if (adv.noiseLayer === 'none') {
+          (['white', 'pink', 'brown'] as const).forEach(l => {
+            if (layers[l]) {
+              toggleNoiseLayer(l);
+            }
+          });
+        } else if (!layers[adv.noiseLayer]) {
+          toggleNoiseLayer(adv.noiseLayer);
+        }
+      }
+      if (adv.noiseMix != null) {
+        setNoiseMix(adv.noiseMix);
+      }
+    },
+    [setNoiseMix, setParam, toggleNoiseLayer],
+  );
+
   const applyPayload = useCallback(
     (payload: AiApplyPayload) => {
       if (payload.type === 'guide') {
         setParam('beatHz', payload.beatHz);
         setEngineType(payload.engineMode);
         setParam('gain', payload.gain);
+        applyGuideSettings(payload.advanced);
         pushNativeAudioNow();
       } else if (payload.type === 'protocol') {
         setProtocolDraftSeed(payload.protocol);
@@ -158,7 +227,7 @@ export function AIGuideChatSection({
         applyFormulaEvalToSession(payload.hz);
       }
     },
-    [setEngineType, setParam, setProtocolDraftSeed, startProtocol],
+    [applyGuideSettings, setEngineType, setParam, setProtocolDraftSeed, startProtocol],
   );
 
   const reapplyMessage = useCallback(
@@ -183,31 +252,30 @@ export function AIGuideChatSection({
       const userMsg: AiChatMessage = {id: `u-${Date.now()}`, role: 'user', text: trimmed};
       appendMessages([userMsg]);
       setPrompt('');
+
+      // Rolling-window guard: cut off before the provider rate limit, then cool down.
+      const rate = evaluateAiRateLimit(useHertzStore.getState().aiCallLog, Date.now());
+      if (!rate.allowed) {
+        const cooldown = formatCooldownMessage(rate.retryAfterMs);
+        setNotice(cooldown);
+        setTimeout(() => setNotice(null), 5000);
+        if (!isHomeInline) {
+          appendMessages([{id: `a-${Date.now()}`, role: 'assistant', text: cooldown}]);
+        }
+        return;
+      }
+      noteAiCall();
+      const nearLimitHint = rate.nearLimit ? formatNearLimitHint(rate.remaining) : '';
       setLoading(true);
+      // Fresh turn: clear any prior AI-service outage flag so the notice below
+      // only reflects this submission.
+      resetGeminiOutage();
 
       try {
-        if (!isHomeInline) {
-          const protocolResult = await generateProtocolFromPrompt(trimmed, {
-            history,
-            beatHz,
-            gain,
-            engineType,
-          });
-          if (protocolResult != null) {
-            setProtocolDraftSeed(protocolResult.protocol);
-            startProtocol(protocolResult.protocol);
-            appendMessages([
-              {
-                id: `a-${Date.now()}`,
-                role: 'assistant',
-                text: protocolResult.summary,
-                apply: {type: 'protocol', protocol: protocolResult.protocol},
-              },
-            ]);
-            return;
-          }
-        }
+        const wantsProtocol =
+          isSequenceRequestInConversation(history, trimmed) || experientialPrefersProtocol(trimmed);
 
+        // Guide first (lighter prompt, ~12s max). Sequence build only if guide succeeds.
         const rec = await generateGuidance(trimmed, {
           history,
           currentBeatHz: beatHz,
@@ -215,20 +283,75 @@ export function AIGuideChatSection({
           carrierHz,
           engineType,
           experimental,
+          premium,
         });
-        const engineMode = entrainmentStyleToMode(rec.entrainmentStyle);
+        const guideOk = !messageExplainsGeminiOutage(rec.explanationShort);
+
+        if (guideOk && wantsProtocol) {
+          resetGeminiOutage();
+          const protocolResult = await generateProtocolFromPrompt(trimmed, {
+            history,
+            beatHz,
+            gain,
+            engineType,
+            premium,
+            experimental,
+          });
+          if (protocolResult != null) {
+            const outage = getGeminiOutageReason();
+            const outageNotice =
+              outage != null && messageExplainsGeminiOutage(protocolResult.summary)
+                ? ''
+                : shouldShowOutageNotice(outage)
+                  ? formatOutageNotice(outage!)
+                  : '';
+            setProtocolDraftSeed(protocolResult.protocol);
+            startProtocol(protocolResult.protocol);
+            appendMessages([
+              {
+                id: `a-${Date.now()}`,
+                role: 'assistant',
+                text: outageNotice + protocolResult.summary + nearLimitHint,
+                apply: {type: 'protocol', protocol: protocolResult.protocol},
+              },
+            ]);
+            return;
+          }
+          resetGeminiOutageForRetry();
+        }
+
+        const engineMode = resolveEngineMode(rec);
         const recGain = rec.intensityScale * 0.5;
         setParam('beatHz', rec.targetFrequencyHz);
         setEngineType(engineMode);
         setParam('gain', recGain);
+        applyGuideSettings(rec.advanced);
         pushNativeAudioNow();
 
+        const sequenceFallbackNote =
+          guideOk && wantsProtocol
+            ? 'Could not build a timed sequence from the free model this turn — applied a single live target instead.\n\n'
+            : '';
+
+        const guideOutage = getGeminiOutageReason();
+        const guideOutageNotice =
+          guideOutage != null && messageExplainsGeminiOutage(rec.explanationShort)
+            ? ''
+            : shouldShowOutageNotice(guideOutage)
+              ? formatOutageNotice(guideOutage!)
+              : '';
         appendMessages([
           {
             id: `a-${Date.now()}`,
             role: 'assistant',
-            text: formatRecommendationMessage(rec),
-            apply: {type: 'guide', beatHz: rec.targetFrequencyHz, engineMode, gain: recGain},
+            text: guideOutageNotice + sequenceFallbackNote + formatRecommendationMessage(rec) + nearLimitHint,
+            apply: {
+              type: 'guide',
+              beatHz: rec.targetFrequencyHz,
+              engineMode,
+              gain: recGain,
+              advanced: rec.advanced,
+            },
           },
         ]);
       } finally {
@@ -237,6 +360,7 @@ export function AIGuideChatSection({
     },
     [
       appendMessages,
+      applyGuideSettings,
       beatHz,
       carrierHz,
       engineType,
@@ -244,6 +368,8 @@ export function AIGuideChatSection({
       gain,
       loading,
       messages,
+      noteAiCall,
+      premium,
       setEngineType,
       setParam,
       setProtocolDraftSeed,
@@ -252,10 +378,19 @@ export function AIGuideChatSection({
     ],
   );
 
+  // Expose imperative handles to parent for the external input strip.
+  if (submitRef != null) {
+    submitRef.current = submitPrompt;
+  }
+  if (loadingRef != null) {
+    loadingRef.current = loading;
+  }
+
   if (isHomeInline) {
     return (
       <View style={[styles.homeInline, foldStyle]}>
         {loading && <Text style={styles.homeInlineLoading}>Configuring…</Text>}
+        {notice != null && <Text style={styles.speechError}>{notice}</Text>}
         {appliedClip != null && (
           <Text style={styles.homeApplied}>Applied: {appliedClip}</Text>
         )}
@@ -272,52 +407,44 @@ export function AIGuideChatSection({
             </Pressable>
           ))}
         </View>
-        {speech.error != null && (
-          <Text style={styles.speechError}>{speech.error}</Text>
+        {(messages.length > 0 || loading) && (
+          <ScrollView
+            ref={chatScrollRef}
+            style={styles.homeInlineHistory}
+            nestedScrollEnabled
+            onContentSizeChange={onChatContentSizeChange}
+            showsVerticalScrollIndicator={false}>
+            {messages.slice(-8).map(msg => {
+              const canApply = msg.role === 'assistant' && msg.apply != null;
+              const Wrapper: any = canApply ? Pressable : View;
+              return (
+                <Wrapper
+                  key={msg.id}
+                  onPress={canApply ? () => reapplyMessage(msg) : undefined}
+                  style={[
+                    styles.bubble,
+                    msg.role === 'user' ? styles.userBubble : styles.aiBubble,
+                    styles.bubbleHome,
+                    appliedId === msg.id && styles.bubbleApplied,
+                  ]}>
+                  <Text style={[styles.bubbleText, styles.bubbleTextHome]}>{msg.text}</Text>
+                  {canApply && (
+                    <Text style={styles.applyHint}>
+                      {appliedId === msg.id ? '✓ Applied' : '↺ Tap to re-apply'}
+                    </Text>
+                  )}
+                </Wrapper>
+              );
+            })}
+            {loading && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={HertzTheme.neon.green} size="small" />
+                <Text style={styles.loadingText}>Thinking…</Text>
+              </View>
+            )}
+          </ScrollView>
         )}
-        {speech.isListening && (
-          <Text style={styles.speechListening}>Listening… speak your goal</Text>
-        )}
-        <View style={styles.inlineRow}>
-          <Pressable
-            style={[styles.inlineMic, speech.isListening && styles.inlineMicActive]}
-            onPress={() => {
-              Keyboard.dismiss();
-              inputRef?.current?.blur();
-              speech.toggleSpeech();
-            }}
-            hitSlop={8}
-            disabled={loading}
-            accessibilityRole="button"
-            accessibilityLabel={speech.isListening ? 'Stop voice input' : 'Start voice input'}
-            accessibilityState={{selected: speech.isListening}}>
-            <MicIcon
-              size={18}
-              color={speech.isListening ? HertzTheme.neon.magenta : HertzTheme.neon.cyan}
-            />
-          </Pressable>
-          <TextInput
-            ref={inputRef}
-            style={styles.inlineInputExpanded}
-            value={prompt}
-            onChangeText={setPrompt}
-            placeholder="Describe your goal — e.g. deep sleep, ADHD focus, anxiety relief…"
-            placeholderTextColor={HertzTheme.text.muted}
-            editable={!loading && !speech.isListening}
-            showSoftInputOnFocus={!speech.isListening}
-            multiline
-            textAlignVertical="top"
-            returnKeyType="send"
-            blurOnSubmit={false}
-            onSubmitEditing={() => submitPrompt(prompt)}
-          />
-          <Pressable
-            style={[styles.inlineGo, (!prompt.trim() || loading) && styles.sendBtnDisabled]}
-            onPress={() => submitPrompt(prompt)}
-            disabled={!prompt.trim() || loading}>
-            <Text style={styles.inlineGoText}>Go</Text>
-          </Pressable>
-        </View>
+
       </View>
     );
   }
@@ -436,6 +563,7 @@ export function AIGuideChatSection({
         }
         placeholderTextColor={HertzTheme.text.muted}
         multiline={!isHome}
+        scrollEnabled={false}
         editable={!loading}
       />
       <Pressable
@@ -507,6 +635,10 @@ const styles = StyleSheet.create({
   homeInline: {
     width: '100%',
   },
+  homeInlineHistory: {
+    maxHeight: 220,
+    marginBottom: 10,
+  },
   homeChipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -549,7 +681,7 @@ const styles = StyleSheet.create({
   },
   inlineRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 8,
   },
   inlineMic: {
@@ -582,26 +714,25 @@ const styles = StyleSheet.create({
   },
   inlineInputExpanded: {
     flex: 1,
-    minHeight: 88,
-    maxHeight: 140,
+    height: 44,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: HertzTheme.glassBorder,
     color: HertzTheme.text.primary,
     fontSize: 15,
-    lineHeight: 21,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 0,
   },
   inlineGo: {
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    height: 44,
+    paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: 'rgba(92,225,255,0.18)',
     borderWidth: 1,
     borderColor: HertzTheme.neon.cyan,
-    marginBottom: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inlineGoText: {
     fontFamily: HertzTheme.mono,
@@ -729,6 +860,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     paddingVertical: 8,
   },
+  sendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  micBtnBody: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: HertzTheme.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sendBtn: {
     backgroundColor: 'rgba(74,222,128,0.15)',
     borderRadius: 10,
@@ -736,6 +882,9 @@ const styles = StyleSheet.create({
     borderColor: HertzTheme.neon.green,
     paddingVertical: 11,
     alignItems: 'center',
+  },
+  sendBtnFlex: {
+    flex: 1,
   },
   sendBtnHome: {
     paddingVertical: 8,

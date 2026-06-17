@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
 import {BRAINWAVE_BANDS, getBandIndex, railBands} from '../ReadoutPanel/brainwaveBands';
@@ -71,49 +71,55 @@ export function HubBandRail({
   const bands = bandsProp ?? railBands(experimental);
 
   return (
-    <View style={[styles.rail, {width, height, gap: cellGap}]}>
-      {bands.map(band => {
-        const globalIdx = BRAINWAVE_BANDS.findIndex(b => b.label === band.label);
-        const active = globalIdx === activeIndex;
-        const hex = band.hexColor;
-        return (
-          <Pressable
-            key={band.label}
-            onPress={() => onSelectBand?.(midHzForBand(band, maxSelectHz))}
-            accessibilityRole="button"
-            accessibilityState={{selected: active}}
-            accessibilityLabel={`${band.scientific} (${band.label}) ${band.rangeLabel}`}
-            style={[
-              styles.cell,
-              {
-                borderLeftColor: hex,
-                backgroundColor: active ? `${hex}33` : `${hex}12`,
-              },
-              active && {
-                borderColor: hex,
-                borderWidth: 1,
-                shadowColor: hex,
-                shadowOpacity: 0.9,
-                shadowRadius: 6,
-                shadowOffset: {width: 0, height: 0},
-                elevation: 4,
-              },
-            ]}>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-              style={[styles.label, {color: hex, opacity: active ? 1 : 0.82}]}>
-              {band.label}
-            </Text>
-            <Text
-              numberOfLines={1}
-              style={[styles.range, {color: hex, opacity: active ? 0.9 : 0.55}]}>
-              {band.rangeLabel}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={[styles.rail, {width, height}]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, {gap: cellGap}]}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled>
+        {bands.map(band => {
+          const globalIdx = BRAINWAVE_BANDS.findIndex(b => b.label === band.label);
+          const active = globalIdx === activeIndex;
+          const hex = band.hexColor;
+          return (
+            <Pressable
+              key={band.label}
+              onPress={() => onSelectBand?.(midHzForBand(band, maxSelectHz))}
+              accessibilityRole="button"
+              accessibilityState={{selected: active}}
+              accessibilityLabel={`${band.scientific} (${band.label}) ${band.rangeLabel}`}
+              style={[
+                styles.cell,
+                {
+                  borderLeftColor: hex,
+                  backgroundColor: active ? `${hex}33` : `${hex}12`,
+                },
+                active && {
+                  borderColor: hex,
+                  borderWidth: 1,
+                  shadowColor: hex,
+                  shadowOpacity: 0.9,
+                  shadowRadius: 6,
+                  shadowOffset: {width: 0, height: 0},
+                  elevation: 4,
+                },
+              ]}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                style={[styles.label, {color: hex, opacity: active ? 1 : 0.82}]}>
+                {band.label}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={[styles.range, {color: hex, opacity: active ? 0.9 : 0.55}]}>
+                {band.rangeLabel}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -121,20 +127,25 @@ export function HubBandRail({
 const styles = StyleSheet.create({
   rail: {
     flexDirection: 'column',
-    paddingVertical: 4,
-    paddingHorizontal: 2,
     borderRightWidth: 1,
     borderRightColor: HertzTheme.glassBorder,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  cell: {
+  scroll: {
     flex: 1,
-    minHeight: 36,
+  },
+  scrollContent: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    flexGrow: 1,
+  },
+  cell: {
+    minHeight: 28,
     borderLeftWidth: 3,
     borderRadius: 5,
     paddingLeft: 5,
     paddingRight: 3,
-    paddingVertical: 4,
+    paddingVertical: 3,
     justifyContent: 'center',
   },
   label: {

@@ -1,0 +1,21 @@
+# Blocks push/merge to main while UPDATES.md has open `- [ ]` issues or features.
+name: Updates gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-updates-md:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify UPDATES.md has no blocking open items
+        run: node scripts/check-updates-md.mjs
