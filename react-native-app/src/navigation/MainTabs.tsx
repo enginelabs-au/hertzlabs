@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
+import {Animated, Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlayerScreen} from '../screens/PlayerScreen';
 import {MathModeScreen} from '../screens/MathModeScreen';
@@ -76,6 +76,10 @@ export function MainTabs() {
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const {bottom: bottomInset} = useSafeAreaInsets();
+  // useWindowDimensions subscribes to display-size / orientation changes — this
+  // ensures the layout recomputes when the user changes Android's Display Size
+  // accessibility setting while the app is running.
+  const {fontScale} = useWindowDimensions();
 
   useAudioBackgroundController();
 
@@ -104,10 +108,10 @@ export function MainTabs() {
       toValue: 0,
       duration: 120,
       useNativeDriver: true,
-    }).start(({finished}) => {
-      if (!finished) {
-        return;
-      }
+    }).start(() => {
+      // Always switch the tab regardless of whether the animation completed —
+      // an interrupted animation (e.g. rapid double-tap) must not silently drop
+      // the navigation request.
       setActiveTab(tab);
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -140,16 +144,19 @@ export function MainTabs() {
       <View style={[styles.tabBar, {paddingBottom: Math.max(bottomInset, 4)}]}>
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
+          // Scale up tab item padding when system font scale is large so labels
+          // don't clip on accessibility-zoomed displays.
+          const extraPad = fontScale > 1.2 ? Math.round((fontScale - 1.2) * 10) : 0;
           return (
             <Pressable
               key={tab.id}
-              style={styles.tabItem}
+              style={[styles.tabItem, extraPad > 0 && {paddingTop: 10 + extraPad, paddingBottom: 6 + extraPad}]}
               onPress={() => onSelectTab(tab.id)}
               accessibilityRole="tab"
               accessibilityState={{selected: isActive}}
               accessibilityLabel={tab.label}>
-              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>{tab.icon}</Text>
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]} maxFontSizeMultiplier={1.0}>{tab.icon}</Text>
+              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]} maxFontSizeMultiplier={1.0}>{tab.label}</Text>
               {isActive && <View style={styles.tabIndicator} />}
             </Pressable>
           );

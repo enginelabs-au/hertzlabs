@@ -25,8 +25,8 @@ export function TransportBar() {
         <View style={styles.sideSlot}>
           {isPlaying ? (
             <View style={styles.liveBadge}>
-              <Text style={styles.liveDot}>●</Text>
-              <Text style={styles.liveLabel}>LIVE</Text>
+              <Text style={styles.liveDot} maxFontSizeMultiplier={1.0}>●</Text>
+              <Text style={styles.liveLabel} maxFontSizeMultiplier={1.0}>LIVE</Text>
             </View>
           ) : null}
         </View>
@@ -43,9 +43,9 @@ export function TransportBar() {
               <View style={styles.pauseBar} />
             </View>
           ) : (
-            <Text style={styles.playIcon}>▶</Text>
+            <Text style={styles.playIcon} maxFontSizeMultiplier={1.0}>▶</Text>
           )}
-          <Text style={[styles.transportLabel, isPlaying && styles.transportLabelActive]}>
+          <Text style={[styles.transportLabel, isPlaying && styles.transportLabelActive]} maxFontSizeMultiplier={1.0}>
             {isPlaying ? 'PAUSE' : 'PLAY'}
           </Text>
         </Pressable>

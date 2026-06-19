@@ -26,3 +26,4 @@ ios/HertzLabsBinauralBeats/ip.txt
 ios/.xcode.env.local
 HertzAudioEngine/.swiftpm/
 assets/demo/*.mov
+android/app/src/main/assets/index.android.bundle

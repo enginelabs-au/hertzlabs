@@ -162,9 +162,10 @@ export function NeonSlider({
     }
     if (onReset) {
       runOnJS(reset)();
-    } else {
-      runOnJS(commitComplete)(0);
     }
+    // Note: when neither isBeatSlider+resetBeatHz nor onReset is set, tapping the
+    // track used to call commitComplete(0) which would accidentally zero beatHz.
+    // Now we do nothing — the slider only changes value via a drag or an explicit reset.
   });
 
   const thumbStyle = useAnimatedStyle(() => {

@@ -55,6 +55,10 @@ void BinauralOscillator::snapSmoothedStateTo(const ParameterSnapshot &snapshot) 
     currentToneDuck_ = 1.0f;
 }
 
+void BinauralOscillator::armStartupSilence(int32_t frames) noexcept {
+    startupHoldFrames_ = frames > 0 ? frames : 0;
+}
+
 void BinauralOscillator::syncTargets(const ParameterSnapshot &snapshot) {
     const double carrierTarget = snapshot.targetCarrierHz;
     const double beatTarget = snapshot.targetBeatHz;
@@ -127,7 +131,12 @@ void BinauralOscillator::render(float *output,
             snap.breathPacerEnabled && snap.playIntent ? breathPacer_.advance() : 1.0f;
         const float pacedGain = currentGain_ * breathMult;
 
-        const float gateTarget = snap.playIntent ? 1.0f : 0.0f;
+        // Decrement the startup silence hold counter (set by armStartupSilence on
+        // each play() call).  The gate stays at zero until the hold expires.
+        if (startupHoldFrames_ > 0) {
+            --startupHoldFrames_;
+        }
+        const float gateTarget = (snap.playIntent && startupHoldFrames_ <= 0) ? 1.0f : 0.0f;
         const float gateDelta = gateTarget - outputGate_;
         const float gateAlpha = (gateDelta < 0.0f) ? silenceSmoothAlpha_ : smoothAlpha_;
         outputGate_ += gateAlpha * gateDelta;

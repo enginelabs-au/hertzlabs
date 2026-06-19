@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,10 +8,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
+import type {PromoEntitlement} from '../state/slices/promo';
+import {validatePromoCode} from '../monetization/promoCodeService';
+import {refreshRcEntitlements} from '../monetization/promoCodeService';
 import Purchases from 'react-native-purchases';
-import type {CustomerInfo} from 'react-native-purchases';
+import type {CustomerInfo, Package} from 'react-native-purchases';
 import {
   summarizeActiveSubscription,
   type ActiveSubscriptionSummary,
@@ -238,9 +242,208 @@ function PackageCard({
   );
 }
 
+const DISCOUNT_LABELS: Record<PromoEntitlement, string> = {
+  extended_trial: '3-month trial',
+  lifetime: 'Lifetime',
+  discount_20: '2 months free',
+  discount_50: '6 months free',
+};
+
+/**
+ * Offer IDs created in App Store Connect (underscores) and Google Play (hyphens).
+ * Keyed by entitlement → plan type → platform offer ID.
+ */
+const PROMO_OFFER_IDS: Record<
+  'discount_20' | 'discount_50',
+  {monthly: {ios: string; android: string}; annual: {ios: string; android: string}}
+> = {
+  discount_20: {
+    monthly: {ios: 'hz_2mo_free_monthly', android: 'hz-2mo-free-monthly'},
+    annual: {ios: 'hz_2mo_free_annual', android: 'hz-2mo-free-annual'},
+  },
+  discount_50: {
+    monthly: {ios: 'hz_6mo_free_monthly', android: 'hz-6mo-free-monthly'},
+    annual: {ios: 'hz_6mo_free_annual', android: 'hz-6mo-free-annual'},
+  },
+};
+
+function planTypeKey(pkg: Package): 'monthly' | 'annual' | null {
+  if (pkg.packageType === 'MONTHLY') return 'monthly';
+  if (pkg.packageType === 'ANNUAL') return 'annual';
+  return null;
+}
+
+/**
+ * Attempt to purchase with a promotional offer applied.
+ * Falls back to a standard purchase if the offer cannot be resolved.
+ */
+async function purchaseWithOffer(
+  pkg: Package,
+  entitlement: 'discount_20' | 'discount_50',
+): Promise<Awaited<ReturnType<typeof Purchases.purchasePackage>>> {
+  const planKey = planTypeKey(pkg);
+  const offerMap = planKey ? PROMO_OFFER_IDS[entitlement][planKey] : null;
+
+  if (offerMap == null) {
+    return Purchases.purchasePackage(pkg);
+  }
+
+  if (Platform.OS === 'ios') {
+    const offerId = offerMap.ios;
+    const discount = pkg.product.discounts?.find(d => d.identifier === offerId);
+    if (discount != null) {
+      try {
+        const promoOffer = await Purchases.getPromotionalOffer(pkg.product, discount);
+        if (promoOffer != null) {
+          return Purchases.purchaseDiscountedPackage(pkg, promoOffer);
+        }
+      } catch {
+        // offer fetch failed — fall through to standard purchase
+      }
+    }
+  } else if (Platform.OS === 'android') {
+    const offerId = offerMap.android;
+    const option = pkg.product.subscriptionOptions?.find(o => o.id.endsWith(`:${offerId}`));
+    if (option != null) {
+      try {
+        return Purchases.purchaseSubscriptionOption(option);
+      } catch {
+        // option unavailable — fall through to standard purchase
+      }
+    }
+  }
+
+  return Purchases.purchasePackage(pkg);
+}
+
+function ActivePromoBar({
+  code,
+  entitlement,
+  onClear,
+}: {
+  code: string;
+  entitlement: PromoEntitlement;
+  onClear: () => void;
+}) {
+  return (
+    <View style={styles.promoBanner}>
+      <Text style={styles.promoBannerIcon}>🎟</Text>
+      <View style={styles.promoBannerInfo}>
+        <Text style={styles.promoBannerLabel}>PROMO ACTIVE</Text>
+        <Text style={styles.promoBannerCode}>
+          {code} — {DISCOUNT_LABELS[entitlement]}
+        </Text>
+      </View>
+      <Pressable onPress={onClear} accessibilityLabel="Remove promo code" style={styles.promoRemove}>
+        <Text style={styles.promoRemoveText}>✕</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function PromoCodeInput({
+  onApplied,
+}: {
+  onApplied: (entitlement: PromoEntitlement) => void;
+}) {
+  const applyPromo = useHertzStore(s => s.applyPromo);
+  const appliedPromoCode = useHertzStore(s => s.appliedPromoCode);
+  const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+
+  const handleApply = useCallback(async () => {
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length < 4) {
+      setError('Enter a valid promo code.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+    const result = await validatePromoCode(trimmed);
+    setLoading(false);
+    if (!result.valid) {
+      setError(result.error);
+      return;
+    }
+    applyPromo(trimmed, result.entitlement);
+    if (result.entitlement === 'extended_trial' || result.entitlement === 'lifetime') {
+      const info = await refreshRcEntitlements().then(async ok => {
+        if (ok) {
+          try {
+            const Purchases_ = (await import('react-native-purchases')).default;
+            return Purchases_.getCustomerInfo();
+          } catch {
+            return null;
+          }
+        }
+        return null;
+      });
+      if (info != null) {
+        _hydrateFromRC(info, ENTITLEMENT_ID);
+      }
+    }
+    setSuccess(true);
+    setCode('');
+    inputRef.current?.blur();
+    onApplied(result.entitlement);
+  }, [code, applyPromo, _hydrateFromRC, onApplied]);
+
+  if (appliedPromoCode != null) {
+    return null;
+  }
+
+  return (
+    <View style={styles.promoInputWrapper}>
+      <Text style={styles.promoInputLabel}>PROMO CODE</Text>
+      <View style={styles.promoInputRow}>
+        <TextInput
+          ref={inputRef}
+          style={styles.promoInput}
+          placeholder="Enter code"
+          placeholderTextColor="rgba(255,255,255,0.25)"
+          value={code}
+          onChangeText={t => {
+            setCode(t.toUpperCase());
+            setError(null);
+            setSuccess(false);
+          }}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          returnKeyType="done"
+          onSubmitEditing={() => void handleApply()}
+          editable={!loading}
+          maxLength={20}
+        />
+        <Pressable
+          style={[styles.promoApplyBtn, (loading || code.trim().length < 4) && styles.promoApplyBtnDisabled]}
+          onPress={() => void handleApply()}
+          disabled={loading || code.trim().length < 4}
+          accessibilityRole="button"
+          accessibilityLabel="Apply promo code">
+          {loading ? (
+            <ActivityIndicator size="small" color={GOLD} />
+          ) : (
+            <Text style={styles.promoApplyText}>Apply</Text>
+          )}
+        </Pressable>
+      </View>
+      {error != null && <Text style={styles.promoInputError}>{error}</Text>}
+      {success && <Text style={styles.promoInputSuccess}>Code applied!</Text>}
+    </View>
+  );
+}
+
 export function PaywallScreen() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
+  const appliedPromoCode = useHertzStore(s => s.appliedPromoCode);
+  const appliedPromoEntitlement = useHertzStore(s => s.appliedPromoEntitlement);
+  const clearPromo = useHertzStore(s => s.clearPromo);
 
   const [plans, setPlans] = useState<PaywallPlan[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -326,11 +529,19 @@ export function PaywallScreen() {
       }
       setPurchasing(true);
       try {
-        const result = plan.pkg
-          ? await Purchases.purchasePackage(plan.pkg)
-          : await Purchases.purchaseStoreProduct(plan.storeProduct!);
+        const isDiscountPromo =
+          appliedPromoEntitlement === 'discount_20' || appliedPromoEntitlement === 'discount_50';
+        const result =
+          isDiscountPromo && plan.pkg != null
+            ? await purchaseWithOffer(plan.pkg, appliedPromoEntitlement)
+            : plan.pkg != null
+              ? await Purchases.purchasePackage(plan.pkg)
+              : await Purchases.purchaseStoreProduct(plan.storeProduct!);
         setCustomerInfo(result.customerInfo);
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
+        if (isDiscountPromo) {
+          clearPromo();
+        }
       } catch (e) {
         // RevenueCat throws with code; user-cancelled is not an error to alert
         const msg = e instanceof Error ? e.message : String(e);
@@ -342,7 +553,7 @@ export function PaywallScreen() {
         setPurchasing(false);
       }
     },
-    [purchasing, storeUnavailableDetail, _hydrateFromRC, dismiss],
+    [purchasing, storeUnavailableDetail, _hydrateFromRC, dismiss, appliedPromoEntitlement, clearPromo],
   );
 
   const handleRestore = useCallback(async () => {
@@ -394,6 +605,15 @@ export function PaywallScreen() {
           contentContainerStyle={styles.scrollContent}>
           <ActiveSubscriptionCard summary={subscriptionSummary} />
 
+          {/* Active promo banner */}
+          {appliedPromoCode != null && appliedPromoEntitlement != null && (
+            <ActivePromoBar
+              code={appliedPromoCode}
+              entitlement={appliedPromoEntitlement}
+              onClear={clearPromo}
+            />
+          )}
+
           {/* Feature comparison */}
           <PremiumFeatureList />
 
@@ -443,6 +663,9 @@ export function PaywallScreen() {
               />
             ))}
           </View>
+
+          {/* Inline promo code input */}
+          <PromoCodeInput onApplied={() => {}} />
 
           {/* Restore */}
           <Pressable
@@ -798,5 +1021,111 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 8,
     textAlign: 'center',
+  },
+  promoInputWrapper: {
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 4,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: CARD,
+    gap: 8,
+  },
+  promoInputLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: MUTED,
+    letterSpacing: 1.2,
+  },
+  promoInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  promoInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  promoApplyBtn: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: GOLD_BORDER,
+    backgroundColor: GOLD_DIM,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 70,
+  },
+  promoApplyBtnDisabled: {
+    opacity: 0.4,
+  },
+  promoApplyText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: GOLD,
+  },
+  promoInputError: {
+    fontSize: 12,
+    color: '#F87171',
+  },
+  promoInputSuccess: {
+    fontSize: 12,
+    color: HertzTheme.neon.lime,
+    fontWeight: '600',
+  },
+  promoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GOLD_BORDER,
+    backgroundColor: GOLD_DIM,
+    gap: 10,
+  },
+  promoBannerIcon: {
+    fontSize: 20,
+  },
+  promoBannerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  promoBannerLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: GOLD,
+    letterSpacing: 1.2,
+  },
+  promoBannerCode: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  promoRemove: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoRemoveText: {
+    fontSize: 11,
+    color: MUTED,
+    fontWeight: '600',
   },
 });

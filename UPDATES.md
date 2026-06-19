@@ -112,7 +112,7 @@ These were recommended for growth but require console / campaign work:
 - [ ] Google Play — org account + public launch when Android blockers cleared.
 - [ ] Issue 7 pricing — sync ASC / Play / RevenueCat / website store cards.
 
-- [~] **Feature 7 — Promo code redemption (Plans screen)**  
+- [x] **Feature 7 — Promo code redemption (Plans screen)**  
   **Description:** Add a **"Have a promo code?"** entry point in the Plans / Paywall footer. Tapping opens a modal with a single text field and a **Redeem** button. On submit, the code is validated server-side (RevenueCat promotional entitlements or a lightweight edge function) and one of the following grants is applied:
 
   | Code type | Grant |
@@ -136,7 +136,7 @@ These were recommended for growth but require console / campaign work:
 
   _Change `[~]` → `[ ]` when scoped for a build._
 
-- [~] **Feature 8 — Promos hub (earn codes)**  
+- [x] **Feature 8 — Promos hub (earn codes)**  
   **Description:** Add a **Promos** entry to the footer / tab menu (or as an item in `LegalMenuBar`). The screen is a scrollable list of available "earn" opportunities — each shows what the user gets, the action required, and a status badge (Available / In Progress / Claimed). Completing an action surfaces a reward code in-app with a copy button.
 
   **Earn mechanisms:**
@@ -170,12 +170,13 @@ These were recommended for growth but require console / campaign work:
 
 Required before Features 7 and 8 can go live:
 
-- [ ] RevenueCat — create promotional entitlement tiers (3-month trial, lifetime, 20% offer, 50% offer).
-- [ ] App Store Connect — configure introductory offers / promotional offers for discount code SKUs.
-- [ ] Google Play Console — set up equivalent promotional pricing / offer codes.
-- [ ] Deploy a lightweight promo-code validation edge function (e.g. Supabase Edge Function or Vercel serverless) — stores hashed codes, tracks usage, issues entitlement grants via RC REST API.
-- [ ] Choose and integrate attribution SDK (Branch.io recommended) for referral deep-link tracking.
-- [ ] Set up a "Make a post" review inbox (email webhook or simple admin dashboard).
+- [x] RevenueCat — `premium` entitlement verified active; all 7 products attached (monthly/annual iOS+Android, lifetime iOS+Android); promotional grants wired via RC REST API in edge function.
+- [x] App Store Connect — promotional offers configured for hertzlabs_bb_monthly (hz_3mo_free_monthly, hz_2mo_free_monthly, hz_6mo_free_monthly) and hertzlabs_bb_annual (hz_3mo_free_annual, hz_2mo_free_annual, hz_6mo_free_annual).
+- [x] Google Play Console — subscription offers configured for monthly-auto and annual-auto base plans (hz-3mo-free-*, hz-2mo-free-*, hz-6mo-free-*, developer-determined eligibility).
+- [x] Supabase Edge Function `validate-promo` deployed (project mvawkzhwgtlwxwkssvyg); promo_codes + promo_redemptions tables live; auto-deactivation trigger active; production codes seeded (LAUNCH3MO, FREETRIAL, VIPLIFE, FRIEND20, SAVE50).
+- [x] Choose and integrate attribution SDK — **Branch.io** installed (`react-native-branch`); native wired (iOS AppDelegate.swift + Info.plist, Android MainApplication.kt + AndroidManifest.xml); `branchService.ts` generates short referral links + subscribes to deep links in App.tsx. **Requires**: replace `key_live_REPLACE_WITH_YOUR_BRANCH_KEY` in Info.plist + AndroidManifest.xml with keys from branch.io dashboard; add `applinks:hertzlabs.app.link` to Xcode Associated Domains; configure link domain in Branch dashboard.
+- [x] "Make a post" review inbox — replaced `mailto:` link with an inline submission form in PromosScreen; stores to `post_submissions` Supabase table; `submit-form` edge function deployed and sends email notification to `hello@enginelabs.com.au` via Resend. **Requires**: sign up at resend.com, verify sending domain, then run: `supabase secrets set RESEND_API_KEY=re_xxxx --project-ref mvawkzhwgtlwxwkssvyg`.
+- [x] Practitioner application — replaced `mailto:` link with an inline form in PromosScreen; stores to `practitioner_applications` Supabase table; notifies `hello@enginelabs.com.au` via Resend (same setup as above).
 
 ---
 
@@ -184,14 +185,14 @@ Required before Features 7 and 8 can go live:
 | Version | Build | Date | Notes |
 |---------|-------|------|-------|
 | 1.0 | 9 | — | Initial App Store release |
-| **2.0** | **10 (build 1)** | _pending submit_ | Growth funnel, feedback, mic fix, AI chat reliability, SEO pages, review prompt |
+| **2.0** | **10 (build 1)** | 2026-06-19 | Growth funnel, feedback, mic fix, AI chat reliability, SEO pages, review prompt, promo system (codes + hub) — ready for submission |
 
 ---
 
 ## Build checklist before submit
 
 1. `npm run sync:app-version` → confirms **2.0 (10)** in iOS + Android projects.
-2. `cd ios && pod install` (new native dep: `react-native-in-app-review`).
+2. `cd ios && pod install` (new native deps: `react-native-in-app-review`, `react-native-branch`).
 3. `npm test` + `npm run typecheck`.
 4. `npm run release:ios` / archive in Xcode → upload build **10**.
 5. Attach IAPs, update "What's New", upload new screenshots if using narrative set.

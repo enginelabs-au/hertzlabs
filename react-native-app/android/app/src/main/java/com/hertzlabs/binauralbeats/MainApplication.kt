@@ -8,6 +8,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.hertzlabs.binauralbeats.audio.HertzAudioPackage
+import io.branch.referral.Branch
 
 class MainApplication : Application(), ReactApplication {
 
@@ -23,6 +24,8 @@ class MainApplication : Application(), ReactApplication {
 
     override fun onCreate() {
         super.onCreate()
+        // Branch.io — must be initialised before React Native
+        Branch.getAutoInstance(this)
         if (BuildConfig.DEBUG) {
             // Some emulator images cannot reach the host at 10.0.2.2; adb reverse + localhost works.
             PreferenceManager.getDefaultSharedPreferences(this)

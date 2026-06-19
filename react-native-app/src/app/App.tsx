@@ -17,7 +17,10 @@ import {MainTabs} from '../navigation/MainTabs';
 import {LegalScreen} from '../screens/LegalScreen';
 import {PaywallScreen} from '../screens/PaywallScreen';
 import {FeedbackScreen} from '../screens/FeedbackScreen';
+import {PromoRedemptionModal} from '../screens/PromoRedemptionModal';
+import {PromosScreen} from '../screens/PromosScreen';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
+import {subscribeToDeepLinks} from '../services/branchService';
 import {installAudioSync} from '../state/middleware/audioSync';
 import {installBreathPacerSync} from '../state/middleware/breathPacerSync';
 import {installProtocolSync} from '../state/middleware/protocolSync';
@@ -96,6 +99,22 @@ function AppContent(): React.JSX.Element {
 
   useGrowthEngagement(hydrated && hasAcceptedSafetyTerms);
 
+  // Branch.io deep link handler — applies referral codes from incoming links
+  useEffect(() => {
+    const applyPromo = useHertzStore.getState().applyPromo;
+    return subscribeToDeepLinks(params => {
+      const ref = params.ref ?? params.referral_code;
+      if (ref != null && ref.length > 0) {
+        // Referral deep links: store the referrer code for attribution
+        if (__DEV__) {
+          console.log('[Branch] Incoming referral link, ref code:', ref);
+        }
+        // Apply as a tracked referral — the edge function handles reward logic
+        applyPromo(ref, 'extended_trial');
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (!hydrated || hasAcceptedSafetyTerms) {
       return;
@@ -156,6 +175,8 @@ function AppContent(): React.JSX.Element {
       {activeModal === 'legal' && <LegalScreen />}
       {activeModal === 'paywall' && <PaywallScreen />}
       {activeModal === 'feedback' && <FeedbackScreen />}
+      {activeModal === 'promos' && <PromosScreen />}
+      {activeModal === 'promo' && <PromoRedemptionModal />}
     </>
   );
 }

@@ -28,6 +28,9 @@ export function useGrowthEngagement(enabled: boolean): void {
   const markPaywallSoftPromptShown = useHertzStore(s => s.markPaywallSoftPromptShown);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
 
+  const checkInStreak = useHertzStore(s => s.checkInStreak);
+  const ensureFirstInstallDate = useHertzStore(s => s.ensureFirstInstallDate);
+
   const launchRecorded = useRef(false);
   const reviewScheduled = useRef(false);
   const paywallScheduled = useRef(false);
@@ -38,7 +41,9 @@ export function useGrowthEngagement(enabled: boolean): void {
     }
     launchRecorded.current = true;
     recordAppLaunch();
-  }, [enabled, recordAppLaunch]);
+    checkInStreak();
+    ensureFirstInstallDate();
+  }, [enabled, recordAppLaunch, checkInStreak, ensureFirstInstallDate]);
 
   useEffect(() => {
     if (!enabled || !isPlaying) {

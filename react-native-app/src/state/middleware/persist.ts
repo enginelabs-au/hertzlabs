@@ -103,6 +103,20 @@ export const persistedStoreOptions = {
     cumulativePlaybackSec: state.cumulativePlaybackSec,
     reviewPromptedForVersion: state.reviewPromptedForVersion,
     paywallSoftPromptShown: state.paywallSoftPromptShown,
+    // promo slice
+    appliedPromoCode: state.appliedPromoCode,
+    appliedPromoEntitlement: state.appliedPromoEntitlement,
+    appliedPromoExpiresAt: state.appliedPromoExpiresAt,
+    myReferralCode: state.myReferralCode,
+    streakDays: state.streakDays,
+    lastStreakDate: state.lastStreakDate,
+    firstInstallDate: state.firstInstallDate,
+    reviewRewardClaimed: state.reviewRewardClaimed,
+    streakReward7Claimed: state.streakReward7Claimed,
+    streakReward30Claimed: state.streakReward30Claimed,
+    anniversaryRewardClaimed: state.anniversaryRewardClaimed,
+    wellnessCheckinCount: state.wellnessCheckinCount,
+    lastWellnessCheckinDate: state.lastWellnessCheckinDate,
   }),
 };
 

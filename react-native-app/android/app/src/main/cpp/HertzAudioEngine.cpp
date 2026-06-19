@@ -57,6 +57,10 @@ bool HertzAudioEngine::play() {
     if (snap.playIntent == false) {
         oscillator_.snapSmoothedStateTo(snap);
     }
+    // Hold silence for ~300ms so any residual system-side pipeline settling
+    // (AAudio volume ramps, HAL initialisation) happens before audio is audible.
+    oscillator_.armStartupSilence(
+        static_cast<int32_t>(actualSampleRate_.load(std::memory_order_relaxed) * 0.30f));
     parameterBox_.setPlayIntent(true);
     state_.store(EngineState::Playing, std::memory_order_release);
 
@@ -226,14 +230,21 @@ void HertzAudioEngine::onErrorAfterClose(oboe::AudioStream * /*audioStream*/,
 bool HertzAudioEngine::openStreamLocked(int32_t requestedSampleRate,
                                          int32_t requestedBufferFrames) {
     oboe::AudioStreamBuilder builder;
-    // Shared sharing mode (not Exclusive/MMAP). The exclusive low-latency MMAP
-    // fast path produces a click ~1-2s after start on some devices (notably
-    // Samsung) when the HAL settles/switches the fast path. A continuous-tone
-    // app does not need MMAP latency, so route through the normal mixer, which
-    // is glitch-free from the first sample.
+    // PerformanceMode::None forces the normal AudioFlinger mixer path, avoiding
+    // the MMAP exclusive fast-path "HAL settling" pop that Samsung devices
+    // produce ~700ms after a new MMAP session starts.  For a continuous-tone app
+    // the ~30ms extra latency of the mixer path is inaudible and irrelevant.
+    //
+    // Usage::Game bypasses Samsung's Dolby Atmos EffectManager, which otherwise
+    // reconfigures its effect chain ~660–700ms after the first audio of a new
+    // non-game session, producing a second potential pop.
+    //
+    // SharingMode::Shared is consistent with the normal mixer path and prevents
+    // MMAP-exclusive allocation on devices that tie LowLatency to Shared MMAP.
     builder.setDirection(oboe::Direction::Output)
-           ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-           ->setSharingMode(oboe::SharingMode::Exclusive)
+           ->setPerformanceMode(oboe::PerformanceMode::None)
+           ->setSharingMode(oboe::SharingMode::Shared)
+           ->setUsage(oboe::Usage::Game)
            ->setFormat(oboe::AudioFormat::Float)
            ->setChannelCount(oboe::ChannelCount::Stereo)
            ->setDataCallback(this)
@@ -244,14 +255,6 @@ bool HertzAudioEngine::openStreamLocked(int32_t requestedSampleRate,
     }
 
     auto result = builder.openStream(stream_);
-
-    // If exclusive mode is denied and the caller has opted in to a fallback,
-    // retry with shared low-latency mode (Plan 02 §4.1 open decision).
-    if (result != oboe::Result::OK &&
-        allowSharedFallback_.load(std::memory_order_relaxed)) {
-        builder.setSharingMode(oboe::SharingMode::Shared);
-        result = builder.openStream(stream_);
-    }
 
     if (result != oboe::Result::OK || !stream_) {
         return false;

@@ -13,6 +13,14 @@ public:
     /** Align smoothed render state to targets (avoids stale ramps after app resume). */
     void snapSmoothedStateTo(const ParameterSnapshot &snapshot);
 
+    /**
+     * Hold the output gate at zero for the given number of samples from the
+     * next play() call.  This ensures any system-side pipeline settling
+     * (MMAP HAL, Samsung EffectManager) happens in silence before the gate
+     * opens.
+     */
+    void armStartupSilence(int32_t frames) noexcept;
+
     void render(float *output, int32_t frameCount, const ParameterBox &params);
 
 private:
@@ -34,6 +42,10 @@ private:
     float currentNoiseBrown_ = 0.0f;
     float currentToneDuck_ = 1.0f;
     float outputGate_ = 0.0f;
+
+    // Counts down (per render sample) after armStartupSilence() is called.
+    // Gate stays at zero while this is positive.
+    int32_t startupHoldFrames_ = 0;
 
     float dcStateL_ = 0.0f;
     float dcBlockL_ = 0.0f;

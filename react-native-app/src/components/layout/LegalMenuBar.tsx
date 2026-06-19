@@ -33,6 +33,14 @@ export function LegalMenuBar({showLayoutToggle = true}: LegalMenuBarProps) {
         <Text style={styles.separator}>·</Text>
         <Pressable
           style={styles.menuBtn}
+          onPress={() => setActiveModal('promos')}
+          accessibilityRole="button"
+          accessibilityLabel="Earn promo codes">
+          <Text style={styles.menuLabel}>Promos</Text>
+        </Pressable>
+        <Text style={styles.separator}>·</Text>
+        <Pressable
+          style={styles.menuBtn}
           onPress={() => setActiveModal('feedback')}
           accessibilityRole="button"
           accessibilityLabel="Send feedback or report a bug">

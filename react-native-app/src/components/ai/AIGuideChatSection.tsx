@@ -133,6 +133,7 @@ export function AIGuideChatSection({
   const toggleNoiseLayer = useHertzStore(s => s.toggleNoiseLayer);
   const setNoiseMix = useHertzStore(s => s.setNoiseMix);
   const startProtocol = useHertzStore(s => s.startProtocol);
+  const stopProtocol = useHertzStore(s => s.stopProtocol);
   const setProtocolDraftSeed = useHertzStore(s => s.setProtocolDraftSeed);
   const noteAiCall = useHertzStore(s => s.noteAiCall);
   const messages = useHertzStore(s => s.guideMessages);
@@ -157,6 +158,10 @@ export function AIGuideChatSection({
 
   const applyHomeClip = useCallback(
     (clip: (typeof HOME_QUICK_CLIPS)[number]) => {
+      // Stop any running protocol so the ticker doesn't overwrite the applied settings.
+      if (useHertzStore.getState().protocolRunning) {
+        stopProtocol();
+      }
       setParam('beatHz', clip.beatHz);
       setEngineType(clip.engineMode);
       setParam('gain', clip.gain);
@@ -164,7 +169,7 @@ export function AIGuideChatSection({
       setAppliedClip(clip.label);
       setTimeout(() => setAppliedClip(null), 1600);
     },
-    [setEngineType, setParam],
+    [setEngineType, setParam, stopProtocol],
   );
 
   const quickStarts = layoutMode === 'advanced' ? ADVANCED_QUICK_START : SIMPLE_QUICK_START;
@@ -215,6 +220,10 @@ export function AIGuideChatSection({
   const applyPayload = useCallback(
     (payload: AiApplyPayload) => {
       if (payload.type === 'guide') {
+        // Stop any running protocol so its ticker doesn't immediately overwrite the guide settings.
+        if (useHertzStore.getState().protocolRunning) {
+          stopProtocol();
+        }
         setParam('beatHz', payload.beatHz);
         setEngineType(payload.engineMode);
         setParam('gain', payload.gain);
@@ -227,7 +236,7 @@ export function AIGuideChatSection({
         applyFormulaEvalToSession(payload.hz);
       }
     },
-    [applyGuideSettings, setEngineType, setParam, setProtocolDraftSeed, startProtocol],
+    [applyGuideSettings, setEngineType, setParam, setProtocolDraftSeed, startProtocol, stopProtocol],
   );
 
   const reapplyMessage = useCallback(
@@ -322,6 +331,11 @@ export function AIGuideChatSection({
 
         const engineMode = resolveEngineMode(rec);
         const recGain = rec.intensityScale * 0.5;
+        // Stop any running protocol so the protocol ticker doesn't immediately overwrite
+        // the guide settings that are about to be applied.
+        if (useHertzStore.getState().protocolRunning) {
+          stopProtocol();
+        }
         setParam('beatHz', rec.targetFrequencyHz);
         setEngineType(engineMode);
         setParam('gain', recGain);
@@ -374,6 +388,7 @@ export function AIGuideChatSection({
       setParam,
       setProtocolDraftSeed,
       startProtocol,
+      stopProtocol,
       isHomeInline,
     ],
   );

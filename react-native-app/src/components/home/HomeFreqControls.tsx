@@ -68,12 +68,12 @@ export function HomeBeatSlider({compact = false}: {compact?: boolean}) {
     <View style={[styles.sliderWrap, compact && styles.sliderWrapCompact]}>
       {!compact && <Text style={styles.heading}>Target frequency</Text>}
       <View style={[styles.readoutRow, compact && styles.readoutRowCompact]}>
-        <Text style={[styles.readoutHz, compact && styles.readoutHzCompact, {color: band.hexColor}]}>
+        <Text style={[styles.readoutHz, compact && styles.readoutHzCompact, {color: band.hexColor}]} maxFontSizeMultiplier={1.2}>
           {formatBeatDisplay(beatHz)}
         </Text>
-        <Text style={[styles.readoutUnit, compact && styles.readoutUnitCompact]}>{formatBeatUnit(beatHz)}</Text>
+        <Text style={[styles.readoutUnit, compact && styles.readoutUnitCompact]} maxFontSizeMultiplier={1.2}>{formatBeatUnit(beatHz)}</Text>
         {!compact && (
-          <Text style={[styles.readoutBand, {color: band.hexColor}]}>{band.scientific.toUpperCase()}</Text>
+          <Text style={[styles.readoutBand, {color: band.hexColor}]} maxFontSizeMultiplier={1.2}>{band.scientific.toUpperCase()}</Text>
         )}
       </View>
       <NeonSlider

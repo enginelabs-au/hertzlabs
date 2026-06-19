@@ -197,6 +197,7 @@ export type BreathPacerSlice = {
 };
 
 export type {GrowthSlice} from './slices/growth';
+export type {PromoSlice, PromoEntitlement} from './slices/promo';
 
 export type AppStore = AudioParamsSlice &
   SessionSlice &
@@ -211,4 +212,5 @@ export type AppStore = AudioParamsSlice &
   ProtocolSlice &
   BreathPacerSlice &
   import('./slices/growth').GrowthSlice &
-  import('./slices/aiChat').AiChatSlice;
+  import('./slices/aiChat').AiChatSlice &
+  import('./slices/promo').PromoSlice;

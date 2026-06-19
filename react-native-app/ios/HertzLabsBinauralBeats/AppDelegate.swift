@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import RNBranch
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -12,6 +13,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Branch.io — must be called before React Native init
+        RNBranch.initSession(launchOptions: launchOptions, isReferrable: true)
+
         AudioSessionController.shared.configureForPlayback()
 
 #if DEBUG
@@ -40,6 +44,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         )
 
         return true
+    }
+}
+
+    // Branch deep link handlers
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        return RNBranch.application(app, open: url, options: options)
+    }
+
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        return RNBranch.continue(userActivity)
+    }
+
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) {
+        RNBranch.application(application, didReceiveRemoteNotification: userInfo)
     }
 }
 
