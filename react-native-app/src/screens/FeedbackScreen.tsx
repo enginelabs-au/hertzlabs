@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {APP_VERSION} from '../constants/appInfo';
 import {SUPPORT_EMAIL} from '../constants/legalUrls';
+import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -47,6 +48,7 @@ function FeedbackAction({title, description, subject, bodyPrefix}: FeedbackActio
 }
 
 export function FeedbackScreen() {
+  const scrollInsets = useModalScrollInsets(32);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
 
   return (
@@ -63,7 +65,9 @@ export function FeedbackScreen() {
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, scrollInsets]}
+          showsVerticalScrollIndicator={false}>
           <Text style={styles.intro}>
             Tell us what broke or what you want next. Your device details are pre-filled so we can
             reproduce issues faster.

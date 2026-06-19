@@ -36,3 +36,9 @@ policy = "oneshot"
 
 [functions.validate-promo]
 verify_jwt = false
+
+[functions.grant-welcome-premium]
+verify_jwt = false
+
+[functions.check-app-version]
+verify_jwt = false

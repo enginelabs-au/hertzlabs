@@ -145,7 +145,7 @@ These were recommended for growth but require console / campaign work:
   |-----------|--------|-----|
   | **Refer a friend** | 1 month free per referral (stacks up to 6 months) | Unique share link; reward triggers when referee installs and opens the app |
   | **Referral purchase bonus** | Additional 1 month free (extra, on top of install reward) | Triggers when the referee purchases any paid plan |
-  | **Share with a link** | 7-day extension | Share the unique deep-link to any platform; tracked via branch/attribution SDK |
+  | **Share with a link** | 7-day extension | Share the unique deep-link to any platform; tracked via Supabase referral links |
   | **Make a post** | 1 month free | User submits a public URL (Instagram, TikTok, Twitter/X, YouTube, Reddit, blog) featuring the app with original text + visual/video content; manually or semi-automatically reviewed before code is issued |
   | **Leave a review** | 7-day extension | Detect / record that the user opened the App Store/Play Store rating flow; reward on return (cannot verify but good-faith; gate to once per version) |
   | **Streak milestone** | 7-day extension at 7 days; 1 month free at 30 days | Consecutive days the user opens a session; persisted in `growth` slice |
@@ -157,12 +157,22 @@ These were recommended for growth but require console / campaign work:
 
   **Screen design notes:**
   - Cards use a consistent layout: reward badge (icon + text), action description, CTA button or progress indicator.
-  - Deep-link / referral tracking: integrate a lightweight attribution SDK (e.g. Branch.io, AppsFlyer, or a custom short-link edge function) to attribute installs and purchases back to the referrer.
+  - Deep-link / referral tracking: custom `hertzlabs.app/r/?ref=` links + Supabase `track-referral` edge function (no third-party SDK).
   - "Make a post" and "Practitioner" flows require a lightweight review queue (email notification to operator + manual approval or a simple webhook to a review dashboard).
   - All earned codes feed into the same redemption flow as Feature 7.
   - Clearly disclose referral terms in a tappable info sheet (avoid App Store guideline violations around incentivised reviews).
 
   _Change `[~]` → `[ ]` when scoped for a build._
+
+- [x] **Feature 9 — Welcome Premium (7-day gift for all users)**  
+  **Description:** One-time modal with **Activate Premium** button; grants 7 days via RevenueCat promotional entitlement (`grant-welcome-premium` edge function). Shown to free users on launch until claimed. Existing users receive it on first open after update.  
+  **Fix / Shipped:** `WelcomePremiumModal.tsx`, `welcomePremiumService.ts`, `useGrowthEngagement.ts`, promo slice persistence; Supabase migration `welcome_premium_grants` + edge function deployed 2026-06-19.  
+  **Release:** **2.0 (build 1)**.
+
+- [x] **Feature 10 — Modal layout + Promos UX polish**  
+  **Description:** Fix Android nav clipping on Feedback, Legal, Paywall, Promos; fix promo code / form input clipping; collapse Promos earn cards by default (accordion).  
+  **Fix / Shipped:** `useModalScrollInsets` hook; Paywall promo input sizing; PromosScreen accordion + taller form fields.  
+  **Release:** **2.0 (build 1)**.
 
 ---
 
@@ -174,9 +184,33 @@ Required before Features 7 and 8 can go live:
 - [x] App Store Connect — promotional offers configured for hertzlabs_bb_monthly (hz_3mo_free_monthly, hz_2mo_free_monthly, hz_6mo_free_monthly) and hertzlabs_bb_annual (hz_3mo_free_annual, hz_2mo_free_annual, hz_6mo_free_annual).
 - [x] Google Play Console — subscription offers configured for monthly-auto and annual-auto base plans (hz-3mo-free-*, hz-2mo-free-*, hz-6mo-free-*, developer-determined eligibility).
 - [x] Supabase Edge Function `validate-promo` deployed (project mvawkzhwgtlwxwkssvyg); promo_codes + promo_redemptions tables live; auto-deactivation trigger active; production codes seeded (LAUNCH3MO, FREETRIAL, VIPLIFE, FRIEND20, SAVE50).
-- [x] Choose and integrate attribution SDK — **Branch.io** installed (`react-native-branch`); native wired (iOS AppDelegate.swift + Info.plist, Android MainApplication.kt + AndroidManifest.xml); `branchService.ts` generates short referral links + subscribes to deep links in App.tsx. **Requires**: replace `key_live_REPLACE_WITH_YOUR_BRANCH_KEY` in Info.plist + AndroidManifest.xml with keys from branch.io dashboard; add `applinks:hertzlabs.app.link` to Xcode Associated Domains; configure link domain in Branch dashboard.
-- [x] "Make a post" review inbox — replaced `mailto:` link with an inline submission form in PromosScreen; stores to `post_submissions` Supabase table; `submit-form` edge function deployed and sends email notification to `hello@enginelabs.com.au` via Resend. **Requires**: sign up at resend.com, verify sending domain, then run: `supabase secrets set RESEND_API_KEY=re_xxxx --project-ref mvawkzhwgtlwxwkssvyg`.
-- [x] Practitioner application — replaced `mailto:` link with an inline form in PromosScreen; stores to `practitioner_applications` Supabase table; notifies `hello@enginelabs.com.au` via Resend (same setup as above).
+- [x] Supabase Edge Function `grant-welcome-premium` deployed; `welcome_premium_grants` table + service_role grants live; `RC_SECRET_KEY` already set in Supabase secrets.
+- [x] Referral deep links — **no Branch.io** (account signup blocked). Custom solution: `https://hertzlabs.app/r/?ref=CODE` landing page (`docs/r/index.html`), `hertzlabs://` custom scheme, React Native `Linking` in app, Supabase `track-referral` edge function + `referral_clicks` / `referral_installs` tables. **Optional:** add release SHA256 to `docs/.well-known/assetlinks.json` for Android App Link auto-verify; push `docs/` to enable universal links on `hertzlabs.app`.
+- [x] "Make a post" + Practitioner review inbox — inline forms in PromosScreen → `submit-form` edge function → `hello@enginelabs.com.au` via Resend (`RESEND_API_KEY` secret optional).
+
+---
+
+## Manual steps for 2.0 (build 1) — store submission (you only)
+
+No new IAP or store-side offers are required for the 7-day Welcome Premium gift (RevenueCat promotional grant). To ship to users:
+
+1. **Test on device** — Open app → Welcome modal → tap **Activate Premium** → confirm Premium unlocks (7 days). Premium gift reminders appear 1 day before and on expiry day. Forced update screen only appears when you enable it in Supabase (see below).
+2. **iOS** — Archive build **10** in Xcode → upload to App Store Connect → update **What's New** (suggested: *"Claim 7 days of Premium free — tap Activate Premium when prompted. Plus modal layout fixes and a cleaner Promos screen."*) → submit for review.
+3. **Android** — `npm run release:android:bundle` → upload AAB to Google Play → same release notes → rollout.
+4. **Optional marketing** — Add "7 days Premium free for all users" to App Store / Play store descriptions if desired (not required for the feature to work).
+
+### Mandatory update screen (only when you need it)
+
+Store updates are always user-initiated (App Store / Play Store). The app shows a **blocking update screen** only when you set `force_update = true` in Supabase `app_update_policy` for a platform **and** raise `min_version_code` above the user's installed build.
+
+```sql
+-- Example: force Android builds below 11 to update before using the app
+update public.app_update_policy
+set min_version_code = 11, force_update = true, updated_at = now()
+where platform = 'android';
+```
+
+Reset `force_update = false` after most users have updated. Users see the screen on **every app open** until they install the new build from the store.
 
 ---
 
@@ -192,7 +226,7 @@ Required before Features 7 and 8 can go live:
 ## Build checklist before submit
 
 1. `npm run sync:app-version` → confirms **2.0 (10)** in iOS + Android projects.
-2. `cd ios && pod install` (new native deps: `react-native-in-app-review`, `react-native-branch`).
+2. `cd ios && pod install` (new native dep: `react-native-in-app-review`).
 3. `npm test` + `npm run typecheck`.
 4. `npm run release:ios` / archive in Xcode → upload build **10**.
 5. Attach IAPs, update "What's New", upload new screenshots if using narrative set.

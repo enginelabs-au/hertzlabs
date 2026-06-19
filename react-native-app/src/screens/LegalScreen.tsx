@@ -6,6 +6,7 @@ import {
   SUPPORT_URL,
   TERMS_URL,
 } from '../constants/legalUrls';
+import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -23,6 +24,7 @@ function LegalLinkRow({label, description, url}: {label: string; description: st
 }
 
 export function LegalScreen() {
+  const scrollInsets = useModalScrollInsets(32);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
 
   return (
@@ -39,7 +41,9 @@ export function LegalScreen() {
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, scrollInsets]}
+          showsVerticalScrollIndicator={false}>
           <Text style={styles.intro}>
             Hertz Labs legal documents and support resources. Tap a link to open it in your browser.
           </Text>

@@ -1,5 +1,4 @@
 PODS:
-  - BranchSDK (3.14.0)
   - FBLazyVector (0.85.3)
   - hermes-engine (250829098.0.10):
     - hermes-engine/Pre-built (= 250829098.0.10)
@@ -1452,9 +1451,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-branch (6.10.0):
-    - BranchSDK (= 3.14.0)
-    - React-Core
   - react-native-in-app-review (4.4.2):
     - React-Core
   - react-native-mmkv (3.3.3):
@@ -2195,7 +2191,6 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - React-mutationobservernativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver`)
-  - react-native-branch (from `../node_modules/react-native-branch`)
   - react-native-in-app-review (from `../node_modules/react-native-in-app-review`)
   - react-native-mmkv (from `../node_modules/react-native-mmkv`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2243,7 +2238,6 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - BranchSDK
     - PurchasesHybridCommon
     - RevenueCat
 
@@ -2331,8 +2325,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   React-mutationobservernativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver"
-  react-native-branch:
-    :path: "../node_modules/react-native-branch"
   react-native-in-app-review:
     :path: "../node_modules/react-native-in-app-review"
   react-native-mmkv:
@@ -2423,7 +2415,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  BranchSDK: 542614d201368be39b03e1a384df5c6b45873798
   FBLazyVector: 24e62c765683b8d89006a88a2c8f5cf019f0074d
   hermes-engine: 7de19476e8eb38e722afb4580345ae438368d284
   NitroModules: 16bc17a076b12304d608f7c915b9d321f56dfc19
@@ -2466,7 +2457,6 @@ SPEC CHECKSUMS:
   React-Mapbuffer: fec3e025f0ffba6b32cd2a1d7bbdee3e269aae90
   React-microtasksnativemodule: ab33a818d339f5a1da308893c11b487be66121a8
   React-mutationobservernativemodule: a42d1626651ccd7d0dc02a56e69d4ec77c248893
-  react-native-branch: 00581e914b19ce167c8ff7a2085f3a73913b2195
   react-native-in-app-review: 1516ba69d60d58053b7eb3aaaf8d2a5a74af8b57
   react-native-mmkv: ffda49ce01998ce9c48f87cb8413f67300abc206
   react-native-safe-area-context: fb5c8ee9f6dd62ef710611b3d370c501f42a4ac0

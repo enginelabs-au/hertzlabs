@@ -19,8 +19,12 @@ import {PaywallScreen} from '../screens/PaywallScreen';
 import {FeedbackScreen} from '../screens/FeedbackScreen';
 import {PromoRedemptionModal} from '../screens/PromoRedemptionModal';
 import {PromosScreen} from '../screens/PromosScreen';
+import {WelcomePremiumModal} from '../screens/WelcomePremiumModal';
+import {RequiredUpdateModal} from '../screens/RequiredUpdateModal';
+import {PremiumGiftExpiryModal} from '../screens/PremiumGiftExpiryModal';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
-import {subscribeToDeepLinks} from '../services/branchService';
+import {subscribeToReferralLinks} from '../services/referralLinkService';
+import {reportReferralInstall} from '../services/referralTrackingService';
 import {installAudioSync} from '../state/middleware/audioSync';
 import {installBreathPacerSync} from '../state/middleware/breathPacerSync';
 import {installProtocolSync} from '../state/middleware/protocolSync';
@@ -96,24 +100,35 @@ function AppContent(): React.JSX.Element {
   useRevenueCatBoot();
   const hydrated = useStoreHydrated();
   const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
+  const forceUpdateRequired = useHertzStore(s => s.forceUpdateRequired);
 
-  useGrowthEngagement(hydrated && hasAcceptedSafetyTerms);
+  useGrowthEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
 
-  // Branch.io deep link handler — applies referral codes from incoming links
+  // Referral deep links (custom scheme + universal links — no third-party SDK)
   useEffect(() => {
-    const applyPromo = useHertzStore.getState().applyPromo;
-    return subscribeToDeepLinks(params => {
-      const ref = params.ref ?? params.referral_code;
-      if (ref != null && ref.length > 0) {
-        // Referral deep links: store the referrer code for attribution
-        if (__DEV__) {
-          console.log('[Branch] Incoming referral link, ref code:', ref);
-        }
-        // Apply as a tracked referral — the edge function handles reward logic
-        applyPromo(ref, 'extended_trial');
+    const setPendingReferrerCode = useHertzStore.getState().setPendingReferrerCode;
+    return subscribeToReferralLinks(referralCode => {
+      if (__DEV__) {
+        console.log('[Referral] Incoming link, referrer code:', referralCode);
       }
+      setPendingReferrerCode(referralCode);
     });
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+    const pendingReferrerCode = useHertzStore.getState().pendingReferrerCode;
+    if (pendingReferrerCode == null) {
+      return;
+    }
+    void reportReferralInstall(pendingReferrerCode).then(reported => {
+      if (reported) {
+        useHertzStore.getState().clearPendingReferrerCode();
+      }
+    });
+  }, [hydrated]);
 
   useEffect(() => {
     if (!hydrated || hasAcceptedSafetyTerms) {
@@ -159,6 +174,10 @@ function AppContent(): React.JSX.Element {
     );
   }
 
+  if (forceUpdateRequired) {
+    return <RequiredUpdateModal />;
+  }
+
   const nativeAudioLinked = isHertzAudioTurboModuleLinked();
   const activeModal = useHertzStore(s => s.activeModal);
 
@@ -177,6 +196,8 @@ function AppContent(): React.JSX.Element {
       {activeModal === 'feedback' && <FeedbackScreen />}
       {activeModal === 'promos' && <PromosScreen />}
       {activeModal === 'promo' && <PromoRedemptionModal />}
+      {activeModal === 'welcomePremium' && <WelcomePremiumModal />}
+      {activeModal === 'premiumGiftExpiry' && <PremiumGiftExpiryModal />}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import Purchases from 'react-native-purchases';
+import {PROMO_VALIDATE_URL} from '@env';
 import type {PromoEntitlement} from '../state/slices/promo';
 
 export type PromoValidationResult =
@@ -29,7 +30,7 @@ export type PromoValidationResult =
  *      promotional code that carries through to the native payment sheet.
  */
 
-const PROMO_ENDPOINT = process.env.PROMO_VALIDATE_URL ?? null;
+const PROMO_ENDPOINT = PROMO_VALIDATE_URL?.trim() || null;
 
 export async function validatePromoCode(rawCode: string): Promise<PromoValidationResult> {
   const code = rawCode.toUpperCase().trim();

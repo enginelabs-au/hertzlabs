@@ -56,6 +56,14 @@ private:
     float diagPrevOutR_ = 0.0f;
 
     int targetModeCode_ = 0;
+    int renderModeCode_ = 0;
+    float modeCrossfadeT_ = 1.0f;
+    float modeCrossfadeAlpha_ = 0.001f;
+
+    void advancePhases(int modeCode) noexcept;
+    void computeRawStereo(int modeCode,
+                          double &rawLeft,
+                          double &rawRight) const noexcept;
 
     uint32_t rngState_ = 0xA3C59AC3u;
     float pinkB0_ = 0.0f;

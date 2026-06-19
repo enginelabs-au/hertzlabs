@@ -12,10 +12,7 @@
  */
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-
-const RC_API = 'https://api.revenuecat.com/v1';
-const RC_ENTITLEMENT = Deno.env.get('RC_ENTITLEMENT_ID') ?? 'premium';
-const RC_SECRET = Deno.env.get('RC_SECRET_KEY') ?? '';
+import {grantRcPremiumForMs, RC_GRANT_DURATIONS_MS} from '../_shared/rcGrant.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -25,9 +22,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const RC_DURATION: Record<string, string> = {
-  extended_trial: 'three_month',
-  lifetime: 'lifetime',
+const RC_GRANT_MS: Record<string, number> = {
+  extended_trial: RC_GRANT_DURATIONS_MS.threeMonth,
+  lifetime: RC_GRANT_DURATIONS_MS.lifetime,
 };
 
 Deno.serve(async (req: Request) => {
@@ -95,33 +92,16 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // 5. For trial/lifetime: grant RC promotional entitlement
+  // 5. For trial/lifetime: grant RC promotional entitlement (v2 API)
   if (promo.entitlement === 'extended_trial' || promo.entitlement === 'lifetime') {
-    if (RC_SECRET.length === 0) {
-      console.error('[validate-promo] RC_SECRET_KEY env var not set');
-      return json({valid: false, error: 'Server misconfiguration — contact support.'}, 500);
-    }
     if (rcAppUserId.length === 0) {
       return json({valid: false, error: 'Could not identify your account. Please sign in and try again.'}, 400);
     }
 
-    const rcDuration = RC_DURATION[promo.entitlement];
-    const rcRes = await fetch(
-      `${RC_API}/subscribers/${encodeURIComponent(rcAppUserId)}/entitlements/${RC_ENTITLEMENT}/promotional`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${RC_SECRET}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({duration: rcDuration}),
-      },
-    );
-
-    if (!rcRes.ok) {
-      const errText = await rcRes.text();
-      console.error('[validate-promo] RC grant failed:', rcRes.status, errText);
-      return json({valid: false, error: 'Could not activate entitlement — please try again.'}, 502);
+    const durationMs = RC_GRANT_MS[promo.entitlement];
+    const grant = await grantRcPremiumForMs(rcAppUserId, durationMs);
+    if (!grant.ok) {
+      return json({valid: false, error: grant.error}, grant.status ?? 502);
     }
   }
 

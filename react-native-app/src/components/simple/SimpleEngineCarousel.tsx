@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {
   ENGINE_CATALOG,
   isEngineModeComingSoon,
@@ -89,35 +89,96 @@ export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.sectionLabel}>Modes</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}>
+      <Text style={styles.sectionLabel} maxFontSizeMultiplier={1.2}>
+        Engines
+      </Text>
+      <View style={styles.engineList}>
         {SIMPLE_ENGINE_ORDER.map(({mode, label}) => {
-          const active = engineType === mode;
+          const active = engineType === mode && !isEngineModeComingSoon(mode);
           const locked = !isEngineModeSelectable(mode, tier) && !isEngineModeComingSoon(mode);
           const soon = isEngineModeComingSoon(mode);
+          const meta = ENGINE_CATALOG.find(e => e.mode === mode);
           const selected = selection.kind === 'engine' && selection.mode === mode;
+
+          if (soon && meta != null) {
+            return (
+              <Pressable
+                key={mode}
+                style={styles.comingSoonCard}
+                onPress={() => setSelection({kind: 'engine', mode})}
+                accessibilityRole="button"
+                accessibilityLabel={`${label} coming soon`}>
+                <View style={styles.comingSoonHeader}>
+                  <View style={styles.comingSoonIcon}>
+                    <Text style={styles.comingSoonIconText}>♪</Text>
+                  </View>
+                  <View style={styles.comingSoonInfo}>
+                    <Text style={styles.comingSoonTitle} maxFontSizeMultiplier={1.3}>
+                      {label}
+                      <Text style={styles.engineRowTag}> · {meta.tag}</Text>
+                    </Text>
+                    <Text style={styles.comingSoonSubtitle} maxFontSizeMultiplier={1.3}>
+                      {meta.shortDesc}
+                    </Text>
+                  </View>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonBadgeText} maxFontSizeMultiplier={1.0}>
+                      SOON
+                    </Text>
+                  </View>
+                </View>
+                {selected && (
+                  <View style={styles.comingSoonBody}>
+                    <Text style={styles.comingSoonBodyText} maxFontSizeMultiplier={1.3}>
+                      {meta.deepDive}
+                    </Text>
+                    <Text style={styles.comingSoonNote} maxFontSizeMultiplier={1.2}>
+                      This engine is in development and will be available in a future update.
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          }
+
           return (
             <Pressable
               key={mode}
               style={[
-                styles.chip,
-                (active || selected) && styles.chipActive,
-                locked && styles.chipLocked,
+                styles.engineRow,
+                (active || selected) && styles.engineRowActive,
+                locked && styles.engineRowLocked,
               ]}
-              onPress={() => onSelectEngine(mode)}>
-              <Text style={[styles.chipText, (active || selected) && styles.chipTextActive]}>
-                {label}
-                {soon ? ' · SOON' : locked ? ' · 🔒' : ''}
-              </Text>
+              onPress={() => onSelectEngine(mode)}
+              accessibilityRole="radio"
+              accessibilityState={{selected: active, disabled: locked}}>
+              <View style={styles.engineRowBody}>
+                <Text
+                  style={[styles.engineRowTitle, (active || selected) && styles.engineRowTitleActive]}
+                  maxFontSizeMultiplier={1.3}>
+                  {label}
+                  {meta != null && (
+                    <Text style={styles.engineRowTag}> · {meta.tag}</Text>
+                  )}
+                </Text>
+                {meta != null && (
+                  <Text style={styles.engineRowDesc} maxFontSizeMultiplier={1.3} numberOfLines={2}>
+                    {meta.shortDesc}
+                    {soon ? ' · Coming soon' : locked ? ' · Premium' : ''}
+                  </Text>
+                )}
+              </View>
+              {active && <View style={styles.activeDot} accessibilityLabel="Selected" />}
+              {locked && !active && <Text style={styles.lockIcon}>🔒</Text>}
             </Pressable>
           );
         })}
+      </View>
 
-        <View style={styles.divider} />
-
+      <Text style={[styles.sectionLabel, styles.noiseSectionLabel]} maxFontSizeMultiplier={1.2}>
+        Ambient noise
+      </Text>
+      <View style={styles.noiseWrap}>
         {NOISE_LAYER_CATALOG.map(meta => {
           const active = noiseLayers[meta.id];
           const selected = selection.kind === 'noise' && selection.id === meta.id;
@@ -125,47 +186,54 @@ export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
             <Pressable
               key={meta.id}
               style={[
-                styles.chip,
                 styles.noiseChip,
                 (active || selected) && {borderColor: meta.accent, backgroundColor: `${meta.accent}22`},
               ]}
-              onPress={() => onSelectNoise(meta.id)}>
+              onPress={() => onSelectNoise(meta.id)}
+              accessibilityRole="switch"
+              accessibilityState={{checked: active}}>
               <Text
-                style={[
-                  styles.chipText,
-                  (active || selected) && {color: meta.accent},
-                ]}>
+                style={[styles.noiseChipText, (active || selected) && {color: meta.accent}]}
+                maxFontSizeMultiplier={1.2}>
                 {meta.label.replace(' Noise', '')}
                 {active ? ' · ON' : ''}
               </Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       {selection.kind === 'engine' && engineMeta != null && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>
+          <Text style={styles.cardTitle} maxFontSizeMultiplier={1.3}>
             {engineMeta.label}
             <Text style={styles.cardTag}> · {engineMeta.tag}</Text>
           </Text>
-          <Text style={styles.cardDesc}>{engineMeta.shortDesc}</Text>
+          <Text style={styles.cardDesc} maxFontSizeMultiplier={1.3}>
+            {engineMeta.shortDesc}
+          </Text>
           {engineMeta.comingSoon && (
-            <Text style={styles.soonNote}>In development — preview only.</Text>
+            <Text style={styles.soonNote} maxFontSizeMultiplier={1.2}>
+              In development — preview only.
+            </Text>
           )}
         </View>
       )}
 
       {selection.kind === 'noise' && noiseMeta != null && (
         <View style={[styles.card, {borderColor: `${noiseMeta.accent}55`}]}>
-          <Text style={styles.cardTitle}>
+          <Text style={styles.cardTitle} maxFontSizeMultiplier={1.3}>
             {noiseMeta.label}
             <Text style={styles.cardTag}> · {noiseMeta.tag}</Text>
           </Text>
-          <Text style={styles.cardDesc}>{noiseMeta.deepDive}</Text>
+          <Text style={styles.cardDesc} maxFontSizeMultiplier={1.3}>
+            {noiseMeta.deepDive}
+          </Text>
           {noiseLayers[noiseMeta.id] && (
             <View style={styles.noiseLevelRow}>
-              <Text style={styles.noiseLevelLabel}>Level</Text>
+              <Text style={styles.noiseLevelLabel} maxFontSizeMultiplier={1.2}>
+                Level
+              </Text>
               <View style={styles.noiseSlider}>
                 <NeonSlider
                   value={noiseMixToSliderNorm(noiseMix, beatSliderScale)}
@@ -173,7 +241,9 @@ export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
                   accent={noiseMeta.accent}
                 />
               </View>
-              <Text style={styles.noiseLevelPct}>{Math.round(noiseMix * 100)}%</Text>
+              <Text style={styles.noiseLevelPct} maxFontSizeMultiplier={1.2}>
+                {Math.round(noiseMix * 100)}%
+              </Text>
             </View>
           )}
         </View>
@@ -196,44 +266,154 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 16,
   },
-  scroll: {
+  noiseSectionLabel: {
+    marginTop: 14,
+  },
+  engineList: {
     paddingHorizontal: 16,
     gap: 8,
+  },
+  engineRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: HertzTheme.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    gap: 10,
   },
-  divider: {
-    width: 1,
-    height: 28,
-    backgroundColor: HertzTheme.glassBorder,
-    marginHorizontal: 2,
+  engineRowActive: {
+    borderColor: HertzTheme.neon.cyan,
+    backgroundColor: 'rgba(92,225,255,0.08)',
   },
-  chip: {
+  engineRowLocked: {
+    opacity: 0.78,
+  },
+  engineRowBody: {
+    flex: 1,
+    gap: 4,
+  },
+  engineRowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: HertzTheme.text.primary,
+  },
+  engineRowTitleActive: {
+    color: HertzTheme.neon.cyan,
+  },
+  engineRowTag: {
+    fontWeight: '500',
+    color: HertzTheme.text.secondary,
+  },
+  engineRowDesc: {
+    fontSize: 11,
+    color: HertzTheme.text.muted,
+    lineHeight: 16,
+  },
+  activeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: HertzTheme.neon.cyan,
+    flexShrink: 0,
+  },
+  lockIcon: {
+    fontSize: 14,
+    flexShrink: 0,
+  },
+  comingSoonCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    overflow: 'hidden',
+  },
+  comingSoonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 10,
+  },
+  comingSoonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  comingSoonIconText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  comingSoonInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  comingSoonTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: HertzTheme.text.primary,
+  },
+  comingSoonSubtitle: {
+    fontSize: 11,
+    color: HertzTheme.text.muted,
+    lineHeight: 16,
+  },
+  comingSoonBadge: {
+    backgroundColor: 'rgba(147,197,253,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(147,197,253,0.3)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    flexShrink: 0,
+  },
+  comingSoonBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: 'rgba(147,197,253,0.8)',
+    letterSpacing: 1,
+  },
+  comingSoonBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 8,
+  },
+  comingSoonBodyText: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 11,
+    lineHeight: 17,
+    color: 'rgba(255,255,255,0.55)',
+  },
+  comingSoonNote: {
+    fontSize: 11,
+    color: HertzTheme.neon.amber,
+  },
+  noiseWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  noiseChip: {
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: HertzTheme.glassBorder,
+    borderStyle: 'dashed',
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  noiseChip: {
-    borderStyle: 'dashed',
-  },
-  chipActive: {
-    borderColor: HertzTheme.neon.cyan,
-    backgroundColor: 'rgba(92,225,255,0.12)',
-  },
-  chipLocked: {
-    opacity: 0.75,
-  },
-  chipText: {
+  noiseChipText: {
     fontFamily: HertzTheme.mono,
     fontSize: 10,
     fontWeight: '700',
     color: HertzTheme.text.muted,
     letterSpacing: 0.4,
-  },
-  chipTextActive: {
-    color: HertzTheme.neon.cyan,
   },
   card: {
     marginHorizontal: 16,

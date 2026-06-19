@@ -12,7 +12,6 @@ export const PREMIUM_MODES: readonly EngineMode[] = [
   'hemisphericSync',
   'phaseModulated',
   'pitchPanning',
-  'musicModulation',
 ];
 
 export function allowedModes(tier: SubscriptionTier): readonly EngineMode[] {

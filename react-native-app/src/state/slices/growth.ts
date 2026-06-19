@@ -15,10 +15,13 @@ export type GrowthSlice = {
   reviewPromptedForVersion: string | null;
   /** One-time post-value paywall nudge for free users. */
   paywallSoftPromptShown: boolean;
+  /** Blocking update screen — set each launch from remote policy. */
+  forceUpdateRequired: boolean;
   recordAppLaunch(): void;
   addPlaybackSeconds(seconds: number): void;
   markReviewPromptShown(version: string): void;
   markPaywallSoftPromptShown(): void;
+  setForceUpdateRequired(required: boolean): void;
 };
 
 export const createGrowthSlice: StateCreator<AppStore, [], [], GrowthSlice> = set => ({
@@ -26,6 +29,7 @@ export const createGrowthSlice: StateCreator<AppStore, [], [], GrowthSlice> = se
   cumulativePlaybackSec: 0,
   reviewPromptedForVersion: null,
   paywallSoftPromptShown: false,
+  forceUpdateRequired: false,
 
   recordAppLaunch() {
     set(s => ({appLaunchCount: s.appLaunchCount + 1}));
@@ -44,6 +48,10 @@ export const createGrowthSlice: StateCreator<AppStore, [], [], GrowthSlice> = se
 
   markPaywallSoftPromptShown() {
     set({paywallSoftPromptShown: true});
+  },
+
+  setForceUpdateRequired(required) {
+    set({forceUpdateRequired: required});
   },
 });
 

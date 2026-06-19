@@ -18,7 +18,7 @@ export function LayoutModeToggle() {
           ? 'Advanced mode is on. Tap to switch to simple mode.'
           : 'Advanced mode is off. Tap to switch to advanced mode.'
       }>
-      <Text style={styles.label}>
+      <Text style={styles.label} maxFontSizeMultiplier={1.2}>
         {isAdvancedMode ? 'Advanced Mode (On)' : 'Advanced Mode (Off)'}
       </Text>
     </Pressable>

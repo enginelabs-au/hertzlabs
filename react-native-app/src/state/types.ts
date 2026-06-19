@@ -148,6 +148,10 @@ export type LayoutModeSlice = {
 export type SubscriptionSlice = {
   tier: SubscriptionTier;
   entitlements: string[];
+  /** Premium entitlement expiry from RevenueCat (ms since epoch). */
+  premiumExpiresAtMs: number | null;
+  /** True when active Premium comes from a promotional / gift grant. */
+  premiumIsPromotionalGift: boolean;
   setSubscription(tier: SubscriptionTier, entitlements: string[]): void;
   _hydrateFromRC(info: CustomerInfo, entitlementId?: string): void;
 };

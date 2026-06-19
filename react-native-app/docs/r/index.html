@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Open Hertz Labs — binaural beats for focus, sleep, and meditation." />
+  <title>Open Hertz Labs</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0e1a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 420px;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+    }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    p { color: rgba(255,255,255,0.55); font-size: 15px; line-height: 1.6; margin-bottom: 20px; }
+    .btn {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .btn-primary {
+      background: rgba(34,211,238,0.15);
+      border: 1px solid rgba(34,211,238,0.45);
+      color: #22d3ee;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0;
+    }
+    .code {
+      font-family: monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 16px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Open Hertz Labs</h1>
+    <p id="message">Launching the app…</p>
+    <a id="openApp" class="btn btn-primary" href="#">Open in App</a>
+    <a id="iosStore" class="btn btn-secondary" href="https://apps.apple.com/app/hertz-labs/id6741793819">Download on App Store</a>
+    <a id="androidStore" class="btn btn-secondary" href="https://play.google.com/store/apps/details?id=com.hertzlabs.binauralbeats">Get it on Google Play</a>
+    <p class="code" id="refLine"></p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var ref = params.get('ref') || '';
+      var pathMatch = window.location.pathname.match(/\/r\/([^/?#]+)/i);
+      if (!ref && pathMatch) ref = decodeURIComponent(pathMatch[1]);
+
+      var appLink = ref
+        ? 'hertzlabs://open?ref=' + encodeURIComponent(ref)
+        : 'hertzlabs://open';
+      var trackUrl = 'https://mvawkzhwgtlwxwkssvyg.supabase.co/functions/v1/track-referral?ref=' + encodeURIComponent(ref || 'unknown');
+
+      document.getElementById('openApp').href = appLink;
+      if (ref) {
+        document.getElementById('refLine').textContent = 'Referral: ' + ref;
+        document.getElementById('message').textContent = 'A friend invited you to try Hertz Labs.';
+      }
+
+      if (ref) {
+        fetch(trackUrl, { method: 'GET', mode: 'no-cors' }).catch(function () {});
+      }
+
+      var isAndroid = /Android/i.test(navigator.userAgent);
+      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isAndroid) document.getElementById('iosStore').style.display = 'none';
+      if (isIOS) document.getElementById('androidStore').style.display = 'none';
+
+      window.location.replace(appLink);
+      setTimeout(function () {
+        document.getElementById('message').textContent = ref
+          ? 'Tap Open in App, or download Hertz Labs below.'
+          : 'Tap Open in App, or download below.';
+      }, 1200);
+    })();
+  </script>
+</body>
+</html>

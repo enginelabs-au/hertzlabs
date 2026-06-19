@@ -6,6 +6,7 @@
 	<array>
 		<string>appclips:enginelabs-au.github.io</string>
 		<string>applinks:enginelabs-au.github.io</string>
+		<string>applinks:hertzlabs.app</string>
 	</array>
 </dict>
 </plist>

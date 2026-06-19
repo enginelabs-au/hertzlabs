@@ -20,10 +20,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <!-- Branch.io: replace with your live key from branch.io/dashboard -->
-        <meta-data android:name="io.branch.sdk.BranchKey" android:value="key_live_REPLACE_WITH_YOUR_BRANCH_KEY" />
-        <meta-data android:name="io.branch.sdk.BranchKey.test" android:value="key_test_REPLACE_WITH_YOUR_BRANCH_TEST_KEY" />
-
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
@@ -34,20 +30,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Branch URI scheme deep link -->
+            <!-- Custom URI scheme: hertzlabs://open?ref=CODE -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="hertzlabs" />
             </intent-filter>
-            <!-- Branch App Links (HTTPS deep links) -->
+            <!-- HTTPS App Links: hertzlabs.app/r/?ref=CODE -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="hertzlabs.app.link" />
-                <data android:scheme="https" android:host="hertzlabs-alternate.app.link" />
+                <data android:scheme="https" android:host="hertzlabs.app" android:pathPrefix="/r" />
             </intent-filter>
         </activity>
 

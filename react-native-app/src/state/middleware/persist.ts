@@ -108,6 +108,7 @@ export const persistedStoreOptions = {
     appliedPromoEntitlement: state.appliedPromoEntitlement,
     appliedPromoExpiresAt: state.appliedPromoExpiresAt,
     myReferralCode: state.myReferralCode,
+    pendingReferrerCode: state.pendingReferrerCode,
     streakDays: state.streakDays,
     lastStreakDate: state.lastStreakDate,
     firstInstallDate: state.firstInstallDate,
@@ -117,6 +118,10 @@ export const persistedStoreOptions = {
     anniversaryRewardClaimed: state.anniversaryRewardClaimed,
     wellnessCheckinCount: state.wellnessCheckinCount,
     lastWellnessCheckinDate: state.lastWellnessCheckinDate,
+    welcomePremiumClaimedAt: state.welcomePremiumClaimedAt,
+    welcomePremiumExpiresAtMs: state.welcomePremiumExpiresAtMs,
+    welcomePremiumDayBeforeReminderShown: state.welcomePremiumDayBeforeReminderShown,
+    welcomePremiumExpiryDayReminderShown: state.welcomePremiumExpiryDayReminderShown,
   }),
 };
 

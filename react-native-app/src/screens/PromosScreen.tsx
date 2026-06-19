@@ -16,7 +16,13 @@ import {requestAppReview} from '../monetization/requestAppReview';
 import {useHertzStore} from '../state/store';
 import {daysSince} from '../state/slices/promo';
 import {HertzTheme} from '../theme/hertzTheme';
-import {createReferralLink} from '../services/branchService';
+import {createReferralLink, REFERRAL_LANDING_BASE} from '../services/referralLinkService';
+import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
+
+const FORM_INPUT_ANDROID = Platform.select({
+  android: {includeFontPadding: false} as const,
+  default: {},
+});
 
 const SUBMIT_FORM_URL = 'https://mvawkzhwgtlwxwkssvyg.supabase.co/functions/v1/submit-form';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12YXdremh3Z3Rsd3h3a3NzdnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDE2OTcsImV4cCI6MjA5NzQxNzY5N30.mD0kFjNJFSlNEpOWHuO6tA0D1Oc_FHF2UqhDd2AMVOU';
@@ -51,7 +57,7 @@ const MAGENTA = HertzTheme.neon.magenta;
 const APP_STORE_URL = 'https://apps.apple.com/app/hertz-labs/id6741793819';
 const PLAY_STORE_URL =
   'market://details?id=com.hertzlabs.binauralbeats';
-const SHARE_URL = 'https://hertzlabs.app';
+const SHARE_URL = REFERRAL_LANDING_BASE.replace(/\/r\/?$/, '');
 
 type BadgeVariant = 'gold' | 'cyan' | 'green' | 'muted';
 
@@ -88,6 +94,9 @@ function RewardBadge({label, variant = 'gold'}: {label: string; variant?: BadgeV
 }
 
 type EarnCardProps = {
+  cardId: string;
+  expanded: boolean;
+  onToggleExpand: (id: string) => void;
   icon: string;
   title: string;
   description: string;
@@ -100,6 +109,9 @@ type EarnCardProps = {
 };
 
 function EarnCard({
+  cardId,
+  expanded,
+  onToggleExpand,
   icon,
   title,
   description,
@@ -119,31 +131,46 @@ function EarnCard({
         isClaimed && styles.cardClaimed,
         isSoon && styles.cardSoon,
       ]}>
-      <View style={styles.cardTop}>
-        <Text style={styles.cardIcon}>{icon}</Text>
-        <View style={styles.cardInfo}>
-          <Text style={[styles.cardTitle, isClaimed && styles.cardTitleClaimed]}>{title}</Text>
-          <Text style={styles.cardDesc}>{description}</Text>
+      <Pressable
+        style={styles.cardHeaderBtn}
+        onPress={() => onToggleExpand(cardId)}
+        accessibilityRole="button"
+        accessibilityState={{expanded}}>
+        <View style={styles.cardTop}>
+          <Text style={styles.cardIcon}>{icon}</Text>
+          <View style={styles.cardInfo}>
+            <Text style={[styles.cardTitle, isClaimed && styles.cardTitleClaimed]}>{title}</Text>
+            <Text style={styles.cardDesc} numberOfLines={expanded ? undefined : 2}>
+              {description}
+            </Text>
+          </View>
+          <View style={styles.cardHeaderRight}>
+            <RewardBadge
+              label={isClaimed ? '✓ Claimed' : isSoon ? 'Soon' : reward}
+              variant={isClaimed ? 'green' : isSoon ? 'muted' : rewardVariant}
+            />
+            <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+          </View>
         </View>
-        <RewardBadge
-          label={isClaimed ? '✓ Claimed' : isSoon ? 'Soon' : reward}
-          variant={isClaimed ? 'green' : isSoon ? 'muted' : rewardVariant}
-        />
-      </View>
-      {extra}
-      {!isClaimed && !isSoon && ctaLabel != null && (
-        <Pressable
-          style={styles.cardBtn}
-          onPress={onCta}
-          accessibilityRole="button">
-          <Text style={styles.cardBtnText}>{ctaLabel}</Text>
-        </Pressable>
-      )}
-      {isClaimed && (
-        <Text style={styles.claimedNote}>Reward has been applied to your account.</Text>
-      )}
-      {isSoon && (
-        <Text style={styles.claimedNote}>Coming soon — check back in a future update.</Text>
+      </Pressable>
+      {expanded && (
+        <>
+          {extra}
+          {!isClaimed && !isSoon && ctaLabel != null && (
+            <Pressable
+              style={styles.cardBtn}
+              onPress={onCta}
+              accessibilityRole="button">
+              <Text style={styles.cardBtnText}>{ctaLabel}</Text>
+            </Pressable>
+          )}
+          {isClaimed && (
+            <Text style={styles.claimedNote}>Reward has been applied to your account.</Text>
+          )}
+          {isSoon && (
+            <Text style={styles.claimedNote}>Coming soon — check back in a future update.</Text>
+          )}
+        </>
       )}
     </View>
   );
@@ -163,15 +190,19 @@ function StreakBar({current, target}: {current: number; target: number}) {
   );
 }
 
-function ReferralCard({code}: {code: string}) {
-  const [shareLink, setShareLink] = useState(`${SHARE_URL}?ref=${code}`);
-  const [linkLoading, setLinkLoading] = useState(false);
+function ReferralCard({
+  code,
+  expanded,
+  onToggleExpand,
+}: {
+  code: string;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  const [shareLink, setShareLink] = useState(createReferralLink(code));
 
   useEffect(() => {
-    setLinkLoading(true);
-    createReferralLink(code)
-      .then(url => setShareLink(url))
-      .finally(() => setLinkLoading(false));
+    setShareLink(createReferralLink(code));
   }, [code]);
 
   const handleShare = useCallback(async () => {
@@ -188,28 +219,44 @@ function ReferralCard({code}: {code: string}) {
 
   return (
     <View style={styles.referralCard}>
-      <Text style={styles.referralLabel}>YOUR REFERRAL CODE</Text>
-      <Text style={styles.referralCode}>{code}</Text>
-      {linkLoading ? (
-        <ActivityIndicator size="small" color={CYAN} style={{alignSelf: 'flex-start'}} />
-      ) : (
-        <Text style={styles.referralLink}>{shareLink}</Text>
+      <Pressable
+        style={styles.referralHeaderBtn}
+        onPress={onToggleExpand}
+        accessibilityRole="button"
+        accessibilityState={{expanded}}>
+        <View style={styles.referralHeaderRow}>
+          <Text style={styles.referralLabel}>YOUR REFERRAL CODE</Text>
+          <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+        </View>
+        {!expanded && <Text style={styles.referralCodePreview}>{code}</Text>}
+      </Pressable>
+      {expanded && (
+        <>
+          <Text style={styles.referralCode}>{code}</Text>
+          <Text style={styles.referralLink}>{shareLink}</Text>
+          <View style={styles.referralActions}>
+            <Pressable style={styles.referralBtn} onPress={() => void handleShare()}>
+              <Text style={styles.referralBtnText}>Share Link</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.referralNote}>
+            Earn 1 month free for each friend who installs via your link, plus an extra month when they
+            purchase any plan (up to 6 months total).
+          </Text>
+        </>
       )}
-      <View style={styles.referralActions}>
-        <Pressable style={styles.referralBtn} onPress={() => void handleShare()} disabled={linkLoading}>
-          <Text style={styles.referralBtnText}>Share Link</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.referralNote}>
-        Earn 1 month free for each friend who installs via your link, plus an extra month when they
-        purchase any plan (up to 6 months total).
-      </Text>
     </View>
   );
 }
 
 export function PromosScreen() {
+  const scrollInsets = useModalScrollInsets(32);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  const toggleCard = useCallback((id: string) => {
+    setExpandedCardId(prev => (prev === id ? null : id));
+  }, []);
 
   const myReferralCode = useHertzStore(s => s.myReferralCode);
   const streakDays = useHertzStore(s => s.streakDays);
@@ -379,14 +426,24 @@ export function PromosScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={[styles.scrollContent, scrollInsets]}
+          keyboardShouldPersistTaps="handled">
 
           {/* Referral card */}
-          {myReferralCode != null && <ReferralCard code={myReferralCode} />}
+          {myReferralCode != null && (
+            <ReferralCard
+              code={myReferralCode}
+              expanded={expandedCardId === 'referral'}
+              onToggleExpand={() => toggleCard('referral')}
+            />
+          )}
 
           <Text style={styles.sectionLabel}>STREAK REWARDS</Text>
 
           <EarnCard
+            cardId="streak-7"
+            expanded={expandedCardId === 'streak-7'}
+            onToggleExpand={toggleCard}
             icon="🔥"
             title="7-Day Streak"
             description="Open Hertz Labs 7 days in a row."
@@ -402,6 +459,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="streak-30"
+            expanded={expandedCardId === 'streak-30'}
+            onToggleExpand={toggleCard}
             icon="⚡"
             title="30-Day Streak"
             description="Open Hertz Labs 30 days in a row."
@@ -419,6 +479,9 @@ export function PromosScreen() {
           <Text style={styles.sectionLabel}>SOCIAL REWARDS</Text>
 
           <EarnCard
+            cardId="refer-friend"
+            expanded={expandedCardId === 'refer-friend'}
+            onToggleExpand={toggleCard}
             icon="👥"
             title="Refer a Friend"
             description="Share your unique link. Earn 1 month free per install, plus 1 more if they purchase (up to 6 months)."
@@ -428,6 +491,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="review"
+            expanded={expandedCardId === 'review'}
+            onToggleExpand={toggleCard}
             icon="⭐"
             title="Leave a Review"
             description="Rate Hertz Labs in the App Store or Google Play."
@@ -438,6 +504,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="share-link"
+            expanded={expandedCardId === 'share-link'}
+            onToggleExpand={toggleCard}
             icon="📱"
             title="Share with a Link"
             description="Share your unique referral link to any platform. Tracked via link attribution."
@@ -453,6 +522,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="make-post"
+            expanded={expandedCardId === 'make-post'}
+            onToggleExpand={toggleCard}
             icon="📸"
             title="Make a Post"
             description="Post about Hertz Labs on Instagram, TikTok, X, YouTube, Reddit or a blog — with original text and visual/video content. Submit the public URL for review."
@@ -470,6 +542,7 @@ export function PromosScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     keyboardType="url"
+                    {...FORM_INPUT_ANDROID}
                   />
                   <TextInput
                     style={styles.formInput}
@@ -477,6 +550,7 @@ export function PromosScreen() {
                     placeholderTextColor="rgba(255,255,255,0.25)"
                     value={postPlatform}
                     onChangeText={setPostPlatform}
+                    {...FORM_INPUT_ANDROID}
                   />
                   <TextInput
                     style={[styles.formInput, styles.formInputMulti]}
@@ -486,6 +560,8 @@ export function PromosScreen() {
                     onChangeText={setPostDesc}
                     multiline
                     numberOfLines={3}
+                    textAlignVertical="top"
+                    {...FORM_INPUT_ANDROID}
                   />
                   <Pressable
                     style={[styles.formBtn, (!postUrl.trim() || postSubmitting) && styles.formBtnDisabled]}
@@ -502,6 +578,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="focus-challenge"
+            expanded={expandedCardId === 'focus-challenge'}
+            onToggleExpand={toggleCard}
             icon="🏆"
             title="30-Day Focus Challenge"
             description="Complete a 30-day 'binaural focus challenge' with daily check-ins and submit a final recap post."
@@ -513,6 +592,9 @@ export function PromosScreen() {
           <Text style={styles.sectionLabel}>WELLNESS REWARDS</Text>
 
           <EarnCard
+            cardId="wellness"
+            expanded={expandedCardId === 'wellness'}
+            onToggleExpand={toggleCard}
             icon="🧘"
             title="Wellness Check-in"
             description="Answer a short 3-question wellness survey every 14 days. Data stays on your device."
@@ -529,6 +611,9 @@ export function PromosScreen() {
           <Text style={styles.sectionLabel}>MILESTONE REWARDS</Text>
 
           <EarnCard
+            cardId="anniversary"
+            expanded={expandedCardId === 'anniversary'}
+            onToggleExpand={toggleCard}
             icon="🎂"
             title="1-Year Anniversary"
             description="Celebrate your first year with Hertz Labs."
@@ -552,6 +637,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="practitioner"
+            expanded={expandedCardId === 'practitioner'}
+            onToggleExpand={toggleCard}
             icon="🩺"
             title="Practitioner / Therapist"
             description="Healthcare or wellness practitioner? Apply for a partnership: 3 months free for you plus a 30% referral code for your clients."
@@ -567,6 +655,7 @@ export function PromosScreen() {
                     placeholderTextColor="rgba(255,255,255,0.25)"
                     value={practName}
                     onChangeText={setPractName}
+                    {...FORM_INPUT_ANDROID}
                   />
                   <TextInput
                     style={styles.formInput}
@@ -574,6 +663,7 @@ export function PromosScreen() {
                     placeholderTextColor="rgba(255,255,255,0.25)"
                     value={practCredentials}
                     onChangeText={setPractCredentials}
+                    {...FORM_INPUT_ANDROID}
                   />
                   <TextInput
                     style={styles.formInput}
@@ -581,6 +671,7 @@ export function PromosScreen() {
                     placeholderTextColor="rgba(255,255,255,0.25)"
                     value={practPractice}
                     onChangeText={setPractPractice}
+                    {...FORM_INPUT_ANDROID}
                   />
                   <TextInput
                     style={styles.formInput}
@@ -590,6 +681,7 @@ export function PromosScreen() {
                     onChangeText={setPractWebsite}
                     autoCapitalize="none"
                     keyboardType="url"
+                    {...FORM_INPUT_ANDROID}
                   />
                   <TextInput
                     style={styles.formInput}
@@ -599,6 +691,7 @@ export function PromosScreen() {
                     onChangeText={setPractEmail}
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    {...FORM_INPUT_ANDROID}
                   />
                   <Pressable
                     style={[styles.formBtn, (!practName.trim() || !practEmail.trim() || practSubmitting) && styles.formBtnDisabled]}
@@ -616,6 +709,9 @@ export function PromosScreen() {
           />
 
           <EarnCard
+            cardId="beta"
+            expanded={expandedCardId === 'beta'}
+            onToggleExpand={toggleCard}
             icon="🧪"
             title="Beta Tester"
             description="Received a special invite code from the Hertz Labs team? Redeem it for early feature access and 1 month free."
@@ -721,6 +817,21 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     gap: 6,
   },
+  referralHeaderBtn: {
+    gap: 4,
+  },
+  referralHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  referralCodePreview: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+  },
   referralLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -771,6 +882,23 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     padding: 14,
     gap: 10,
+  },
+  cardHeaderBtn: {
+    marginHorizontal: -4,
+    marginTop: -4,
+    padding: 4,
+    borderRadius: 8,
+  },
+  cardHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+    flexShrink: 0,
+  },
+  chevron: {
+    fontSize: 14,
+    color: MUTED,
+    fontWeight: '700',
+    lineHeight: 16,
   },
   cardClaimed: {
     opacity: 0.65,
@@ -890,18 +1018,21 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   formInput: {
-    height: 40,
+    minHeight: 44,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: 12,
-    fontSize: 13,
+    paddingVertical: Platform.OS === 'android' ? 10 : 12,
+    fontSize: 14,
+    lineHeight: 20,
     color: '#FFFFFF',
   },
   formInputMulti: {
-    height: 72,
-    paddingTop: 10,
+    minHeight: 88,
+    paddingTop: 12,
+    paddingBottom: 12,
     textAlignVertical: 'top',
   },
   formBtn: {

@@ -1,4 +1,17 @@
 {
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "256U2M55W7.com.hertzlabs.binauralbeats",
+        "paths": [
+          "/r",
+          "/r/*",
+          "/r/?*"
+        ]
+      }
+    ]
+  },
   "appclips": {
     "apps": [
       "256U2M55W7.com.hertzlabs.binauralbeats.Clip"

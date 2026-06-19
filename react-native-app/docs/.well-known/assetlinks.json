@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hertzlabs.binauralbeats",
+      "sha256_cert_fingerprints": [
+        "71:EF:90:6B:45:D9:8E:33:E0:59:77:D7:6A:BD:6B:F6:73:97:0A:DB:75:84:D2:8E:3B:48:CE:FA:45:27:41:EB",
+        "40:A3:40:81:0D:F3:2A:32:C3:08:18:D1:C5:30:1F:F9:58:E4:00:A0:4B:84:BF:37:FB:BA:8B:A6:25:26:7B:47"
+      ]
+    }
+  }
+]

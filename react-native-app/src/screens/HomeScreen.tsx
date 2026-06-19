@@ -1,6 +1,8 @@
 import React, {useCallback, useRef, useState} from 'react';
 import {
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -18,6 +20,8 @@ import {useSpeechToText} from '../hooks/useSpeechToText';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const H_PAD = 16;
+/** Space reserved below scroll content for the global TransportBar + tab bar. */
+const BOTTOM_CHROME_PAD = 108;
 
 /** Simple Mode Home — freq slider, bands, chat. No oscilloscope. */
 export function HomeScreen() {
@@ -42,26 +46,36 @@ export function HomeScreen() {
     onRecordingComplete: handleSubmit,
   });
 
+  const scrollBottomPad = Math.max(bottom, 8) + BOTTOM_CHROME_PAD;
+
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? top : 0}>
       <StatusBar barStyle="light-content" backgroundColor={HertzTheme.bg} translucent={false} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          {paddingTop: top + 8, paddingBottom: 8},
+          {paddingTop: top + 8, paddingBottom: scrollBottomPad},
         ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <Text style={styles.brand}>HERTZ LABS</Text>
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled>
+        <Text style={styles.brand} maxFontSizeMultiplier={1.2}>
+          HERTZ LABS
+        </Text>
 
         <HomeBeatSlider />
 
         <HomeHorizontalBands />
 
         <View style={styles.inputCard}>
-          <Text style={styles.inputLabel}>Ask the AI guide</Text>
+          <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+            Ask the AI guide
+          </Text>
           <AIGuideChatSection
             layoutMode="homeInline"
             inputRef={inputRef}
@@ -69,49 +83,51 @@ export function HomeScreen() {
             loadingRef={loadingRef}
           />
         </View>
-      </ScrollView>
 
-      {/* Input strip lives OUTSIDE the ScrollView — no gesture conflict with UITextView */}
-      <View style={styles.inputStrip}>
-        <Pressable
-          style={[styles.micBtn, speech.isListening && styles.micBtnActive]}
-          onPress={() => {
-            inputRef.current?.blur();
-            speech.toggleSpeech();
-          }}
-          disabled={loadingRef.current}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={speech.isListening ? 'Stop voice input' : 'Start voice input'}>
-          <MicIcon
-            size={18}
-            color={speech.isListening ? HertzTheme.neon.magenta : HertzTheme.neon.cyan}
+        <View style={styles.inputStrip}>
+          <Pressable
+            style={[styles.micBtn, speech.isListening && styles.micBtnActive]}
+            onPress={() => {
+              inputRef.current?.blur();
+              speech.toggleSpeech();
+            }}
+            disabled={loadingRef.current}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={speech.isListening ? 'Stop voice input' : 'Start voice input'}>
+            <MicIcon
+              size={18}
+              color={speech.isListening ? HertzTheme.neon.magenta : HertzTheme.neon.cyan}
+            />
+          </Pressable>
+          <TextInput
+            ref={inputRef}
+            style={[styles.stripInput, speech.isListening && styles.stripInputListening]}
+            value={prompt}
+            onChangeText={setPrompt}
+            placeholder={speech.isListening ? 'Listening…' : 'Describe your goal…'}
+            placeholderTextColor={
+              speech.isListening ? HertzTheme.neon.magenta : HertzTheme.text.muted
+            }
+            returnKeyType="send"
+            onSubmitEditing={handleSubmit}
+            maxFontSizeMultiplier={1.3}
           />
-        </Pressable>
-        <TextInput
-          ref={inputRef}
-          style={[styles.stripInput, speech.isListening && styles.stripInputListening]}
-          value={prompt}
-          onChangeText={setPrompt}
-          placeholder={speech.isListening ? 'Listening…' : 'Describe your goal…'}
-          placeholderTextColor={
-            speech.isListening ? HertzTheme.neon.magenta : HertzTheme.text.muted
-          }
-          returnKeyType="send"
-          onSubmitEditing={handleSubmit}
-        />
-        <Pressable
-          style={[styles.goBtn, (!prompt.trim() || loadingRef.current) && styles.goBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={!prompt.trim() || loadingRef.current}>
-          <Text style={styles.goBtnText}>Go</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            style={[styles.goBtn, (!prompt.trim() || loadingRef.current) && styles.goBtnDisabled]}
+            onPress={handleSubmit}
+            disabled={!prompt.trim() || loadingRef.current}>
+            <Text style={styles.goBtnText} maxFontSizeMultiplier={1.2}>
+              Go
+            </Text>
+          </Pressable>
+        </View>
 
-      <View style={styles.footer}>
-        <LegalMenuBar />
-      </View>
-    </View>
+        <View style={styles.footer}>
+          <LegalMenuBar />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -125,6 +141,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: H_PAD,
+    flexGrow: 1,
   },
   brand: {
     fontFamily: HertzTheme.mono,
@@ -148,6 +165,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: {width: 0, height: 0},
+    marginBottom: 12,
   },
   inputLabel: {
     fontFamily: HertzTheme.mono,
@@ -163,11 +181,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: H_PAD,
     paddingVertical: 10,
-    backgroundColor: 'rgba(8,10,18,0.97)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(92,225,255,0.25)',
+    marginBottom: 8,
   },
   micBtn: {
     width: 40,
@@ -178,6 +193,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(92,225,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   micBtnActive: {
     backgroundColor: 'rgba(255,80,180,0.15)',
@@ -185,7 +201,7 @@ const styles = StyleSheet.create({
   },
   stripInput: {
     flex: 1,
-    height: 40,
+    minHeight: 40,
     borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
@@ -193,13 +209,14 @@ const styles = StyleSheet.create({
     color: HertzTheme.text.primary,
     fontSize: 15,
     paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   stripInputListening: {
     borderColor: HertzTheme.neon.magenta,
     backgroundColor: 'rgba(255,80,180,0.06)',
   },
   goBtn: {
-    height: 40,
+    minHeight: 40,
     paddingHorizontal: 16,
     borderRadius: 10,
     backgroundColor: 'rgba(92,225,255,0.18)',
@@ -207,6 +224,7 @@ const styles = StyleSheet.create({
     borderColor: HertzTheme.neon.cyan,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   goBtnDisabled: {
     opacity: 0.4,
@@ -221,5 +239,6 @@ const styles = StyleSheet.create({
     backgroundColor: HertzTheme.bg,
     borderTopWidth: 1,
     borderTopColor: HertzTheme.glassBorder,
+    marginTop: 4,
   },
 });

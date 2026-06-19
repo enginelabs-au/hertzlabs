@@ -55,15 +55,6 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<!-- Branch.io deep link configuration -->
-	<!-- Replace key_live_XXXXXXXX with your live Branch key from branch.io/dashboard -->
-	<key>branch_key</key>
-	<string>key_live_REPLACE_WITH_YOUR_BRANCH_KEY</string>
-	<key>branch_universal_link_domains</key>
-	<array>
-		<string>hertzlabs.app.link</string>
-		<string>hertzlabs-alternate.app.link</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

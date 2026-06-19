@@ -653,6 +653,7 @@ const styles = StyleSheet.create({
   homeInlineHistory: {
     maxHeight: 220,
     marginBottom: 10,
+    flexGrow: 0,
   },
   homeChipsRow: {
     flexDirection: 'row',

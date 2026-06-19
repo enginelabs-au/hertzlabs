@@ -24,6 +24,7 @@ import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
 import {loadPaywallPackages, type PaywallPlan} from '../monetization/loadPaywallPackages';
 import {useHertzStore} from '../state/store';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const ENTITLEMENT_ID = REVENUECAT_ENTITLEMENT;
@@ -418,6 +419,7 @@ function PromoCodeInput({
           onSubmitEditing={() => void handleApply()}
           editable={!loading}
           maxLength={20}
+          includeFontPadding={false}
         />
         <Pressable
           style={[styles.promoApplyBtn, (loading || code.trim().length < 4) && styles.promoApplyBtnDisabled]}
@@ -439,6 +441,7 @@ function PromoCodeInput({
 }
 
 export function PaywallScreen() {
+  const scrollInsets = useModalScrollInsets(24);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const appliedPromoCode = useHertzStore(s => s.appliedPromoCode);
@@ -602,7 +605,8 @@ export function PaywallScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={[styles.scrollContent, scrollInsets]}
+          keyboardShouldPersistTaps="handled">
           <ActiveSubscriptionCard summary={subscriptionSummary} />
 
           {/* Active promo banner */}
@@ -1041,25 +1045,27 @@ const styles = StyleSheet.create({
   },
   promoInputRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     gap: 8,
   },
   promoInput: {
     flex: 1,
-    height: 40,
+    minWidth: 0,
+    minHeight: 44,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'android' ? 10 : 12,
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: 1,
   },
   promoApplyBtn: {
-    height: 40,
-    paddingHorizontal: 16,
+    minHeight: 44,
+    paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: GOLD_BORDER,

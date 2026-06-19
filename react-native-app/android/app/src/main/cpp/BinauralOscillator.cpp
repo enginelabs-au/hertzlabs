@@ -40,6 +40,8 @@ void BinauralOscillator::setSampleRate(double sampleRate) {
     silenceSmoothAlpha_ = static_cast<float>(1.0 - std::exp(-1.0 / (silenceTau * sampleRate_)));
     constexpr double noiseTau = 0.040;
     noiseSmoothAlpha_ = static_cast<float>(1.0 - std::exp(-1.0 / (noiseTau * sampleRate_)));
+    constexpr double modeTau = 0.055;
+    modeCrossfadeAlpha_ = static_cast<float>(1.0 - std::exp(-1.0 / (modeTau * sampleRate_)));
 }
 
 void BinauralOscillator::snapSmoothedStateTo(const ParameterSnapshot &snapshot) {
@@ -52,6 +54,8 @@ void BinauralOscillator::snapSmoothedStateTo(const ParameterSnapshot &snapshot) 
     currentNoisePink_ = snapshot.noisePinkGain;
     currentNoiseBrown_ = snapshot.noiseBrownGain;
     targetModeCode_ = static_cast<int>(std::lround(snapshot.targetTimingDiffMs));
+    renderModeCode_ = targetModeCode_;
+    modeCrossfadeT_ = 1.0f;
     currentToneDuck_ = 1.0f;
 }
 
@@ -75,7 +79,11 @@ void BinauralOscillator::syncTargets(const ParameterSnapshot &snapshot) {
     currentNoisePink_ += noiseSmoothAlpha_ * (snapshot.noisePinkGain - currentNoisePink_);
     currentNoiseBrown_ += noiseSmoothAlpha_ * (snapshot.noiseBrownGain - currentNoiseBrown_);
 
-    targetModeCode_ = static_cast<int>(std::lround(snapshot.targetTimingDiffMs));
+    const int nextTarget = static_cast<int>(std::lround(snapshot.targetTimingDiffMs));
+    if (nextTarget != targetModeCode_) {
+        targetModeCode_ = nextTarget;
+        modeCrossfadeT_ = 0.0f;
+    }
 }
 
 float BinauralOscillator::nextNoiseSample() {
@@ -112,10 +120,52 @@ float BinauralOscillator::dcBlock(float sample, float &state, float &blocked) {
     return blocked;
 }
 
+void BinauralOscillator::advancePhases(int modeCode) noexcept {
+    const double twoPi = NativeEngineModeDSP::kTwoPi;
+    const auto mode = static_cast<NativeEngineModeCode>(modeCode);
+
+    const double leftHz = std::max(0.001, currentCarrierHz_ - currentBeatHz_ * 0.5);
+    const double rightHz = std::max(0.001, currentCarrierHz_ + currentBeatHz_ * 0.5);
+    const double beatRateHz = std::max(0.001, std::abs(currentBeatHz_));
+
+    switch (mode) {
+    case NativeEngineModeCode::Monaural:
+    case NativeEngineModeCode::Isochronic:
+    case NativeEngineModeCode::HemisphericSync:
+    case NativeEngineModeCode::PhaseModulated:
+    case NativeEngineModeCode::PitchPanning:
+    case NativeEngineModeCode::MusicModulation:
+        carrierPhase_ += twoPi * std::max(0.001, currentCarrierHz_) / sampleRate_;
+        beatPhase_ += twoPi * beatRateHz / sampleRate_;
+        break;
+    case NativeEngineModeCode::Binaural:
+    default:
+        carrierPhase_ += twoPi * leftHz / sampleRate_;
+        beatPhase_ += twoPi * rightHz / sampleRate_;
+        break;
+    }
+
+    carrierPhase_ = NativeEngineModeDSP::wrapPhase(carrierPhase_);
+    beatPhase_ = NativeEngineModeDSP::wrapPhase(beatPhase_);
+}
+
+void BinauralOscillator::computeRawStereo(int modeCode,
+                                          double &rawLeft,
+                                          double &rawRight) const noexcept {
+    NativeEngineModeDSP::rawStereo(
+        modeCode,
+        carrierPhase_,
+        beatPhase_,
+        carrierPhase_,
+        beatPhase_,
+        currentPhaseAngleRad_,
+        rawLeft,
+        rawRight);
+}
+
 void BinauralOscillator::render(float *output,
                                 int32_t frameCount,
                                 const ParameterBox &params) {
-    const double twoPi = NativeEngineModeDSP::kTwoPi;
     const ParameterSnapshot headSnap = params.snapshot();
     breathPacer_.configure(
         headSnap.breathPacerEnabled,
@@ -141,43 +191,36 @@ void BinauralOscillator::render(float *output,
         const float gateAlpha = (gateDelta < 0.0f) ? silenceSmoothAlpha_ : smoothAlpha_;
         outputGate_ += gateAlpha * gateDelta;
 
-        const auto mode = static_cast<NativeEngineModeCode>(targetModeCode_);
-
-        const double leftHz = std::max(0.001, currentCarrierHz_ - currentBeatHz_ * 0.5);
-        const double rightHz = std::max(0.001, currentCarrierHz_ + currentBeatHz_ * 0.5);
-        const double beatRateHz = std::max(0.001, std::abs(currentBeatHz_));
-
-        switch (mode) {
-        case NativeEngineModeCode::Monaural:
-        case NativeEngineModeCode::Isochronic:
-        case NativeEngineModeCode::HemisphericSync:
-        case NativeEngineModeCode::PhaseModulated:
-        case NativeEngineModeCode::PitchPanning:
-        case NativeEngineModeCode::MusicModulation:
-            carrierPhase_ += twoPi * std::max(0.001, currentCarrierHz_) / sampleRate_;
-            beatPhase_ += twoPi * beatRateHz / sampleRate_;
-            break;
-        case NativeEngineModeCode::Binaural:
-        default:
-            carrierPhase_ += twoPi * leftHz / sampleRate_;
-            beatPhase_ += twoPi * rightHz / sampleRate_;
-            break;
+        if (renderModeCode_ != targetModeCode_) {
+            modeCrossfadeT_ += modeCrossfadeAlpha_;
+            if (modeCrossfadeT_ >= 1.0f) {
+                modeCrossfadeT_ = 1.0f;
+                renderModeCode_ = targetModeCode_;
+            }
         }
 
-        carrierPhase_ = NativeEngineModeDSP::wrapPhase(carrierPhase_);
-        beatPhase_ = NativeEngineModeDSP::wrapPhase(beatPhase_);
+        const int phaseModeCode =
+            (renderModeCode_ != targetModeCode_) ? targetModeCode_ : renderModeCode_;
+        advancePhases(phaseModeCode);
 
         double rawLeft = 0.0;
         double rawRight = 0.0;
-        NativeEngineModeDSP::rawStereo(
-            targetModeCode_,
-            carrierPhase_,
-            beatPhase_,
-            carrierPhase_,
-            beatPhase_,
-            currentPhaseAngleRad_,
-            rawLeft,
-            rawRight);
+        if (renderModeCode_ != targetModeCode_) {
+            double fromLeft = 0.0;
+            double fromRight = 0.0;
+            double toLeft = 0.0;
+            double toRight = 0.0;
+            computeRawStereo(renderModeCode_, fromLeft, fromRight);
+            computeRawStereo(targetModeCode_, toLeft, toRight);
+            const float mix = static_cast<float>(NativeEngineModeDSP::smoothStep(modeCrossfadeT_));
+            rawLeft = fromLeft * (1.0 - mix) + toLeft * mix;
+            rawRight = fromRight * (1.0 - mix) + toRight * mix;
+        } else {
+            computeRawStereo(renderModeCode_, rawLeft, rawRight);
+        }
+
+        const auto mode = static_cast<NativeEngineModeCode>(
+            modeCrossfadeT_ >= 0.5f ? targetModeCode_ : renderModeCode_);
 
         const float gainL = pacedGain * std::max(0.0f, 1.0f - currentBalance_);
         const float gainR = pacedGain * std::max(0.0f, 1.0f + currentBalance_);

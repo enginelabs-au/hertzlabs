@@ -18,7 +18,9 @@ export function SimplePlayerScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled">
         <SimpleTopControls />
         <SimpleEngineCarousel onUpgrade={openPaywall} />
         <BackgroundAudioToggle />

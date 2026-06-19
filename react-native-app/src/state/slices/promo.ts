@@ -1,4 +1,5 @@
 import type {StateCreator} from 'zustand';
+import type {PremiumGiftReminderKind} from '../../monetization/premiumGiftReminders';
 import type {AppStore} from '../types';
 
 export type PromoEntitlement = 'extended_trial' | 'lifetime' | 'discount_20' | 'discount_50';
@@ -12,6 +13,8 @@ export type PromoSlice = {
   appliedPromoExpiresAt: number | null;
   /** User's unique share/referral code — generated on first Promos screen visit */
   myReferralCode: string | null;
+  /** Referrer code captured from an incoming deep link (install attribution) */
+  pendingReferrerCode: string | null;
   /** Consecutive days the user has opened the app */
   streakDays: number;
   /** ISO date string 'YYYY-MM-DD' of last streak check-in */
@@ -25,10 +28,25 @@ export type PromoSlice = {
   anniversaryRewardClaimed: boolean;
   wellnessCheckinCount: number;
   lastWellnessCheckinDate: string | null;
+  /** Unix ms when the user activated the one-time 7-day welcome Premium offer. */
+  welcomePremiumClaimedAt: number | null;
+  /** Known expiry of the welcome gift (from RC or estimated). */
+  welcomePremiumExpiresAtMs: number | null;
+  welcomePremiumDayBeforeReminderShown: boolean;
+  welcomePremiumExpiryDayReminderShown: boolean;
+  /** Which premium-gift reminder is currently being shown. */
+  activePremiumGiftReminder: PremiumGiftReminderKind | null;
 
   applyPromo(code: string, entitlement: PromoEntitlement, expiresAt?: number | null): void;
+  markWelcomePremiumClaimed(): void;
+  setWelcomePremiumExpiresAtMs(expiresAtMs: number | null): void;
+  markWelcomePremiumDayBeforeReminderShown(): void;
+  markWelcomePremiumExpiryDayReminderShown(): void;
+  setActivePremiumGiftReminder(kind: PremiumGiftReminderKind | null): void;
   clearPromo(): void;
   generateMyReferralCode(): void;
+  setPendingReferrerCode(code: string): void;
+  clearPendingReferrerCode(): void;
   checkInStreak(): void;
   ensureFirstInstallDate(): void;
   markReviewRewardClaimed(): void;
@@ -43,6 +61,7 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   appliedPromoEntitlement: null,
   appliedPromoExpiresAt: null,
   myReferralCode: null,
+  pendingReferrerCode: null,
   streakDays: 0,
   lastStreakDate: null,
   firstInstallDate: null,
@@ -52,6 +71,11 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   anniversaryRewardClaimed: false,
   wellnessCheckinCount: 0,
   lastWellnessCheckinDate: null,
+  welcomePremiumClaimedAt: null,
+  welcomePremiumExpiresAtMs: null,
+  welcomePremiumDayBeforeReminderShown: false,
+  welcomePremiumExpiryDayReminderShown: false,
+  activePremiumGiftReminder: null,
 
   applyPromo(code, entitlement, expiresAt = null) {
     set({
@@ -77,6 +101,23 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
       }
       return {myReferralCode: code};
     });
+  },
+
+  setPendingReferrerCode(code) {
+    const normalized = code.trim();
+    if (normalized.length === 0) {
+      return;
+    }
+    set(s => {
+      if (s.pendingReferrerCode === normalized) {
+        return {};
+      }
+      return {pendingReferrerCode: normalized};
+    });
+  },
+
+  clearPendingReferrerCode() {
+    set({pendingReferrerCode: null});
   },
 
   checkInStreak() {
@@ -123,6 +164,26 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
         lastWellnessCheckinDate: today,
       };
     });
+  },
+
+  markWelcomePremiumClaimed() {
+    set({welcomePremiumClaimedAt: Date.now()});
+  },
+
+  setWelcomePremiumExpiresAtMs(expiresAtMs) {
+    set({welcomePremiumExpiresAtMs: expiresAtMs});
+  },
+
+  markWelcomePremiumDayBeforeReminderShown() {
+    set({welcomePremiumDayBeforeReminderShown: true});
+  },
+
+  markWelcomePremiumExpiryDayReminderShown() {
+    set({welcomePremiumExpiryDayReminderShown: true});
+  },
+
+  setActivePremiumGiftReminder(kind) {
+    set({activePremiumGiftReminder: kind});
   },
 });
 
