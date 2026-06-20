@@ -119,6 +119,7 @@ export const persistedStoreOptions = {
     wellnessCheckinCount: state.wellnessCheckinCount,
     lastWellnessCheckinDate: state.lastWellnessCheckinDate,
     welcomePremiumClaimedAt: state.welcomePremiumClaimedAt,
+    welcomePremiumCampaignId: state.welcomePremiumCampaignId,
     welcomePremiumExpiresAtMs: state.welcomePremiumExpiresAtMs,
     welcomePremiumDayBeforeReminderShown: state.welcomePremiumDayBeforeReminderShown,
     welcomePremiumExpiryDayReminderShown: state.welcomePremiumExpiryDayReminderShown,

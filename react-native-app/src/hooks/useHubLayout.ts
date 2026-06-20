@@ -1,5 +1,6 @@
 import {useWindowDimensions} from 'react-native';
 import {isExperimentalModeActive} from '../monetization/isPremiumUnlocked';
+import {MAC_WIDE_MIN_WIDTH, isMacDesktopBuild} from '../platform/layoutProfile';
 import {useHertzStore} from '../state/store';
 
 /** Width of the embedded phase slider column (right edge of hub). */
@@ -21,15 +22,31 @@ export const EXTERNAL_BAND_BAR_H = 56;
 /** Extra beat-dock height in Experimental mode to fit the flanking dials + text fields. */
 export const EXPERIMENTAL_DOCK_EXTRA_H = 56;
 
+/** Estimated chrome above/below the hub on Mac desktop (readouts, tabs, transport, tab bar). */
+const MAC_HUB_CHROME_H = 300;
+
 /** Shared hub / visualizer dimensions. */
 export function useHubLayout() {
-  const {width: screenWidth} = useWindowDimensions();
+  const {width: screenWidth, height: screenHeight} = useWindowDimensions();
+  const isMacWide =
+    isMacDesktopBuild() &&
+    screenWidth > screenHeight &&
+    screenWidth >= MAC_WIDE_MIN_WIDTH;
   const experimental = useHertzStore(s =>
     isExperimentalModeActive(s.tier, s.experimentalMode),
   );
-  const hubW = screenWidth - 24;
-  // Taller frame so the 11-band vertical rail stays readable (mirrors phase column).
-  const baseFrameH = Math.min(308, Math.max(272, hubW * 0.74));
+  const horizontalPad = isMacWide ? 24 : 12;
+  const hubW = isMacWide
+    ? screenWidth - horizontalPad * 2
+    : screenWidth - 24;
+  const availableHubH = Math.max(220, screenHeight - MAC_HUB_CHROME_H);
+  const baseFrameH = isMacWide
+    ? Math.min(
+        Math.max(availableHubH * 0.55, 280),
+        Math.max(380, hubW * 0.42),
+        availableHubH,
+      )
+    : Math.min(308, Math.max(272, hubW * 0.74));
   // Experimental mode grows the dock (and frame) so the canvas size is unchanged.
   const expExtra = experimental ? EXPERIMENTAL_DOCK_EXTRA_H : 0;
   const beatSliderH = IN_FRAME_BEAT_SLIDER_H + expExtra;
@@ -49,5 +66,6 @@ export function useHubLayout() {
     externalBandBarH: EXTERNAL_BAND_BAR_H,
     experimental,
     screenWidth,
+    isMacWide,
   };
 }

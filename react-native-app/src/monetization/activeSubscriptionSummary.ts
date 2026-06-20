@@ -1,20 +1,35 @@
 import type {CustomerInfo, PurchasesEntitlementInfo} from 'react-native-purchases';
 import {IAP_PRODUCT_IDS, REVENUECAT_ENTITLEMENT, normalizeStoreProductId} from './iapCatalog';
+import {isPromotionalRcEntitlement} from './premiumGiftReminders';
 import type {PaywallPlanKey} from './loadPaywallPackages';
 
 export type ActiveSubscriptionSummary = {
   planLabel: string;
   planKey: PaywallPlanKey | null;
+  /** Internal store product id — not for user-facing UI. */
   productId: string;
   statusLine: string;
   detailLines: string[];
   isPremium: boolean;
   isTrial: boolean;
+  isPromotionalGift: boolean;
   willRenew: boolean;
   expirationLabel: string | null;
   managementURL: string | null;
   purchasedProductIds: string[];
 };
+
+function isBackendOnlyProductId(productId: string): boolean {
+  const lower = productId.toLowerCase();
+  return lower.startsWith('rc_promo') || lower.includes('rc_promo') || lower.startsWith('promo_');
+}
+
+function entitlementIsPromotionalGift(entitlement: PurchasesEntitlementInfo): boolean {
+  return (
+    isPromotionalRcEntitlement(entitlement as Parameters<typeof isPromotionalRcEntitlement>[0]) ||
+    isBackendOnlyProductId(entitlement.productIdentifier)
+  );
+}
 
 function productIdToPlanKey(productId: string): PaywallPlanKey | null {
   const id = normalizeStoreProductId(productId);
@@ -30,7 +45,13 @@ function productIdToPlanKey(productId: string): PaywallPlanKey | null {
   return null;
 }
 
-function productIdToPlanLabel(productId: string): string {
+function productIdToPlanLabel(productId: string, entitlement?: PurchasesEntitlementInfo): string {
+  if (entitlement != null && entitlementIsPromotionalGift(entitlement)) {
+    return 'Complimentary Premium';
+  }
+  if (isBackendOnlyProductId(productId)) {
+    return 'Complimentary Premium';
+  }
   const key = productIdToPlanKey(productId);
   if (key === 'monthly') {
     return 'Monthly';
@@ -41,7 +62,7 @@ function productIdToPlanLabel(productId: string): string {
   if (key === 'lifetime') {
     return 'Lifetime Ultra';
   }
-  return productId;
+  return 'Premium';
 }
 
 function formatRcDate(iso: string | null): string | null {
@@ -66,6 +87,18 @@ function buildStatusLines(entitlement: PurchasesEntitlementInfo): {
 } {
   const expirationLabel = formatRcDate(entitlement.expirationDate);
   const detailLines: string[] = [];
+  const isPromoGift = entitlementIsPromotionalGift(entitlement);
+
+  if (isPromoGift) {
+    return {
+      statusLine: expirationLabel
+        ? `Complimentary access until ${expirationLabel}`
+        : 'Complimentary Premium active',
+      detailLines: ['Subscribe before it ends to keep full access without interruption.'],
+      expirationLabel,
+    };
+  }
+
   const isLifetime =
     entitlement.expirationDate == null &&
     normalizeStoreProductId(entitlement.productIdentifier) === IAP_PRODUCT_IDS.lifetime;
@@ -127,11 +160,10 @@ export function summarizeActiveSubscription(
       planKey: null,
       productId: '',
       statusLine: 'No active Premium subscription',
-      detailLines: purchasedProductIds.length
-        ? [`Purchased products: ${purchasedProductIds.join(', ')}`]
-        : [],
+      detailLines: [],
       isPremium: false,
       isTrial: false,
+      isPromotionalGift: false,
       willRenew: false,
       expirationLabel: null,
       managementURL: info?.managementURL ?? null,
@@ -139,26 +171,28 @@ export function summarizeActiveSubscription(
     };
   }
 
+  const isPromotionalGift = entitlementIsPromotionalGift(entitlement);
   const {statusLine, detailLines, expirationLabel} = buildStatusLines(entitlement);
 
   if (entitlement.billingIssueDetectedAt) {
     detailLines.push('Billing issue detected — update payment in the App Store.');
   }
-  if (entitlement.unsubscribeDetectedAt && entitlement.willRenew === false) {
+  if (entitlement.unsubscribeDetectedAt && entitlement.willRenew === false && !isPromotionalGift) {
     detailLines.push('Cancellation scheduled — access continues until expiration.');
   }
-  if (entitlement.isSandbox) {
+  if (__DEV__ && entitlement.isSandbox) {
     detailLines.push('Sandbox purchase (testing).');
   }
 
   return {
-    planLabel: productIdToPlanLabel(entitlement.productIdentifier),
+    planLabel: productIdToPlanLabel(entitlement.productIdentifier, entitlement),
     planKey: productIdToPlanKey(entitlement.productIdentifier),
     productId: entitlement.productIdentifier,
     statusLine,
     detailLines,
     isPremium: true,
     isTrial: entitlement.periodType === 'TRIAL',
+    isPromotionalGift,
     willRenew: entitlement.willRenew,
     expirationLabel,
     managementURL: info?.managementURL ?? null,

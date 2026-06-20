@@ -84,7 +84,7 @@ function HubDockBeatLabel({
 }
 
 export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubProps) {
-  const {hubW, frameH, canvasH, canvasW, beatSliderW, beatSliderH, bandRailW, experimental} =
+  const {hubW, frameH, canvasH, canvasW, beatSliderW, beatSliderH, bandRailW, experimental, isMacWide} =
     useHubLayout();
 
   const setParam = useHertzStore(s => s.setParam);
@@ -189,7 +189,7 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
   );
 
   return (
-    <View style={styles.outer}>
+    <View style={[styles.outer, isMacWide && styles.outerMac]}>
       <GlassCard style={[styles.frame, {width: hubW, height: frameH}]} padding={0}>
         <View style={[styles.hubInner, {width: hubW, height: frameH}]}>
           <HubBandRail
@@ -275,6 +275,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 2,
+  },
+  outerMac: {
+    alignItems: 'stretch',
+    paddingHorizontal: 24,
   },
   frame: {
     overflow: 'hidden',

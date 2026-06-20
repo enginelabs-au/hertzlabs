@@ -28,7 +28,6 @@ export function WelcomePremiumModal() {
   const markWelcomePremiumClaimed = useHertzStore(s => s.markWelcomePremiumClaimed);
   const setWelcomePremiumExpiresAtMs = useHertzStore(s => s.setWelcomePremiumExpiresAtMs);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
-  const setSubscription = useHertzStore(s => s.setSubscription);
   const [loading, setLoading] = useState(false);
 
   const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
@@ -47,8 +46,14 @@ export function WelcomePremiumModal() {
 
       markWelcomePremiumClaimed();
 
+      const hadPremiumBefore = useHertzStore.getState().tier === 'premium';
       let tierAfterGrant = useHertzStore.getState().tier;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
+
+      if (result.expiresAtMs != null) {
+        setWelcomePremiumExpiresAtMs(result.expiresAtMs);
+      }
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
         try {
           await Purchases.invalidateCustomerInfoCache();
           const info = await Purchases.getCustomerInfo();
@@ -59,6 +64,8 @@ export function WelcomePremiumModal() {
           const expiryMs = parseRcExpirationMs(ent?.expirationDate);
           if (expiryMs != null) {
             setWelcomePremiumExpiresAtMs(expiryMs);
+          } else if (result.expiresAtMs != null) {
+            setWelcomePremiumExpiresAtMs(result.expiresAtMs);
           } else {
             setWelcomePremiumExpiresAtMs(Date.now() + 7 * 86_400_000);
           }
@@ -69,26 +76,23 @@ export function WelcomePremiumModal() {
         } catch {
           /* retry */
         }
-        if (attempt < 2) {
-          await new Promise<void>(resolve => setTimeout(resolve, 800));
+        if (attempt < 3) {
+          await new Promise<void>(resolve => setTimeout(resolve, 1000));
         }
       }
 
-      if (tierAfterGrant !== 'premium' && __DEV__) {
-        setSubscription('premium', ['welcome_dev']);
-      }
+      const successBody =
+        tierAfterGrant === 'premium' || hadPremiumBefore || result.extendedExisting
+          ? hadPremiumBefore || result.extendedExisting
+            ? '7 complimentary days have been added to your Premium access.'
+            : 'You now have 7 days of full Premium access — all engines, extended frequency range, background audio, and more.'
+          : 'Your Premium access is being applied. If features are still locked, fully close and reopen the app.';
 
-      Alert.alert(
-        'Premium activated',
-        tierAfterGrant === 'premium' || __DEV__
-          ? 'You now have 7 days of full Premium access — all engines, extended frequency range, background audio, and more.'
-          : 'Your Premium access is being applied. If features are still locked, fully close and reopen the app.',
-        [{text: 'Start exploring', onPress: dismiss}],
-      );
+      Alert.alert('Premium activated', successBody, [{text: 'Start exploring', onPress: dismiss}]);
     } finally {
       setLoading(false);
     }
-  }, [loading, markWelcomePremiumClaimed, setWelcomePremiumExpiresAtMs, _hydrateFromRC, setSubscription, dismiss]);
+  }, [loading, markWelcomePremiumClaimed, setWelcomePremiumExpiresAtMs, _hydrateFromRC, dismiss]);
 
   return (
     <View style={styles.overlay}>
@@ -98,7 +102,8 @@ export function WelcomePremiumModal() {
             <Text style={styles.eyebrow}>WELCOME GIFT</Text>
             <Text style={styles.title}>7 Days of Premium, Free</Text>
             <Text style={styles.subtitle}>
-              Every Hertz Labs member gets a complimentary week of Premium — on us.
+              Every Hertz Labs member gets a complimentary week of Premium — on us. Already on
+              Premium? We will add 7 free days to your current access.
             </Text>
           </View>
           <Pressable style={styles.closeBtn} onPress={dismiss} accessibilityLabel="Close">

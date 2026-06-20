@@ -129,16 +129,13 @@ function ActiveSubscriptionCard({summary}: {summary: ActiveSubscriptionSummary})
         {summary.isPremium ? 'YOUR ACTIVE PLAN' : 'CURRENT STATUS'}
       </Text>
       <Text style={styles.activePlanName}>{summary.planLabel}</Text>
-      {summary.productId ? (
-        <Text style={styles.activeProductId}>{summary.productId}</Text>
-      ) : null}
       <Text style={styles.activeStatus}>{summary.statusLine}</Text>
       {summary.detailLines.map(line => (
         <Text key={line} style={styles.activeDetail}>
           {line}
         </Text>
       ))}
-      {summary.isPremium && summary.managementURL ? (
+      {summary.isPremium && !summary.isPromotionalGift && summary.managementURL ? (
         <Pressable
           style={styles.manageBtn}
           onPress={openManagement}
@@ -686,8 +683,9 @@ export function PaywallScreen() {
 
           {/* Legal */}
           <Text style={styles.legalText}>{PAYWALL_STORE.legalDisclaimer}</Text>
+
+          <LegalMenuBar />
         </ScrollView>
-        <LegalMenuBar />
       </View>
     </View>
   );
@@ -774,11 +772,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: 2,
-  },
-  activeProductId: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 10,
-    color: MUTED,
   },
   activeStatus: {
     fontSize: 13,

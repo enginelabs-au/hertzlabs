@@ -148,6 +148,8 @@ declare module 'react-native-purchases' {
      */
     purchaseSubscriptionOption(subscriptionOption: SubscriptionOption): Promise<MakePurchaseResult>;
     restorePurchases(): Promise<CustomerInfo>;
+    syncPurchases(): Promise<CustomerInfo>;
+    invalidateCustomerInfoCache(): Promise<void>;
     addCustomerInfoUpdateListener(listener: (info: CustomerInfo) => void): (() => void) | void;
     setLogLevel(level: 'VERBOSE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'): void;
   };

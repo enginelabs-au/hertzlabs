@@ -16,7 +16,7 @@
 		AC0000010000000000000021 /* ClipRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000010000000000000011 /* ClipRootView.swift */; };
 		AC0000010000000000000022 /* ClipBinauralEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000010000000000000012 /* ClipBinauralEngine.swift */; };
 		AC0000010000000000000023 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AC0000010000000000000015 /* Assets.xcassets */; };
-		AC0000010000000000000031 /* HertzLabsBinauralBeatsClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = AC0000010000000000000002 /* HertzLabsBinauralBeatsClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AC0000010000000000000031 /* HertzLabsBinauralBeatsClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = AC0000010000000000000002 /* HertzLabsBinauralBeatsClip.app */; platformFilters = (ios, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B575F2149BBB8A2601315365 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		E8F1A2B32C4D5E6F708192A3 /* GenerativeAI-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E8F1A2B22C4D5E6F708192A3 /* GenerativeAI-Info.plist */; };
 		HA1E2B3C4D5E6F708192A5 /* HertzAudioModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = HA1E2B3C4D5E6F708192A4 /* HertzAudioModule.mm */; };
@@ -24,6 +24,7 @@
 		HA1E2B3C4D5E6F708192AA /* AudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = HA1E2B3C4D5E6F708192A9 /* AudioSessionController.swift */; };
 		HA1E2B3C4D5E6F708192AD /* HertzTelemetryModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = HA1E2B3C4D5E6F708192AC /* HertzTelemetryModule.mm */; };
 		HA1E2B3C4D5E6F708192AF /* HertzAudioNativeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = HA1E2B3C4D5E6F708192B0 /* HertzAudioNativeEngine.swift */; };
+		MC0000010000000000000002 /* MacCatalystDesktopWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = MC0000010000000000000001 /* MacCatalystDesktopWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +70,7 @@
 		AC0000010000000000000014 /* HertzLabsBinauralBeatsClip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HertzLabsBinauralBeatsClip.entitlements; sourceTree = "<group>"; };
 		AC0000010000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AC0000010000000000000040 /* HertzLabsBinauralBeats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = HertzLabsBinauralBeats.entitlements; path = HertzLabsBinauralBeats/HertzLabsBinauralBeats.entitlements; sourceTree = "<group>"; };
+		MC0000010000000000000005 /* HertzLabsBinauralBeats-mac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "HertzLabsBinauralBeats-mac.entitlements"; path = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements"; sourceTree = "<group>"; };
 		E8F1A2B22C4D5E6F708192A3 /* GenerativeAI-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GenerativeAI-Info.plist"; path = "HertzLabsBinauralBeats/GenerativeAI-Info.plist"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		HA1E2B3C4D5E6F708192A4 /* HertzAudioModule.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = HertzAudioModule.mm; path = HertzLabsBinauralBeats/HertzAudioBridge/HertzAudioModule.mm; sourceTree = "<group>"; };
@@ -79,6 +81,7 @@
 		HA1E2B3C4D5E6F708192AE /* HertzLabsBinauralBeats-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "HertzLabsBinauralBeats-Bridging-Header.h"; path = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-Bridging-Header.h"; sourceTree = "<group>"; };
 		HA1E2B3C4D5E6F708192B0 /* HertzAudioNativeEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = HertzAudioNativeEngine.swift; path = HertzLabsBinauralBeats/HertzAudioBridge/HertzAudioNativeEngine.swift; sourceTree = "<group>"; };
 		HA1E2B3C4D5E6F708192B1 /* HertzAudioNativeEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HertzAudioNativeEngine.h; path = HertzLabsBinauralBeats/HertzAudioBridge/HertzAudioNativeEngine.h; sourceTree = "<group>"; };
+		MC0000010000000000000001 /* MacCatalystDesktopWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MacCatalystDesktopWindow.swift; path = HertzLabsBinauralBeats/MacCatalystDesktopWindow.swift; sourceTree = "<group>"; };
 		SK0000010000000000000001 /* HertzLabsProducts.storekit */ = {isa = PBXFileReference; explicitFileType = text.storekit; path = HertzLabsProducts.storekit; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -106,11 +109,13 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				MC0000010000000000000001 /* MacCatalystDesktopWindow.swift */,
 				HA1E2B3C4D5E6F708192A9 /* AudioSessionController.swift */,
 				HA1E2B3C4D5E6F708192AB /* HertzAudioBridge */,
 				HA1E2B3C4D5E6F708192AE /* HertzLabsBinauralBeats-Bridging-Header.h */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AC0000010000000000000040 /* HertzLabsBinauralBeats.entitlements */,
+				MC0000010000000000000005 /* HertzLabsBinauralBeats-mac.entitlements */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				E8F1A2B22C4D5E6F708192A3 /* GenerativeAI-Info.plist */,
@@ -215,7 +220,9 @@
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
+				MC0000010000000000000004 /* Fix Mac Catalyst prebuilt frameworks */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
+				MC0000010000000000000003 /* Fix Mac Catalyst embedded frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				AC0000010000000000000030 /* Embed App Clips */,
 			);
@@ -378,6 +385,36 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HertzLabsBinauralBeats/Pods-HertzLabsBinauralBeats-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		MC0000010000000000000004 /* Fix Mac Catalyst prebuilt frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Fix Mac Catalyst prebuilt frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ \"$EFFECTIVE_PLATFORM_NAME\" == *maccatalyst* ]]; then\n  ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\"\n  for FW in React-Core-prebuilt/React.framework ReactNativeDependencies/ReactNativeDependencies.framework; do\n    INTERM=\"${PODS_XCFRAMEWORKS_BUILD_DIR}/${FW}\"\n    if [[ -d \"$INTERM\" ]]; then\n      ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\" --framework \"$INTERM\"\n    fi\n  done\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+		MC0000010000000000000003 /* Fix Mac Catalyst embedded frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Fix Mac Catalyst embedded frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ \"$EFFECTIVE_PLATFORM_NAME\" == *maccatalyst* ]]; then\n  ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\" --embedded \"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -386,6 +423,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				MC0000010000000000000002 /* MacCatalystDesktopWindow.swift in Sources */,
 				HA1E2B3C4D5E6F708192AA /* AudioSessionController.swift in Sources */,
 				HA1E2B3C4D5E6F708192A5 /* HertzAudioModule.mm in Sources */,
 				HA1E2B3C4D5E6F708192A8 /* HertzAudioEngineBridge.swift in Sources */,
@@ -409,6 +447,7 @@
 /* Begin PBXTargetDependency section */
 		AC0000010000000000000032 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = AC0000010000000000000001 /* HertzLabsBinauralBeatsClip */;
 			targetProxy = AC0000010000000000000033 /* PBXContainerItemProxy */;
 		};
@@ -423,14 +462,21 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeats/HertzLabsBinauralBeats.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = HertzLabsBinauralBeats/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/lib/swift",
+					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
+					"$(inherited)",
 				);
 				MARKETING_VERSION = 2.0;
 				OTHER_CFLAGS = (
@@ -442,14 +488,17 @@
 					"-ObjC",
 					"-lc++",
 				);
+				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hertzlabs.binauralbeats;
 				PRODUCT_NAME = HertzLabsBinauralBeats;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				"TARGETED_DEVICE_FAMILY[sdk=macosx*]" = 2;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -461,13 +510,20 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeats/HertzLabsBinauralBeats.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
+				DEAD_CODE_STRIPPING = YES;
 				INFOPLIST_FILE = HertzLabsBinauralBeats/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/lib/swift",
+					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
+					"$(inherited)",
 				);
 				MARKETING_VERSION = 2.0;
 				OTHER_CFLAGS = (
@@ -479,13 +535,16 @@
 					"-ObjC",
 					"-lc++",
 				);
+				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hertzlabs.binauralbeats;
 				PRODUCT_NAME = HertzLabsBinauralBeats;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				"TARGETED_DEVICE_FAMILY[sdk=macosx*]" = 2;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
@@ -665,7 +724,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeatsClip/HertzLabsBinauralBeatsClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 256U2M55W7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -675,7 +735,13 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/lib/swift",
+					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
+					"$(inherited)",
+				);
 				MARKETING_VERSION = 2.0;
+				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hertzlabs.binauralbeats.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -692,7 +758,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeatsClip/HertzLabsBinauralBeatsClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 256U2M55W7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -702,7 +769,13 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/lib/swift",
+					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
+					"$(inherited)",
+				);
 				MARKETING_VERSION = 2.0;
+				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hertzlabs.binauralbeats.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

@@ -1,5 +1,6 @@
 import type {StateCreator} from 'zustand';
 import type {PremiumGiftReminderKind} from '../../monetization/premiumGiftReminders';
+import {WELCOME_PREMIUM_CAMPAIGN} from '../../monetization/welcomePremiumConstants';
 import type {AppStore} from '../types';
 
 export type PromoEntitlement = 'extended_trial' | 'lifetime' | 'discount_20' | 'discount_50';
@@ -30,6 +31,8 @@ export type PromoSlice = {
   lastWellnessCheckinDate: string | null;
   /** Unix ms when the user activated the one-time 7-day welcome Premium offer. */
   welcomePremiumClaimedAt: number | null;
+  /** Campaign id for the welcome gift the user last claimed (null = never). */
+  welcomePremiumCampaignId: string | null;
   /** Known expiry of the welcome gift (from RC or estimated). */
   welcomePremiumExpiresAtMs: number | null;
   welcomePremiumDayBeforeReminderShown: boolean;
@@ -72,6 +75,7 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   wellnessCheckinCount: 0,
   lastWellnessCheckinDate: null,
   welcomePremiumClaimedAt: null,
+  welcomePremiumCampaignId: null,
   welcomePremiumExpiresAtMs: null,
   welcomePremiumDayBeforeReminderShown: false,
   welcomePremiumExpiryDayReminderShown: false,
@@ -167,7 +171,12 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   },
 
   markWelcomePremiumClaimed() {
-    set({welcomePremiumClaimedAt: Date.now()});
+    set({
+      welcomePremiumClaimedAt: Date.now(),
+      welcomePremiumCampaignId: WELCOME_PREMIUM_CAMPAIGN,
+      welcomePremiumDayBeforeReminderShown: false,
+      welcomePremiumExpiryDayReminderShown: false,
+    });
   },
 
   setWelcomePremiumExpiresAtMs(expiresAtMs) {

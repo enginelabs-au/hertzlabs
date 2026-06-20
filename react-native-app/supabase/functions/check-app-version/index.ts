@@ -3,8 +3,10 @@
  *
  * GET /functions/v1/check-app-version?platform=ios|android&versionCode=N
  *
- * Returns whether the client must update. Blocking UI only when force_update is true
- * in app_update_policy AND versionCode < min_version_code.
+ * Force-update is evaluated per client:
+ * - `latest_version_code` is the current store build (set via npm run sync:app-version).
+ * - While `force_update` is true, clients below latest see a blocking update screen.
+ * - Clients on latest_version_code or above never see the block (no global server clear).
  */
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
@@ -41,7 +43,7 @@ Deno.serve(async (req: Request) => {
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const {data: policy, error} = await sb
     .from('app_update_policy')
-    .select('min_version_code, force_update')
+    .select('min_version_code, latest_version_code, force_update')
     .eq('platform', platform)
     .maybeSingle();
 
@@ -50,15 +52,19 @@ Deno.serve(async (req: Request) => {
     return json({updateRequired: false, forceUpdate: false});
   }
 
-  const minVersionCode = policy?.min_version_code ?? 1;
+  const latestVersionCode = policy?.latest_version_code ?? policy?.min_version_code ?? 1;
+  const minVersionCode = Math.max(policy?.min_version_code ?? 1, latestVersionCode);
   const forceFlag = policy?.force_update === true;
-  const updateRequired = versionCode < minVersionCode;
+  const updateRequired = versionCode < latestVersionCode;
+  const onLatestBuild = versionCode >= latestVersionCode;
 
   return json({
     updateRequired,
     forceUpdate: updateRequired && forceFlag,
+    latestVersionCode,
     minVersionCode,
     clientVersionCode: versionCode,
+    onLatestBuild,
   });
 });
 

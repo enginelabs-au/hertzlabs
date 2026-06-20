@@ -7,6 +7,8 @@ ios/build/
 ios/build-device/
 build-device/
 build-sim/
+build/mac/DerivedData/
+build/mac/*.app/
 android/app/.cxx/
 ios/HertzLabsBinauralBeats/main.jsbundle
 ios/HertzLabsBinauralBeats/main.jsbundle.map

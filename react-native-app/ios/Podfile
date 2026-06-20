@@ -42,7 +42,7 @@ target 'HertzLabsBinauralBeats' do
   spm_pkg 'HertzAudioEngine', :path => '../HertzAudioEngine'
 
   post_install do |installer|
-    react_native_post_install(installer, config[:reactNativePath])
+    react_native_post_install(installer, config[:reactNativePath], :mac_catalyst_enabled => true)
 
     # Align Pods with Podfile platform + Xcode recommended build settings.
     installer.pods_project.build_configurations.each do |build_config|

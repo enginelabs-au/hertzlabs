@@ -7,6 +7,7 @@ import {ScreenWaveHeader} from '../components/layout/ScreenWaveHeader';
 import {PRIVACY_URL, TERMS_URL} from '../constants/legalUrls';
 import {useHertzStore} from '../state/store';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {useLayoutProfile} from '../platform/layoutProfile';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const STEP_COUNT = 3;
@@ -221,6 +222,7 @@ function AcceptanceSection({
  */
 export function SafetyOnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const {isMacDesktop} = useLayoutProfile();
   const [step, setStep] = useState(0);
   const [checkedTerms, setCheckedTerms] = useState(false);
   const [checkedMedical, setCheckedMedical] = useState(false);
@@ -265,6 +267,7 @@ export function SafetyOnboardingScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           isFinalStep && styles.scrollContentFinal,
+          isMacDesktop && styles.scrollContentMac,
         ]}
         showsVerticalScrollIndicator={isFinalStep}
         keyboardShouldPersistTaps="handled"
@@ -287,6 +290,10 @@ export function SafetyOnboardingScreen() {
             onAccept={() => setHasAccepted(true)}
           />
         )}
+
+        <View style={styles.legalFooter}>
+          <LegalMenuBar showLayoutToggle={false} />
+        </View>
       </ScrollView>
 
       {!isFinalStep && (
@@ -302,7 +309,6 @@ export function SafetyOnboardingScreen() {
         </View>
       )}
 
-      <LegalMenuBar showLayoutToggle={false} />
     </View>
   );
 }
@@ -328,6 +334,15 @@ const styles = StyleSheet.create({
   },
   scrollContentFinal: {
     paddingBottom: 24,
+  },
+  scrollContentMac: {
+    flexGrow: 1,
+    paddingHorizontal: 32,
+  },
+  legalFooter: {
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
   },
   acceptanceSection: {
     marginTop: 8,

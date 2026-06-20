@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -14,9 +13,10 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AIGuideChatSection} from '../components/ai/AIGuideChatSection';
 import {HomeBeatSlider, HomeHorizontalBands} from '../components/home/HomeFreqControls';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {MicIcon} from '../components/icons/MicIcon';
 import {useSpeechToText} from '../hooks/useSpeechToText';
+import {useLayoutProfile} from '../platform/layoutProfile';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const H_PAD = 16;
@@ -26,6 +26,7 @@ const BOTTOM_CHROME_PAD = 108;
 /** Simple Mode Home — freq slider, bands, chat. No oscilloscope. */
 export function HomeScreen() {
   const {top, bottom} = useSafeAreaInsets();
+  const {isMacWide} = useLayoutProfile();
   const inputRef = useRef<TextInput>(null);
   const submitRef = useRef<((text: string) => void) | null>(null);
   const loadingRef = useRef<boolean>(false);
@@ -47,6 +48,62 @@ export function HomeScreen() {
   });
 
   const scrollBottomPad = Math.max(bottom, 8) + BOTTOM_CHROME_PAD;
+  const hPad = isMacWide ? 32 : H_PAD;
+
+  const inputCard = (
+    <View style={styles.inputCard}>
+      <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+        Ask the AI guide
+      </Text>
+      <AIGuideChatSection
+        layoutMode="homeInline"
+        inputRef={inputRef}
+        submitRef={submitRef}
+        loadingRef={loadingRef}
+      />
+    </View>
+  );
+
+  const inputStrip = (
+    <View style={styles.inputStrip}>
+      <Pressable
+        style={[styles.micBtn, speech.isListening && styles.micBtnActive]}
+        onPress={() => {
+          inputRef.current?.blur();
+          speech.toggleSpeech();
+        }}
+        disabled={loadingRef.current}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={speech.isListening ? 'Stop voice input' : 'Start voice input'}>
+        <MicIcon
+          size={18}
+          color={speech.isListening ? HertzTheme.neon.magenta : HertzTheme.neon.cyan}
+        />
+      </Pressable>
+      <TextInput
+        ref={inputRef}
+        style={[styles.stripInput, speech.isListening && styles.stripInputListening]}
+        value={prompt}
+        onChangeText={setPrompt}
+        placeholder={speech.isListening ? 'Listening…' : 'Describe your goal…'}
+        placeholderTextColor={
+          speech.isListening ? HertzTheme.neon.magenta : HertzTheme.text.muted
+        }
+        returnKeyType="send"
+        onSubmitEditing={handleSubmit}
+        maxFontSizeMultiplier={1.3}
+      />
+      <Pressable
+        style={[styles.goBtn, (!prompt.trim() || loadingRef.current) && styles.goBtnDisabled]}
+        onPress={handleSubmit}
+        disabled={!prompt.trim() || loadingRef.current}>
+        <Text style={styles.goBtnText} maxFontSizeMultiplier={1.2}>
+          Go
+        </Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -55,78 +112,33 @@ export function HomeScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? top : 0}>
       <StatusBar barStyle="light-content" backgroundColor={HertzTheme.bg} translucent={false} />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {paddingTop: top + 8, paddingBottom: scrollBottomPad},
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled>
+      <ScreenScrollLayout
+        bottomInset={scrollBottomPad}
+        contentContainerStyle={[styles.scrollContent, {paddingTop: top + 8, paddingHorizontal: hPad}]}>
         <Text style={styles.brand} maxFontSizeMultiplier={1.2}>
           HERTZ LABS
         </Text>
 
-        <HomeBeatSlider />
-
-        <HomeHorizontalBands />
-
-        <View style={styles.inputCard}>
-          <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
-            Ask the AI guide
-          </Text>
-          <AIGuideChatSection
-            layoutMode="homeInline"
-            inputRef={inputRef}
-            submitRef={submitRef}
-            loadingRef={loadingRef}
-          />
-        </View>
-
-        <View style={styles.inputStrip}>
-          <Pressable
-            style={[styles.micBtn, speech.isListening && styles.micBtnActive]}
-            onPress={() => {
-              inputRef.current?.blur();
-              speech.toggleSpeech();
-            }}
-            disabled={loadingRef.current}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={speech.isListening ? 'Stop voice input' : 'Start voice input'}>
-            <MicIcon
-              size={18}
-              color={speech.isListening ? HertzTheme.neon.magenta : HertzTheme.neon.cyan}
-            />
-          </Pressable>
-          <TextInput
-            ref={inputRef}
-            style={[styles.stripInput, speech.isListening && styles.stripInputListening]}
-            value={prompt}
-            onChangeText={setPrompt}
-            placeholder={speech.isListening ? 'Listening…' : 'Describe your goal…'}
-            placeholderTextColor={
-              speech.isListening ? HertzTheme.neon.magenta : HertzTheme.text.muted
-            }
-            returnKeyType="send"
-            onSubmitEditing={handleSubmit}
-            maxFontSizeMultiplier={1.3}
-          />
-          <Pressable
-            style={[styles.goBtn, (!prompt.trim() || loadingRef.current) && styles.goBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={!prompt.trim() || loadingRef.current}>
-            <Text style={styles.goBtnText} maxFontSizeMultiplier={1.2}>
-              Go
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.footer}>
-          <LegalMenuBar />
-        </View>
-      </ScrollView>
+        {isMacWide ? (
+          <>
+            <View style={styles.macColumns}>
+              <View style={styles.macLeft}>
+                <HomeBeatSlider />
+                <HomeHorizontalBands />
+              </View>
+              <View style={styles.macRight}>{inputCard}</View>
+            </View>
+            {inputStrip}
+          </>
+        ) : (
+          <>
+            <HomeBeatSlider />
+            <HomeHorizontalBands />
+            {inputCard}
+            {inputStrip}
+          </>
+        )}
+      </ScreenScrollLayout>
     </KeyboardAvoidingView>
   );
 }
@@ -136,12 +148,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: HertzTheme.bg,
   },
-  scroll: {
-    flex: 1,
+  scrollContent: {},
+  macColumns: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 24,
+    marginBottom: 4,
   },
-  scrollContent: {
-    paddingHorizontal: H_PAD,
-    flexGrow: 1,
+  macLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  macRight: {
+    flex: 1.15,
+    minWidth: 0,
   },
   brand: {
     fontFamily: HertzTheme.mono,
@@ -234,11 +254,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: HertzTheme.neon.cyan,
-  },
-  footer: {
-    backgroundColor: HertzTheme.bg,
-    borderTopWidth: 1,
-    borderTopColor: HertzTheme.glassBorder,
-    marginTop: 4,
   },
 });

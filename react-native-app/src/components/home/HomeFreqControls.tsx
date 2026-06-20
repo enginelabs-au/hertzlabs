@@ -1,5 +1,5 @@
-import React, {useCallback} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import React, {useCallback, useMemo} from 'react';
+import {Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
 import {
   beatHzFreeCapNorm,
   beatHzInteractionLimitsForTier,
@@ -9,6 +9,7 @@ import {
 import {MAX_BEAT_HZ} from '../../audio/paramMapping';
 import type {BeatSliderScale} from '../../audio/beatHzSlider';
 import {isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
+import {useLayoutProfile} from '../../platform/layoutProfile';
 import {
   formatBeatDisplay,
   formatBeatUnit,
@@ -91,7 +92,56 @@ export function HomeBeatSlider({compact = false}: {compact?: boolean}) {
 /** Alias for Simple Mode Engines screen. */
 export const SimpleBeatSlider = HomeBeatSlider;
 
-/** Compact horizontal band strip — all bands fit on one row. */
+function BandChip({
+  band,
+  active,
+  onSelect,
+  labelSize,
+  rangeSize,
+  style,
+}: {
+  band: ReturnType<typeof simpleHomeRailBands>[number];
+  active: boolean;
+  onSelect: (hz: number) => void;
+  labelSize: number;
+  rangeSize: number;
+  style?: object;
+}) {
+  const hex = band.hexColor;
+  return (
+    <Pressable
+      onPress={() => onSelect(midHzForBand(band))}
+      accessibilityRole="button"
+      accessibilityState={{selected: active}}
+      accessibilityLabel={`${band.scientific} ${band.rangeLabel}`}
+      style={[
+        styles.chip,
+        style,
+        {
+          borderTopColor: hex,
+          backgroundColor: active ? `${hex}40` : `${hex}14`,
+        },
+        active && {borderColor: hex},
+      ]}>
+      <Text
+        style={[styles.chipLabel, {color: hex, fontSize: labelSize}]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.55}>
+        {band.label}
+      </Text>
+      <Text
+        style={[styles.chipRange, {color: hex, fontSize: rangeSize}]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.55}>
+        {band.rangeLabel}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Compact band strip — all bands visible without horizontal scroll. */
 export function HomeHorizontalBands() {
   const beatHz = useHertzStore(s => s.beatHz);
   const setParam = useHertzStore(s => s.setParam);
@@ -101,6 +151,8 @@ export function HomeHorizontalBands() {
   const {max: interactMax} = beatHzInteractionLimitsForTier(tier);
   const activeBand = getBand(beatHz);
   const bands = simpleHomeRailBands();
+  const {width: screenWidth, fontScale} = useWindowDimensions();
+  const {isMacWide} = useLayoutProfile();
 
   const onSelect = useCallback(
     (hz: number) => {
@@ -113,38 +165,52 @@ export function HomeHorizontalBands() {
     [setParam, premiumUnlocked, interactMax, setActiveModal],
   );
 
+  const layout = useMemo(() => {
+    const available = Math.max(240, screenWidth - (isMacWide ? 64 : 32));
+    const count = bands.length;
+    const useTwoRows =
+      !isMacWide && (count > 5 || available / count < 42 || fontScale > 1.15);
+    const rowCount = useTwoRows ? 2 : 1;
+    const cols = useTwoRows ? Math.ceil(count / rowCount) : count;
+    const chipWidth = (available - (cols - 1) * 3) / cols;
+    const labelSize = Math.min(6.5, Math.max(5, chipWidth * 0.14));
+    const rangeSize = Math.min(5.5, Math.max(4, chipWidth * 0.11));
+    const row1 = useTwoRows ? bands.slice(0, cols) : bands;
+    const row2 = useTwoRows ? bands.slice(cols) : [];
+    return {row1, row2, labelSize, rangeSize, chipFlex: useTwoRows ? undefined : 1};
+  }, [bands, fontScale, isMacWide, screenWidth]);
+
   return (
     <View style={styles.stripWrap}>
       <Text style={styles.heading}>Frequency bands</Text>
       <View style={styles.stripRow}>
-        {bands.map(band => {
-          const active = band.label === activeBand.label;
-          const hex = band.hexColor;
-          return (
-            <Pressable
-              key={band.label}
-              onPress={() => onSelect(midHzForBand(band))}
-              accessibilityRole="button"
-              accessibilityState={{selected: active}}
-              accessibilityLabel={`${band.scientific} ${band.rangeLabel}`}
-              style={[
-                styles.chip,
-                {
-                  borderTopColor: hex,
-                  backgroundColor: active ? `${hex}40` : `${hex}14`,
-                },
-                active && {borderColor: hex},
-              ]}>
-              <Text style={[styles.chipLabel, {color: hex}]} numberOfLines={1} adjustsFontSizeToFit>
-                {band.label}
-              </Text>
-              <Text style={[styles.chipRange, {color: hex}]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>
-                {band.rangeLabel}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {layout.row1.map(band => (
+          <BandChip
+            key={band.label}
+            band={band}
+            active={band.label === activeBand.label}
+            onSelect={onSelect}
+            labelSize={layout.labelSize}
+            rangeSize={layout.rangeSize}
+            style={layout.chipFlex != null ? {flex: layout.chipFlex} : {flex: 1, minWidth: 0}}
+          />
+        ))}
       </View>
+      {layout.row2.length > 0 && (
+        <View style={[styles.stripRow, styles.stripRowSecond]}>
+          {layout.row2.map(band => (
+            <BandChip
+              key={band.label}
+              band={band}
+              active={band.label === activeBand.label}
+              onSelect={onSelect}
+              labelSize={layout.labelSize}
+              rangeSize={layout.rangeSize}
+              style={{flex: 1, minWidth: 0}}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -211,29 +277,30 @@ const styles = StyleSheet.create({
     gap: 3,
     width: '100%',
   },
+  stripRowSecond: {
+    marginTop: 3,
+  },
   chip: {
-    flex: 1,
     minWidth: 0,
     borderWidth: 1,
     borderColor: HertzTheme.glassBorder,
     borderTopWidth: 2,
     borderRadius: 6,
-    paddingHorizontal: 2,
-    paddingVertical: 5,
+    paddingHorizontal: 1,
+    paddingVertical: 4,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   chipLabel: {
     fontFamily: HertzTheme.mono,
-    fontSize: 6,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.15,
     textAlign: 'center',
   },
   chipRange: {
     fontFamily: HertzTheme.mono,
-    fontSize: 5,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 1,
     opacity: 0.85,
     textAlign: 'center',
   },

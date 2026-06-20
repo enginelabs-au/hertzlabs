@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AmbientNoiseSelector} from '../components/EngineSelector/AmbientNoiseSelector';
 import {EngineSelector} from '../components/EngineSelector/EngineSelector';
 import {EngineDialSection} from '../components/engines/EngineDialSection';
@@ -12,7 +12,7 @@ import {
   isExperimentalModeActive,
   isPremiumUnlocked,
 } from '../monetization/isPremiumUnlocked';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {HertzTheme} from '../theme/hertzTheme';
 import {SimplePlayerScreen} from './SimplePlayerScreen';
 
@@ -86,11 +86,7 @@ function AdvancedPlayerScreen() {
     <View style={styles.screen}>
       {highVolumeWarning && <VolumeWarningBanner />}
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled>
+      <ScreenScrollLayout>
         <ChannelReadoutRow dialValues={dialValues} />
         <EngineDialSection dialValues={dialValues} />
         <CategoryTabBar active={category} onChange={setCategory} />
@@ -135,9 +131,7 @@ function AdvancedPlayerScreen() {
             </Text>
           </Pressable>
         </View>
-
-        <LegalMenuBar />
-      </ScrollView>
+      </ScreenScrollLayout>
     </View>
   );
 }
@@ -146,13 +140,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: HertzTheme.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 8,
-    paddingBottom: 16,
   },
   volWarningBanner: {
     backgroundColor: 'rgba(251,191,36,0.1)',

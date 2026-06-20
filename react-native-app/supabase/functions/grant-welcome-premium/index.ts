@@ -2,10 +2,11 @@
  * Hertz Labs — grant-welcome-premium edge function
  *
  * POST /functions/v1/grant-welcome-premium
- * Body: { rcAppUserId: string }
+ * Body: { rcAppUserId: string, campaign?: string }
  *
  * Grants a one-time 7-day promotional Premium entitlement via RevenueCat v2 API.
- * Each RC app user id may claim once.
+ * Extends existing Premium by 7 days when the user already has access.
+ * Each RC app user id may claim once per campaign.
  */
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
@@ -13,6 +14,7 @@ import {grantRcPremiumForMs, RC_GRANT_DURATIONS_MS} from '../_shared/rcGrant.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const DEFAULT_CAMPAIGN = '202606_v2';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -28,7 +30,7 @@ Deno.serve(async (req: Request) => {
     return json({ok: false, error: 'Method not allowed.'}, 405);
   }
 
-  let body: {rcAppUserId?: string};
+  let body: {rcAppUserId?: string; campaign?: string};
   try {
     body = await req.json();
   } catch {
@@ -36,6 +38,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const rcAppUserId = (body.rcAppUserId ?? '').trim();
+  const campaign = (body.campaign ?? DEFAULT_CAMPAIGN).trim() || DEFAULT_CAMPAIGN;
+
   if (rcAppUserId.length === 0) {
     return json({ok: false, error: 'Could not identify your account. Please try again.'}, 400);
   }
@@ -46,10 +50,15 @@ Deno.serve(async (req: Request) => {
     .from('welcome_premium_grants')
     .select('id')
     .eq('rc_user_id', rcAppUserId)
+    .eq('campaign', campaign)
     .maybeSingle();
 
   if (existing != null) {
-    return json({ok: false, error: 'Welcome Premium has already been activated on this account.'}, 409);
+    return json({
+      ok: true,
+      message: 'Welcome Premium is already active on this account.',
+      alreadyClaimed: true,
+    });
   }
 
   const grant = await grantRcPremiumForMs(rcAppUserId, RC_GRANT_DURATIONS_MS.weekly);
@@ -57,7 +66,10 @@ Deno.serve(async (req: Request) => {
     return json({ok: false, error: grant.error}, grant.status ?? 502);
   }
 
-  const {error: insertErr} = await sb.from('welcome_premium_grants').insert({rc_user_id: rcAppUserId});
+  const {error: insertErr} = await sb.from('welcome_premium_grants').insert({
+    rc_user_id: rcAppUserId,
+    campaign,
+  });
   if (insertErr != null) {
     console.error('[grant-welcome-premium] insert failed:', insertErr.message);
     return json({ok: false, error: 'Could not record activation — contact support if Premium is missing.'}, 500);
@@ -65,8 +77,9 @@ Deno.serve(async (req: Request) => {
 
   return json({
     ok: true,
-    message: 'Premium activated for 7 days.',
-    expiresHint: 'Your complimentary Premium access lasts 7 days from activation.',
+    message: 'Premium activated — 7 complimentary days added to your account.',
+    expiresAtMs: grant.expiresAtMs,
+    extendedExisting: grant.expiresAtMs > Date.now() + RC_GRANT_DURATIONS_MS.weekly,
   });
 });
 

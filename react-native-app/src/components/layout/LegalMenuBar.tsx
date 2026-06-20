@@ -11,7 +11,7 @@ type LegalMenuBarProps = {
   showLayoutToggle?: boolean;
 };
 
-/** Plans + Legal + layout mode — pinned at the bottom of each screen. */
+/** Plans + Legal + layout mode — scrolls with page content at the foot of each screen. */
 export function LegalMenuBar({showLayoutToggle = true}: LegalMenuBarProps) {
   const insets = useSafeAreaInsets();
   const {fontScale} = useWindowDimensions();
@@ -81,8 +81,10 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 4,
-    backgroundColor: 'rgba(12,14,22,0.96)',
+    paddingTop: 8,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
   },
   row: {
     flexDirection: 'row',

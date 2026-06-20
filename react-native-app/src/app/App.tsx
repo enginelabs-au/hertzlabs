@@ -203,12 +203,16 @@ function AppContent(): React.JSX.Element {
 }
 
 export function App(): React.JSX.Element {
+  const isMacDesktop = Platform.OS === 'ios' && Platform.isMacCatalyst === true;
+
   return (
     <SafeAreaProvider>
       <RootErrorBoundary>
         <GestureHandlerRootView style={styles.root}>
           <StatusBar barStyle="light-content" backgroundColor={BG} translucent={false} />
-          <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+          <SafeAreaView
+            style={styles.safe}
+            edges={isMacDesktop ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}>
             <AppContent />
           </SafeAreaView>
         </GestureHandlerRootView>

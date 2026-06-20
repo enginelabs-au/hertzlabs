@@ -1,6 +1,6 @@
 import React, {useState, useCallback, useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {ScrollView} from 'react-native-gesture-handler';
+import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
 import {MathMode3DHeader} from '../components/math/MathMode3DHeader';
@@ -11,7 +11,6 @@ import {ActiveTargetChip} from '../components/math/ActiveTargetChip';
 import {CustomFormulaSection} from '../components/math/CustomFormulaSection';
 import {AIFormulaSection} from '../components/math/AIFormulaSection';
 import {ProtocolSequencesSection} from '../components/protocol/ProtocolSequencesSection';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {DEFAULT_BEAT_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -110,11 +109,7 @@ export function MathModeScreen() {
   }, [liveFormula, activePreset]);
 
   return (
-    <View style={styles.root}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
+    <ScreenScrollLayout contentContainerStyle={styles.content}>
         <MathMode3DHeader />
 
         <ActiveTargetChip
@@ -153,24 +148,12 @@ export function MathModeScreen() {
         />
 
         <ProtocolSequencesSection foldStyle={styles.aiFold} />
-
-        <View style={styles.bottomPad} />
-      </ScrollView>
-      <LegalMenuBar />
-    </View>
+    </ScreenScrollLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: HertzTheme.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
   content: {
-    paddingTop: 8,
     paddingBottom: 24,
   },
   sectionTitle: {
@@ -186,8 +169,5 @@ const styles = StyleSheet.create({
   aiFold: {
     marginHorizontal: 16,
     marginBottom: 8,
-  },
-  bottomPad: {
-    height: 16,
   },
 });

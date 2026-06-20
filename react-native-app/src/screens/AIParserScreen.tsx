@@ -2,12 +2,11 @@ import React, {useCallback} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {AIGuideChatSection} from '../components/ai/AIGuideChatSection';
 import {AIFormulaSection} from '../components/math/AIFormulaSection';
 import {ProtocolSequencesSection} from '../components/protocol/ProtocolSequencesSection';
@@ -30,11 +29,7 @@ export function AIParserScreen() {
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+      <ScreenScrollLayout contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>AI Assistant</Text>
           <Text style={styles.headerSubtitle}>
@@ -69,10 +64,7 @@ export function AIParserScreen() {
             consult a qualified professional for any health concern.
           </Text>
         </View>
-
-        <View style={styles.bottomPad} />
-      </ScrollView>
-      <LegalMenuBar />
+      </ScreenScrollLayout>
     </KeyboardAvoidingView>
   );
 }
@@ -82,13 +74,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: HertzTheme.bg,
   },
-  scroll: {
-    flex: 1,
-  },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
-    paddingTop: 16,
     gap: 10,
   },
   header: {
@@ -122,8 +109,5 @@ const styles = StyleSheet.create({
   infoBold: {
     fontWeight: '700',
     color: WARN,
-  },
-  bottomPad: {
-    height: 20,
   },
 });

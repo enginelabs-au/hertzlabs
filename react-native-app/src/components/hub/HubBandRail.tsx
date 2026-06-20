@@ -1,5 +1,5 @@
-import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
 import {BRAINWAVE_BANDS, getBandIndex, railBands} from '../ReadoutPanel/brainwaveBands';
@@ -41,9 +41,8 @@ function midHzForBand(
 
 /**
  * Vertical brainwave band rail down the left edge of the hub (mirrors the phase
- * slider on the right). Each cell is a laser/neon strip tinted to the band hue;
- * the active band follows the beat slider live on the UI thread and only
- * re-renders on a band crossing (getBandIndex is discrete), so it stays smooth.
+ * slider on the right). All band cells are sized to fit the rail height — no
+ * nested scroll so every band is visible at once.
  */
 export function HubBandRail({
   beatHz,
@@ -70,13 +69,22 @@ export function HubBandRail({
 
   const bands = bandsProp ?? railBands(experimental);
 
+  const {cellHeight, labelSize, rangeSize} = useMemo(() => {
+    const verticalPad = 8;
+    const gapTotal = cellGap * Math.max(0, bands.length - 1);
+    const available = Math.max(0, height - verticalPad - gapTotal);
+    const perCell = bands.length > 0 ? available / bands.length : 0;
+    const h = Math.max(16, perCell);
+    return {
+      cellHeight: h,
+      labelSize: Math.min(8, Math.max(5.5, h * 0.3)),
+      rangeSize: Math.min(6.5, Math.max(4.5, h * 0.24)),
+    };
+  }, [bands.length, cellGap, height]);
+
   return (
     <View style={[styles.rail, {width, height}]}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, {gap: cellGap}]}
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled>
+      <View style={[styles.railInner, {gap: cellGap}]}>
         {bands.map(band => {
           const globalIdx = BRAINWAVE_BANDS.findIndex(b => b.label === band.label);
           const active = globalIdx === activeIndex;
@@ -90,10 +98,7 @@ export function HubBandRail({
               accessibilityLabel={`${band.scientific} (${band.label}) ${band.rangeLabel}`}
               style={[
                 styles.cell,
-                {
-                  borderLeftColor: hex,
-                  backgroundColor: active ? `${hex}33` : `${hex}12`,
-                },
+                {height: cellHeight, borderLeftColor: hex, backgroundColor: active ? `${hex}33` : `${hex}12`},
                 active && {
                   borderColor: hex,
                   borderWidth: 1,
@@ -107,19 +112,21 @@ export function HubBandRail({
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                minimumFontScale={0.7}
-                style={[styles.label, {color: hex, opacity: active ? 1 : 0.82}]}>
+                minimumFontScale={0.55}
+                style={[styles.label, {color: hex, opacity: active ? 1 : 0.82, fontSize: labelSize}]}>
                 {band.label}
               </Text>
               <Text
                 numberOfLines={1}
-                style={[styles.range, {color: hex, opacity: active ? 0.9 : 0.55}]}>
+                adjustsFontSizeToFit
+                minimumFontScale={0.55}
+                style={[styles.range, {color: hex, opacity: active ? 0.9 : 0.55, fontSize: rangeSize}]}>
                 {band.rangeLabel}
               </Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -130,34 +137,30 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: HertzTheme.glassBorder,
     backgroundColor: 'rgba(0,0,0,0.2)',
+    overflow: 'hidden',
   },
-  scroll: {
+  railInner: {
     flex: 1,
-  },
-  scrollContent: {
     paddingVertical: 4,
     paddingHorizontal: 2,
-    flexGrow: 1,
   },
   cell: {
-    minHeight: 28,
     borderLeftWidth: 3,
     borderRadius: 5,
-    paddingLeft: 5,
-    paddingRight: 3,
-    paddingVertical: 3,
+    paddingLeft: 4,
+    paddingRight: 2,
+    paddingVertical: 1,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   label: {
     fontFamily: HertzTheme.mono,
-    fontSize: 8,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.15,
   },
   range: {
     fontFamily: HertzTheme.mono,
-    fontSize: 6.5,
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 0,
   },
 });

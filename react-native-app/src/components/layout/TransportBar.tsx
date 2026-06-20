@@ -1,8 +1,12 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {BlurView} from '@sbaiahmed1/react-native-blur';
+import {isMacDesktopBuild} from '../../platform/layoutProfile';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
+
+/** Matches BlurView overlay on iOS when Mac Catalyst cannot render UIVisualEffectView. */
+const MAC_TRANSPORT_BACKDROP = 'rgba(8,10,18,0.96)';
 
 /**
  * Persistent playback strip — fixed above tab navigation, isolated from scroll content.
@@ -11,16 +15,21 @@ export function TransportBar() {
   const isPlaying = useHertzStore(s => s.isPlaying);
   const requestPlay = useHertzStore(s => s.requestPlay);
   const requestPause = useHertzStore(s => s.requestPause);
+  const macDesktop = isMacDesktopBuild();
 
   return (
-    <View style={styles.bar}>
-      <BlurView
-        style={StyleSheet.absoluteFill}
-        blurType="systemChromeMaterialDark"
-        blurAmount={20}
-        overlayColor="rgba(8,10,18,0.32)"
-        reducedTransparencyFallbackColor="#0A0C12"
-      />
+    <View style={[styles.bar, macDesktop && styles.barMac]}>
+      {macDesktop ? (
+        <View style={styles.macBackdrop} />
+      ) : (
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          blurType="systemChromeMaterialDark"
+          blurAmount={20}
+          overlayColor="rgba(8,10,18,0.32)"
+          reducedTransparencyFallbackColor="#0A0C12"
+        />
+      )}
       <View style={styles.inner}>
         <View style={styles.sideSlot}>
           {isPlaying ? (
@@ -62,6 +71,13 @@ const styles = StyleSheet.create({
     borderTopColor: HertzTheme.glassBorder,
     backgroundColor: 'transparent',
     overflow: 'hidden',
+  },
+  barMac: {
+    backgroundColor: MAC_TRANSPORT_BACKDROP,
+  },
+  macBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: MAC_TRANSPORT_BACKDROP,
   },
   inner: {
     flexDirection: 'row',

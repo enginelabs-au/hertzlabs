@@ -194,23 +194,39 @@ Required before Features 7 and 8 can go live:
 
 No new IAP or store-side offers are required for the 7-day Welcome Premium gift (RevenueCat promotional grant). To ship to users:
 
-1. **Test on device** — Open app → Welcome modal → tap **Activate Premium** → confirm Premium unlocks (7 days). Premium gift reminders appear 1 day before and on expiry day. Forced update screen only appears when you enable it in Supabase (see below).
+1. **Test on device** — Open app → Welcome modal → tap **Activate Premium** → confirm Premium unlocks (7 days). Premium gift reminders appear 1 day before and on expiry day. Users on builds below the store version see a blocking update screen until they update.
 2. **iOS** — Archive build **10** in Xcode → upload to App Store Connect → update **What's New** (suggested: *"Claim 7 days of Premium free — tap Activate Premium when prompted. Plus modal layout fixes and a cleaner Promos screen."*) → submit for review.
 3. **Android** — `npm run release:android:bundle` → upload AAB to Google Play → same release notes → rollout.
 4. **Optional marketing** — Add "7 days Premium free for all users" to App Store / Play store descriptions if desired (not required for the feature to work).
 
-### Mandatory update screen (only when you need it)
+### Mandatory update screen (permanent, automatic)
 
-Store updates are always user-initiated (App Store / Play Store). The app shows a **blocking update screen** only when you set `force_update = true` in Supabase `app_update_policy` for a platform **and** raise `min_version_code` above the user's installed build.
+Store updates are always user-initiated (App Store / Play Store). The app shows a **blocking update screen** when `force_update = true` in Supabase `app_update_policy` **and** the user's `versionCode` is below `latest_version_code`.
+
+**Every release (automatic):**
+
+1. Bump `versionCode` in `app.version.json`.
+2. Run `npm run sync:app-version` — or use `npm run release:ios` / `npm run release:android:bundle`, which run sync first. This sets `latest_version_code`, `min_version_code`, and `force_update = true` for **both** iOS and Android.
+3. Users on **older** builds see the blocking screen on **every app open** until they install from the store.
+4. Users on the **new** build never see the block (per device).
+
+Leave `force_update = true` in place permanently. Do **not** run the SQL below unless you want to disable forced updates entirely.
+
+**Disable forced updates** (only if you stop using this feature):
 
 ```sql
--- Example: force Android builds below 11 to update before using the app
 update public.app_update_policy
-set min_version_code = 11, force_update = true, updated_at = now()
-where platform = 'android';
+set force_update = false, updated_at = now()
+where platform in ('ios', 'android');
 ```
 
-Reset `force_update = false` after most users have updated. Users see the screen on **every app open** until they install the new build from the store.
+**Manual override** (emergency only):
+
+```sql
+update public.app_update_policy
+set latest_version_code = 11, min_version_code = 11, force_update = true, updated_at = now()
+where platform = 'android';
+```
 
 ---
 

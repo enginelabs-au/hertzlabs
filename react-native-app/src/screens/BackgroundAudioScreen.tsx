@@ -1,11 +1,9 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {ScrollView} from 'react-native-gesture-handler';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
-import {useCallback} from 'react';
 import {BackgroundDopplerField} from '../components/background/BackgroundDopplerField';
-import {LegalMenuBar} from '../components/layout/LegalMenuBar';
+import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const BG = HertzTheme.bg;
@@ -93,11 +91,7 @@ export function BackgroundAudioScreen() {
   const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
   return (
-    <View style={styles.screen}>
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}>
+    <ScreenScrollLayout contentContainerStyle={styles.content}>
       <BackgroundDopplerField />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Background Audio</Text>
@@ -106,45 +100,28 @@ export function BackgroundAudioScreen() {
         </Text>
       </View>
 
-      {/* Spotify Coming Soon */}
       <SpotifyComingSoon />
 
-      {/* Background Behavior */}
       <BackgroundBehaviorSection unlocked={unlocked} onUpgrade={openPaywall} />
 
-      {/* Info card */}
       <View style={styles.infoCard}>
         <Text style={styles.infoIcon}>ℹ</Text>
         <Text style={styles.infoText}>
           Hertz Labs uses <Text style={styles.infoBold}>mixWithOthers</Text> mode — your binaural beats will not interrupt music playing in other apps. Premium enables audio to continue when the app is minimised or the screen is locked.
         </Text>
       </View>
-
-      <View style={styles.bottomPad} />
-    </ScrollView>
-    <LegalMenuBar />
-    </View>
+    </ScreenScrollLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  root: {
-    flex: 1,
-    backgroundColor: BG,
-  },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
-    paddingTop: 16,
-    gap: 16,
+    paddingBottom: 24,
   },
   header: {
+    marginBottom: 16,
     gap: 4,
-    marginBottom: 4,
   },
   headerTitle: {
     fontSize: 26,
@@ -155,37 +132,48 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 13,
     color: MUTED,
+    lineHeight: 19,
+  },
+  sectionTitle: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 10,
+    fontWeight: '700',
+    color: MUTED,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 12,
   },
   spotifyCard: {
     backgroundColor: CARD,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   spotifyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 16,
     gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
   spotifyLogo: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(29,185,84,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  spotifyLogoActive: {
-    backgroundColor: '#1DB954',
-  },
   spotifyLogoText: {
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 20,
+    color: '#1DB954',
   },
   spotifyInfo: {
     flex: 1,
+    gap: 2,
   },
   spotifyTitle: {
     fontSize: 15,
@@ -195,69 +183,61 @@ const styles = StyleSheet.create({
   spotifySubtitle: {
     fontSize: 12,
     color: MUTED,
-    marginTop: 1,
+    lineHeight: 17,
+  },
+  comingSoonBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.3)',
+  },
+  comingSoonBadgeText: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 8,
+    fontWeight: '800',
+    color: LOCK_COLOR,
+    letterSpacing: 0.8,
   },
   spotifyComingSoonBody: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 10,
+    padding: 16,
+    gap: 12,
   },
   spotifyComingSoonText: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.55)',
     lineHeight: 19,
   },
-  comingSoonBadge: {
-    backgroundColor: 'rgba(147,197,253,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(147,197,253,0.3)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  comingSoonBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: 'rgba(147,197,253,0.8)',
-    letterSpacing: 1,
-  },
   tipRow: {
     flexDirection: 'row',
     gap: 8,
-    backgroundColor: 'rgba(74,222,128,0.06)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(92,225,255,0.06)',
+    borderRadius: 10,
+    padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(74,222,128,0.15)',
-    padding: 10,
+    borderColor: 'rgba(92,225,255,0.15)',
   },
   tipIcon: {
     fontSize: 14,
-    paddingTop: 1,
   },
   tipText: {
     flex: 1,
     fontSize: 12,
-    color: 'rgba(74,222,128,0.85)',
-    lineHeight: 18,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.6)',
+    lineHeight: 17,
   },
   bgBehaviorCard: {
     backgroundColor: CARD,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
     padding: 16,
-    gap: 12,
+    marginBottom: 16,
   },
   bgRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
   },
   bgRowLeft: {
@@ -275,58 +255,60 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   toggle: {
-    width: 44,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     padding: 3,
     justifyContent: 'center',
   },
   toggleOn: {
-    backgroundColor: ACCENT,
+    backgroundColor: 'rgba(74,222,128,0.25)',
   },
   toggleThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignSelf: 'flex-start',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.4)',
   },
   toggleThumbOn: {
     alignSelf: 'flex-end',
+    backgroundColor: ACCENT,
   },
   bgWarnRow: {
-    paddingTop: 4,
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(251,191,36,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
   },
   bgWarnText: {
     fontSize: 12,
     color: LOCK_COLOR,
+    lineHeight: 17,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(147,197,253,0.06)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(147,197,253,0.15)',
-    padding: 12,
     gap: 10,
+    backgroundColor: 'rgba(59,130,246,0.06)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.15)',
+    padding: 14,
   },
   infoIcon: {
-    fontSize: 14,
-    color: 'rgba(147,197,253,0.8)',
-    paddingTop: 1,
+    fontSize: 16,
+    color: 'rgba(147,197,253,0.9)',
   },
   infoText: {
     flex: 1,
     fontSize: 12,
-    color: 'rgba(147,197,253,0.7)',
+    color: 'rgba(255,255,255,0.55)',
     lineHeight: 18,
   },
   infoBold: {
     fontWeight: '700',
     color: 'rgba(147,197,253,0.9)',
-  },
-  bottomPad: {
-    height: 20,
   },
 });

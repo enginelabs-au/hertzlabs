@@ -16,12 +16,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         AudioSessionController.shared.configureForPlayback()
 
 #if DEBUG
+        #if !targetEnvironment(macCatalyst)
         #if targetEnvironment(simulator)
         ReactNativeDelegate.configureDebugBundleProvider()
         #else
         // Physical device: wipe any cached Metro IP so RCTBundleURLProvider
         // doesn't override the embedded-bundle URL we return in bundleURL().
         RCTBundleURLProvider.sharedSettings().jsLocation = nil
+        #endif
         #endif
 #endif
 
@@ -32,7 +34,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         reactNativeDelegate = delegate
         reactNativeFactory = factory
 
+#if targetEnvironment(macCatalyst)
+        window = MacCatalystDesktopWindow.makeWindow()
+#else
         window = UIWindow(frame: UIScreen.main.bounds)
+#endif
 
         factory.startReactNative(
             withModuleName: "HertzLabsBinauralBeats",
@@ -40,8 +46,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             launchOptions: launchOptions
         )
 
+#if targetEnvironment(macCatalyst)
+        MacCatalystDesktopWindow.configure(window)
+#endif
+
         return true
     }
+
+#if targetEnvironment(macCatalyst)
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        MacCatalystDesktopWindow.syncFrame(to: window)
+    }
+#endif
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
@@ -50,14 +66,17 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
     }
 
     override func bundleURL() -> URL? {
+#if targetEnvironment(macCatalyst)
+        // Mac desktop install always uses embedded release bundle (no Metro).
+        return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+#else
 #if DEBUG
 #if targetEnvironment(simulator)
         // Simulator: Metro for fast refresh.
         let host = ReactNativeDelegate.debugHost()
         return URL(string: "http://\(host):8081/index.bundle?platform=ios&dev=true&minify=false&lazy=true")
 #else
-        // Physical device: use the JS bundle Xcode embedded at build time so the
-        // app runs without Metro (avoids "Could not connect to development server").
+        // Physical device: embedded bundle when present (no Metro required).
         if let embedded = Bundle.main.url(forResource: "main", withExtension: "jsbundle") {
             return embedded
         }
@@ -66,6 +85,7 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 #endif
 #else
         Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+#endif
 #endif
     }
 

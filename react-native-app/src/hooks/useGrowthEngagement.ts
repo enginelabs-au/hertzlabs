@@ -1,6 +1,7 @@
 import {useEffect, useRef} from 'react';
 import {useHertzStore} from '../state/store';
 import {APP_VERSION} from '../constants/appInfo';
+import {WELCOME_PREMIUM_CAMPAIGN} from '../monetization/welcomePremiumConstants';
 import {confirmThenRequestAppReview} from '../monetization/requestAppReview';
 import {resolvePremiumGiftReminder} from '../monetization/premiumGiftReminders';
 import {checkAppUpdateRequired} from '../services/appUpdateService';
@@ -96,8 +97,7 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
 
     if (
       !welcomeScheduled.current &&
-      state.tier === 'free' &&
-      state.welcomePremiumClaimedAt == null
+      state.welcomePremiumCampaignId !== WELCOME_PREMIUM_CAMPAIGN
     ) {
       welcomeScheduled.current = true;
       setActiveModal('welcomePremium');
