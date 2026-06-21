@@ -2,7 +2,10 @@ import {describe, expect, it} from 'vitest';
 import {
   channelFrequencies,
   nativeBinauralFromChannels,
+  scopeEdgeTraceHz,
   scopeStereoHz,
+  SCOPE_ANIM_DETUNE,
+  SCOPE_EDGE_TONE_FOLD_HZ,
   SCOPE_VISUAL_MAX_BEAT_HZ,
   SCOPE_VISUAL_MIN_BEAT_HZ,
   VISUAL_BEAT_MAX_HZ,
@@ -76,6 +79,19 @@ describe('visualBeatHz (oscilloscope fold — never freezes)', () => {
       expect(leftHz).toBeGreaterThan(0.4);
       expect(rightHz).toBeGreaterThan(leftHz);
     }
+  });
+});
+
+describe('scopeEdgeTraceHz (hub border traces)', () => {
+  it('uses beat Hz when ear tone is in the dense carrier band', () => {
+    const {leftHz, rightHz} = scopeStereoHz(220, 40, 0, 0);
+    expect(leftHz).toBeGreaterThan(SCOPE_EDGE_TONE_FOLD_HZ);
+    expect(scopeEdgeTraceHz(leftHz, 40)).toBeCloseTo(40 * SCOPE_ANIM_DETUNE, 4);
+    expect(scopeEdgeTraceHz(rightHz, 40)).toBeCloseTo(40 * SCOPE_ANIM_DETUNE, 4);
+  });
+
+  it('keeps sub-carrier tones unchanged when below fold threshold', () => {
+    expect(scopeEdgeTraceHz(80, 10)).toBe(80);
   });
 });
 

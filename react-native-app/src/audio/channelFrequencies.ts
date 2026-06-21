@@ -100,6 +100,15 @@ export const SCOPE_VISUAL_MIN_BEAT_HZ = 0.5;
 export const SCOPE_VISUAL_MAX_BEAT_HZ = 500;
 
 /**
+ * Hub border traces use ear tone Hz. Above ~100 Hz the ripples look frozen on the
+ * small canvas — show the binaural beat instead (visual only; audio unchanged).
+ */
+export const SCOPE_EDGE_TONE_FOLD_HZ = 100;
+
+/** Slight detune so ~40 Hz loops don't phase-lock to 60 fps refreshes. */
+export const SCOPE_ANIM_DETUNE = 1.012;
+
+/**
  * Hub oscilloscope stereo pair — the exact previous-commit mapping (carrier ±
  * beat/2 with a 0.5 Hz ear floor), with the visual beat CLAMPED to [0.5, 500] Hz
  * so the scope never renders anything outside the normal frequency band. Used for
@@ -122,6 +131,20 @@ export function scopeStereoHz(
     leftHz: Math.max(SCOPE_VISUAL_MIN_BEAT_HZ, c - b * 0.5 + dl),
     rightHz: Math.max(SCOPE_VISUAL_MIN_BEAT_HZ, c + b * 0.5 + dr),
   };
+}
+
+/**
+ * Hub L/R edge trace display Hz — uses beat when ear tones are in the dense
+ * carrier band so the border waves keep scrolling (visual only).
+ */
+export function scopeEdgeTraceHz(toneHz: number, beatHz: number): number {
+  'worklet';
+  const tone = Number.isFinite(toneHz) ? toneHz : 220;
+  const beat = Math.max(SCOPE_VISUAL_MIN_BEAT_HZ, Number.isFinite(beatHz) ? beatHz : 10);
+  if (tone > SCOPE_EDGE_TONE_FOLD_HZ) {
+    return beat * SCOPE_ANIM_DETUNE;
+  }
+  return Math.max(SCOPE_VISUAL_MIN_BEAT_HZ, tone);
 }
 
 /** Identity-band floor for the visual fold (matches premium min beat). */

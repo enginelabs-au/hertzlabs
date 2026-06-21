@@ -166,6 +166,8 @@ export type Lissajous3DLayerOpts = {
   /** Y-axis rotation (radians) — tie to inter-aural phase for visible twist. */
   yawRad: number;
   pointCount?: number;
+  /** Multiply |R−L| beat before choosing loop period (hub-only detune vs vsync). */
+  beatPeriodScale?: number;
 };
 
 /**
@@ -186,9 +188,10 @@ export function appendLissajous3DLoop(builder: SkPathBuilder, opts: Lissajous3DL
     timeSec,
     yawRad,
     pointCount = 150,
+    beatPeriodScale = 1,
   } = opts;
   const phaseRad = (phaseDeg * Math.PI) / 180;
-  const beat = Math.max(Math.abs(rightHz - leftHz), 0.05);
+  const beat = Math.max(Math.abs(rightHz - leftHz), 0.05) * beatPeriodScale;
   const period = 1 / beat;
   const t0 = timeSec - period;
   const g = Math.min(Math.max(gain, 0), 1);

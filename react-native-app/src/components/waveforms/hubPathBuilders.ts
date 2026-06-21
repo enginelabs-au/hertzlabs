@@ -1,6 +1,6 @@
 import {Skia} from '@shopify/react-native-skia';
 import type {SkPath} from '@shopify/react-native-skia';
-import {scopeStereoHz} from '../../audio/channelFrequencies';
+import {SCOPE_ANIM_DETUNE, SCOPE_VISUAL_MIN_BEAT_HZ, scopeEdgeTraceHz, scopeStereoHz} from '../../audio/channelFrequencies';
 import {
   appendLissajous3DStack,
   appendOscilloscopeTrace,
@@ -62,6 +62,9 @@ export function buildHubScopePaths(
   // Exact previous-commit scope, clamped to [0.5, 500] Hz so nothing outside the
   // normal band is ever drawn (Experimental pitches hold the boundary pattern).
   const {leftHz, rightHz} = scopeStereoHz(carrierHz, beatHz, leftDriftHz, rightDriftHz);
+  const beatDiff = Math.max(Math.abs(rightHz - leftHz), SCOPE_VISUAL_MIN_BEAT_HZ);
+  const leftTraceHz = scopeEdgeTraceHz(leftHz, beatDiff);
+  const rightTraceHz = scopeEdgeTraceHz(rightHz, beatDiff);
   const size = Math.min(w, h);
   const cx = w * 0.48;
   const cy = h * 0.5;
@@ -76,7 +79,7 @@ export function buildHubScopePaths(
     length: topLen,
     center: size * 0.055,
     amplitude: borderAmp,
-    hz: leftHz,
+    hz: leftTraceHz,
     timeSec: t,
     orientation: 'horizontal',
     gain,
@@ -89,7 +92,7 @@ export function buildHubScopePaths(
     length: leftLen,
     center: size * 0.05,
     amplitude: borderAmp * 0.92,
-    hz: rightHz,
+    hz: rightTraceHz,
     timeSec: t,
     orientation: 'vertical',
     phaseRad,
@@ -114,6 +117,7 @@ export function buildHubScopePaths(
       balance,
       timeSec: t,
       pointCount: HUB_LISSAJOU_POINTS,
+      beatPeriodScale: SCOPE_ANIM_DETUNE,
     },
   );
 
