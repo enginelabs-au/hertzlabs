@@ -9,7 +9,6 @@ import {
 import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {AIGuideChatSection} from '../components/ai/AIGuideChatSection';
 import {AIFormulaSection} from '../components/math/AIFormulaSection';
-import {ProtocolSequencesSection} from '../components/protocol/ProtocolSequencesSection';
 import {useHertzStore} from '../state/store';
 import {isPremiumUnlocked} from '../monetization/isPremiumUnlocked';
 import {HertzTheme} from '../theme/hertzTheme';
@@ -34,8 +33,8 @@ export function AIParserScreen() {
           <Text style={styles.headerTitle}>AI Assistant</Text>
           <Text style={styles.headerSubtitle}>
             {isAdvancedMode
-              ? 'Two conversational modes — session guidance and math formulas — both apply settings to your live audio. Ask either mode for a custom timed sequence; it loads in Protocol Sequences below.'
-              : 'Tell the guide what you want to feel — it configures your session automatically behind the scenes.'}
+              ? 'Two conversational modes — session guidance and math formulas — both apply settings to your live audio. Ask either mode for a custom timed sequence; it loads in Protocol Sequences within each mode.'
+              : 'Tell the guide what you want to feel — it configures your session automatically. Timed sequences live in Protocol Sequences within this guide.'}
           </Text>
         </View>
 
@@ -45,14 +44,11 @@ export function AIParserScreen() {
         />
 
         {isAdvancedMode && (
-          <>
-            <AIFormulaSection
-              unlocked={unlocked}
-              onUpgrade={openPaywall}
-              foldStyle={FOLD_STYLE}
-            />
-            <ProtocolSequencesSection foldStyle={FOLD_STYLE} />
-          </>
+          <AIFormulaSection
+            unlocked={unlocked}
+            onUpgrade={openPaywall}
+            foldStyle={FOLD_STYLE}
+          />
         )}
 
         <View style={styles.infoCard}>

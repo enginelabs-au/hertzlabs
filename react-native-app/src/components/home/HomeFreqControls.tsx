@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
 import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
+import {commitBeatHzSelection} from '../../audio/commitBeatHzSelection';
 import {
   beatHzFreeCapNorm,
   beatHzInteractionLimitsForTier,
@@ -12,7 +13,7 @@ import {MAX_BEAT_HZ_PREMIUM} from '../../audio/paramMapping';
 import type {BeatSliderScale} from '../../audio/beatHzSlider';
 import {isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {useLayoutProfile} from '../../platform/layoutProfile';
-import {macScaledFont} from '../../platform/macTypography';
+import {macBandChipFontSizes, macScaledFont} from '../../platform/macTypography';
 import {
   formatBeatDisplay,
   formatBeatUnit,
@@ -227,8 +228,7 @@ export function HubHorizontalBands({
     const rowCount = useTwoRows ? 2 : 1;
     const cols = useTwoRows ? Math.ceil(count / rowCount) : count;
     const chipWidth = (available - (cols - 1) * 3) / cols;
-    const labelSize = macScaledFont(Math.min(compact ? 6 : 6.5, Math.max(5, chipWidth * 0.14)));
-    const rangeSize = macScaledFont(Math.min(compact ? 5 : 5.5, Math.max(4, chipWidth * 0.11)));
+    const {labelSize, rangeSize} = macBandChipFontSizes(compact, chipWidth);
     const row1 = useTwoRows ? bands.slice(0, cols) : bands;
     const row2 = useTwoRows ? bands.slice(cols) : [];
     return {row1, row2, labelSize, rangeSize, chipFlex: useTwoRows ? undefined : 1};

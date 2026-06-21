@@ -40,14 +40,9 @@ ruby "$IOS/scripts/fix-maccatalyst-prebuilt-frameworks.rb"
 echo "==> Pods (mac_catalyst_enabled in Podfile)"
 npm run pod:install
 
-echo "==> Bundle Release JS"
-mkdir -p "$(dirname "$BUNDLE_PATH")" "$ASSETS_PATH"
-npx react-native bundle \
-  --platform ios \
-  --dev false \
-  --entry-file index.js \
-  --bundle-output "$BUNDLE_PATH" \
-  --assets-dest "$ASSETS_PATH"
+echo "==> Bundle Release JS (Hermes bytecode — same as physical iPhone Release)"
+bash "$ROOT/scripts/bundle-hermes-release.sh" "$(dirname "$BUNDLE_PATH")"
+# bundle-hermes-release.sh writes main.jsbundle + assets/ under build/mac-catalyst/
 
 echo "==> Build Mac Catalyst ($MAC_CONFIG)"
 cd "$IOS"
@@ -89,7 +84,7 @@ ditto "$APP_SRC" "$DESKTOP_APP"
 xattr -d com.apple.quarantine "$DESKTOP_APP" 2>/dev/null || true
 MACOS_BIN="$DESKTOP_APP/Contents/MacOS/HertzLabsBinauralBeats"
 if [[ -f "$MACOS_BIN" ]]; then
-  codesign --force --sign - "$MACOS_BIN" 2>/dev/null || true
+  codesign --force --deep --sign - "$DESKTOP_APP" 2>/dev/null || codesign --force --sign - "$MACOS_BIN" 2>/dev/null || true
 fi
 
 echo ""

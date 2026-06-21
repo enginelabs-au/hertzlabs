@@ -11,6 +11,8 @@ import type {EngineMode} from '../../state/types';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {NeonSlider} from '../player/NeonSlider';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 
 const SIMPLE_ENGINE_ORDER: {mode: EngineMode; label: string}[] = [
   {mode: 'binaural', label: 'Binaural'},
@@ -29,6 +31,72 @@ type Selection =
 type SimpleEngineCarouselProps = {
   onUpgrade: () => void;
 };
+
+type SimpleEngineRowProps = {
+  mode: EngineMode;
+  label: string;
+  active: boolean;
+  locked: boolean;
+  selected: boolean;
+  onSelect: (mode: EngineMode) => void;
+};
+
+function SimpleEngineRow({mode, label, active, locked, selected, onSelect}: SimpleEngineRowProps) {
+  const [expanded, setExpanded] = useState(active || selected);
+  const meta = ENGINE_CATALOG.find(e => e.mode === mode);
+
+  return (
+    <View
+      style={[
+        styles.engineRowCard,
+        (active || selected) && styles.engineRowActive,
+        locked && styles.engineRowLocked,
+      ]}>
+      <Pressable
+        style={styles.engineRowHeader}
+        onPress={() => setExpanded(v => !v)}
+        accessibilityRole="button"
+        accessibilityState={{expanded}}>
+        <Text style={[styles.chevron, expanded && styles.chevronOpen]}>›</Text>
+        <View style={styles.engineRowBody}>
+          <Text
+            style={[styles.engineRowTitle, (active || selected) && styles.engineRowTitleActive]}
+            maxFontSizeMultiplier={1.3}>
+            {label}
+            {meta != null && <Text style={styles.engineRowTag}> · {meta.tag}</Text>}
+          </Text>
+          {meta != null && (
+            <Text style={styles.engineRowDesc} maxFontSizeMultiplier={1.3} numberOfLines={2}>
+              {meta.shortDesc}
+              {locked ? ' · Premium' : ''}
+            </Text>
+          )}
+        </View>
+        {active && <View style={styles.activeDot} accessibilityLabel="Selected" />}
+        {locked && !active && <Text style={styles.lockIcon}>🔒</Text>}
+      </Pressable>
+
+      {!locked && (
+        <Pressable
+          style={[styles.selectBtn, active && styles.selectBtnActive]}
+          onPress={() => onSelect(mode)}
+          accessibilityRole="radio"
+          accessibilityState={{selected: active}}>
+          <Text style={[styles.selectBtnText, active && styles.selectBtnTextActive]}>
+            {active ? '● Active' : '○ Select'}
+          </Text>
+        </Pressable>
+      )}
+
+      {expanded && !locked && (
+        <View style={styles.nestedFold}>
+          <BreathPacerSection foldStyle={styles.nestedFoldInner} embedded />
+          <ProtocolSequencesSection foldStyle={styles.nestedFoldInner} engineMode={mode} embedded />
+        </View>
+      )}
+    </View>
+  );
+}
 
 export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
   const engineType = useHertzStore(s => s.engineType);
@@ -79,7 +147,6 @@ export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
     [beatSliderScale, setNoiseMix],
   );
 
-  const engineMeta = ENGINE_CATALOG.find(e => e.mode === (selection.kind === 'engine' ? selection.mode : engineType));
   const noiseMeta =
     selection.kind === 'noise'
       ? NOISE_LAYER_CATALOG.find(n => n.id === selection.id)
@@ -142,35 +209,15 @@ export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
           }
 
           return (
-            <Pressable
+            <SimpleEngineRow
               key={mode}
-              style={[
-                styles.engineRow,
-                (active || selected) && styles.engineRowActive,
-                locked && styles.engineRowLocked,
-              ]}
-              onPress={() => onSelectEngine(mode)}
-              accessibilityRole="radio"
-              accessibilityState={{selected: active, disabled: locked}}>
-              <View style={styles.engineRowBody}>
-                <Text
-                  style={[styles.engineRowTitle, (active || selected) && styles.engineRowTitleActive]}
-                  maxFontSizeMultiplier={1.3}>
-                  {label}
-                  {meta != null && (
-                    <Text style={styles.engineRowTag}> · {meta.tag}</Text>
-                  )}
-                </Text>
-                {meta != null && (
-                  <Text style={styles.engineRowDesc} maxFontSizeMultiplier={1.3} numberOfLines={2}>
-                    {meta.shortDesc}
-                    {soon ? ' · Coming soon' : locked ? ' · Premium' : ''}
-                  </Text>
-                )}
-              </View>
-              {active && <View style={styles.activeDot} accessibilityLabel="Selected" />}
-              {locked && !active && <Text style={styles.lockIcon}>🔒</Text>}
-            </Pressable>
+              mode={mode}
+              label={label}
+              active={active}
+              locked={locked}
+              selected={selected}
+              onSelect={onSelectEngine}
+            />
           );
         })}
       </View>
@@ -202,23 +249,6 @@ export function SimpleEngineCarousel({onUpgrade}: SimpleEngineCarouselProps) {
           );
         })}
       </View>
-
-      {selection.kind === 'engine' && engineMeta != null && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle} maxFontSizeMultiplier={1.3}>
-            {engineMeta.label}
-            <Text style={styles.cardTag}> · {engineMeta.tag}</Text>
-          </Text>
-          <Text style={styles.cardDesc} maxFontSizeMultiplier={1.3}>
-            {engineMeta.shortDesc}
-          </Text>
-          {engineMeta.comingSoon && (
-            <Text style={styles.soonNote} maxFontSizeMultiplier={1.2}>
-              In development — preview only.
-            </Text>
-          )}
-        </View>
-      )}
 
       {selection.kind === 'noise' && noiseMeta != null && (
         <View style={[styles.card, {borderColor: `${noiseMeta.accent}55`}]}>
@@ -273,16 +303,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 8,
   },
-  engineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  engineRowCard: {
     borderRadius: 14,
     borderWidth: 1,
     borderColor: HertzTheme.glassBorder,
     backgroundColor: 'rgba(255,255,255,0.04)',
+    overflow: 'hidden',
+  },
+  engineRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 10,
+  },
+  chevron: {
+    fontSize: 18,
+    color: HertzTheme.text.muted,
+    width: 12,
+  },
+  chevronOpen: {
+    transform: [{rotate: '90deg'}],
+    color: HertzTheme.neon.cyan,
   },
   engineRowActive: {
     borderColor: HertzTheme.neon.cyan,
@@ -290,6 +332,37 @@ const styles = StyleSheet.create({
   },
   engineRowLocked: {
     opacity: 0.78,
+  },
+  selectBtn: {
+    marginHorizontal: 14,
+    marginBottom: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: HertzTheme.glassBorder,
+    alignItems: 'center',
+  },
+  selectBtnActive: {
+    borderColor: HertzTheme.neon.cyan,
+    backgroundColor: 'rgba(92,225,255,0.1)',
+  },
+  selectBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: HertzTheme.text.muted,
+  },
+  selectBtnTextActive: {
+    color: HertzTheme.neon.cyan,
+  },
+  nestedFold: {
+    borderTopWidth: 1,
+    borderTopColor: HertzTheme.glassBorder,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+    paddingTop: 4,
+  },
+  nestedFoldInner: {
+    marginHorizontal: 0,
   },
   engineRowBody: {
     flex: 1,

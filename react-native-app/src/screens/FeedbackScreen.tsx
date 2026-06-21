@@ -1,49 +1,51 @@
-import React, {useCallback} from 'react';
+import React, {useState} from 'react';
 import {
-  Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import {APP_VERSION} from '../constants/appInfo';
-import {SUPPORT_EMAIL} from '../constants/legalUrls';
+import {AppMessageForm} from '../components/messaging/AppMessageForm';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
+import {SUPPORT_EMAIL} from '../constants/appInfo';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
-
-function buildMailto(subject: string, bodyPrefix: string): string {
-  const meta = [
-    '',
-    '---',
-    `App version: ${APP_VERSION}`,
-    `Platform: ${Platform.OS} ${String(Platform.Version)}`,
-  ].join('\n');
-  const body = encodeURIComponent(`${bodyPrefix.trim()}\n${meta}`);
-  const subj = encodeURIComponent(subject);
-  return `mailto:${SUPPORT_EMAIL}?subject=${subj}&body=${body}`;
-}
 
 type FeedbackActionProps = {
   title: string;
   description: string;
   subject: string;
   bodyPrefix: string;
+  category: string;
 };
 
-function FeedbackAction({title, description, subject, bodyPrefix}: FeedbackActionProps) {
-  const open = useCallback(() => {
-    void Linking.openURL(buildMailto(subject, bodyPrefix));
-  }, [subject, bodyPrefix]);
+function FeedbackAction({title, description, subject, bodyPrefix, category}: FeedbackActionProps) {
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <Pressable style={styles.actionCard} onPress={open} accessibilityRole="button">
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionDesc}>{description}</Text>
-      <Text style={styles.actionEmail}>{SUPPORT_EMAIL}</Text>
-    </Pressable>
+    <View style={styles.actionCard}>
+      <Pressable
+        style={styles.actionHeader}
+        onPress={() => setExpanded(v => !v)}
+        accessibilityRole="button"
+        accessibilityState={{expanded}}>
+        <View style={styles.actionHeaderText}>
+          <Text style={styles.actionTitle}>{title}</Text>
+          <Text style={styles.actionDesc}>{description}</Text>
+        </View>
+        <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+      </Pressable>
+      {expanded && (
+        <AppMessageForm
+          to="support"
+          subject={subject}
+          category={category}
+          placeholder={`${bodyPrefix.trim()}\n\n`}
+          prompt={`Send a message to ${SUPPORT_EMAIL}. Device details are attached automatically.`}
+        />
+      )}
+    </View>
   );
 }
 
@@ -67,10 +69,11 @@ export function FeedbackScreen() {
 
         <ScrollView
           contentContainerStyle={[styles.scrollContent, scrollInsets]}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <Text style={styles.intro}>
-            Tell us what broke or what you want next. Your device details are pre-filled so we can
-            reproduce issues faster.
+            Tell us what broke or what you want next. Expand a card, write your message, and tap
+            Send — no email app required.
           </Text>
 
           <FeedbackAction
@@ -78,6 +81,7 @@ export function FeedbackScreen() {
             description="Something crashed, glitched, or behaved unexpectedly."
             subject="Hertz Labs bug report"
             bodyPrefix="What happened:\n\nSteps to reproduce:\n\nExpected vs actual:"
+            category="feedback_bug"
           />
 
           <FeedbackAction
@@ -85,10 +89,11 @@ export function FeedbackScreen() {
             description="Suggest an engine, protocol, or workflow improvement."
             subject="Hertz Labs feature request"
             bodyPrefix="I would love Hertz Labs to:"
+            category="feedback_feature"
           />
 
           <Text style={styles.note}>
-            Opens your mail app with {SUPPORT_EMAIL}. We aim to reply within two business days.
+            Messages go to {SUPPORT_EMAIL}. We aim to reply within two business days.
           </Text>
         </ScrollView>
       </View>
@@ -155,7 +160,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: HertzTheme.glassBorder,
     backgroundColor: HertzTheme.glassFill,
+    overflow: 'hidden',
+  },
+  actionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 14,
+    gap: 8,
+  },
+  actionHeaderText: {
+    flex: 1,
     gap: 4,
   },
   actionTitle: {
@@ -168,11 +182,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: HertzTheme.text.secondary,
   },
-  actionEmail: {
-    fontFamily: HertzTheme.mono,
-    fontSize: 10,
+  chevron: {
+    fontSize: 14,
     color: HertzTheme.text.muted,
-    marginTop: 2,
   },
   note: {
     fontSize: 12,

@@ -151,9 +151,14 @@ type ProtocolSequencesSectionProps = {
   foldStyle?: ViewStyle;
   /** When omitted, uses the live selected engine from the store (AI / Math tabs). */
   engineMode?: EngineMode;
+  embedded?: boolean;
 };
 
-export function ProtocolSequencesSection({foldStyle, engineMode}: ProtocolSequencesSectionProps) {
+export function ProtocolSequencesSection({
+  foldStyle,
+  engineMode,
+  embedded = false,
+}: ProtocolSequencesSectionProps) {
   const storeEngineType = useHertzStore(s => s.engineType);
   const resolvedEngine = engineMode ?? storeEngineType;
   const presets = useMemo(() => getProtocolsForEngine(resolvedEngine), [resolvedEngine]);
@@ -282,6 +287,7 @@ export function ProtocolSequencesSection({foldStyle, engineMode}: ProtocolSequen
       deepDive="Pick a journey, tweak any step's length, Hz glide, and volume, then start. Ask AI Guide or AI Formula for a custom sequence — it loads here for editing."
       isActive={protocolRunning}
       defaultExpanded={false}
+      embedded={embedded}
       style={foldStyle}>
       {isLive && <ProtocolRing />}
 

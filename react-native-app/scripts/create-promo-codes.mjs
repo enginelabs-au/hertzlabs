@@ -33,6 +33,10 @@ const maxUsesRaw = arg('--max-uses', '1');
 const maxUses = maxUsesRaw === 'null' ? null : Number.parseInt(maxUsesRaw, 10);
 
 const PRESETS = {
+  one_month: {
+    label: '1 Month Premium',
+    description: 'One month of Hertz Labs Premium free.',
+  },
   extended_trial: {
     label: '3-Month Premium',
     description: 'Enjoy 3 months of Hertz Labs Premium free.',

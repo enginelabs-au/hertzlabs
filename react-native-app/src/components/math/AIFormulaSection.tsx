@@ -14,6 +14,8 @@ import {getStereoFrequencies} from '../../audio/paramMapping';
 import {isExperimentalModeActive, isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MathFoldSection} from './MathFoldSection';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 import {AI_FORMULA_CHIPS, generateFormulaFromPrompt} from './aiFormulaGenerator';
 import {applyFormulaEvalToSession} from './applyFormulaEvalToSession';
 import type {FormulaAppliedPayload} from './activeFormulaDisplay';
@@ -173,7 +175,7 @@ export function AIFormulaSection({
       title="AI Formula"
       tag="Math"
       blurb="Describe a state or phenomenon — AI derives a formula or timed sequence and applies it live."
-      deepDive="Ask about brain states, resonance patterns, or multi-step journeys (e.g. “45 min sleep sequence”). Tap any past reply to re-apply. Sequences load in Protocol Sequences below."
+      deepDive="Ask about brain states, resonance patterns, or multi-step journeys (e.g. “45 min sleep sequence”). Tap any past reply to re-apply. Sequences load in Protocol Sequences here."
       isLocked={!unlocked}
       onUpgrade={onUpgrade}
       isActive={messages.length > 0}
@@ -255,6 +257,10 @@ export function AIFormulaSection({
         disabled={!prompt.trim() || loading}>
         <Text style={styles.sendBtnText}>Send →</Text>
       </Pressable>
+      <View style={styles.automationFolds}>
+        <BreathPacerSection foldStyle={styles.protocolFold} embedded />
+        <ProtocolSequencesSection foldStyle={styles.protocolFold} embedded />
+      </View>
     </MathFoldSection>
   );
 }
@@ -421,5 +427,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: HertzTheme.neon.cyan,
+  },
+  automationFolds: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 8,
+  },
+  protocolFold: {
+    marginHorizontal: 0,
   },
 });

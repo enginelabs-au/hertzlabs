@@ -71,7 +71,7 @@ export function PromoRedemptionModal() {
 
     // For trial / lifetime codes: the backend already called RC API to grant
     // the entitlement — refresh the local RC cache so the tier updates.
-    if (result.entitlement === 'extended_trial' || result.entitlement === 'lifetime') {
+    if (result.entitlement === 'one_month' || result.entitlement === 'extended_trial' || result.entitlement === 'lifetime') {
       const refreshed = await refreshRcEntitlements();
       if (refreshed) {
         try {
@@ -85,7 +85,9 @@ export function PromoRedemptionModal() {
 
     setStatus('success');
     setSuccessMsg(
-      result.entitlement === 'extended_trial'
+      result.entitlement === 'one_month'
+        ? `${result.label} activated! Your 1-month Premium starts now.`
+        : result.entitlement === 'extended_trial'
         ? `${result.label} activated! Your 3-month trial starts now.`
         : result.entitlement === 'lifetime'
           ? `${result.label} activated! Enjoy Hertz Labs for life.`

@@ -12,6 +12,8 @@ type MathFoldSectionProps = {
   isLocked?: boolean;
   onUpgrade?: () => void;
   defaultExpanded?: boolean;
+  /** Inset sub-fold inside a parent mode menu — not a top-level mode card. */
+  embedded?: boolean;
   style?: ViewStyle;
   children: React.ReactNode;
 };
@@ -26,6 +28,7 @@ export function MathFoldSection({
   isLocked = false,
   onUpgrade,
   defaultExpanded = false,
+  embedded = false,
   style,
   children,
 }: MathFoldSectionProps) {
@@ -42,36 +45,42 @@ export function MathFoldSection({
   return (
     <View
       style={[
-        styles.card,
-        isActive && styles.cardActive,
+        embedded ? styles.embeddedCard : styles.card,
+        isActive && (embedded ? styles.embeddedCardActive : styles.cardActive),
         isLocked && styles.cardLocked,
         style,
       ]}>
       <Pressable
-        style={styles.header}
+        style={embedded ? styles.embeddedHeader : styles.header}
         onPress={handleHeaderPress}
         accessibilityRole="button">
-        <Text style={[styles.chevron, expanded && !isLocked && styles.chevronOpen]}>›</Text>
-        <View style={styles.iconCircle}>
-          <Text style={styles.icon}>{icon}</Text>
-        </View>
+        <Text style={[styles.chevron, embedded && styles.embeddedChevron, expanded && !isLocked && styles.chevronOpen]}>›</Text>
+        {embedded ? (
+          <Text style={styles.embeddedIcon}>{icon}</Text>
+        ) : (
+          <View style={styles.iconCircle}>
+            <Text style={styles.icon}>{icon}</Text>
+          </View>
+        )}
         <View style={styles.textCol}>
-          <Text style={[styles.title, isLocked && styles.textMuted]}>
+          <Text style={[embedded ? styles.embeddedTitle : styles.title, isLocked && styles.textMuted]}>
             {title}
             {tag != null && <Text style={styles.tag}> · {tag}</Text>}
           </Text>
-          <Text style={styles.blurb}>{blurb}</Text>
+          <Text style={embedded ? styles.embeddedBlurb : styles.blurb}>{blurb}</Text>
           {expanded && !isLocked && deepDive != null && (
-            <Text style={styles.deepDive}>{deepDive}</Text>
+            <Text style={embedded ? styles.embeddedDeepDive : styles.deepDive}>{deepDive}</Text>
           )}
           {isLocked && (
             <Text style={styles.lockedHint}>🔒 Premium — tap to upgrade</Text>
           )}
         </View>
-        {isActive && !isLocked && <View style={styles.activeDot} />}
+        {isActive && !isLocked && <View style={[styles.activeDot, embedded && styles.embeddedActiveDot]} />}
       </Pressable>
 
-      {expanded && !isLocked && <View style={styles.body}>{children}</View>}
+      {expanded && !isLocked && (
+        <View style={embedded ? styles.embeddedBody : styles.body}>{children}</View>
+      )}
     </View>
   );
 }
@@ -169,5 +178,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
     paddingTop: 4,
+  },
+  embeddedCard: {
+    marginHorizontal: 0,
+    marginBottom: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    overflow: 'hidden',
+  },
+  embeddedCardActive: {
+    borderColor: 'rgba(92,225,255,0.35)',
+    backgroundColor: 'rgba(92,225,255,0.04)',
+  },
+  embeddedHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  embeddedChevron: {
+    marginTop: 1,
+    fontSize: 16,
+    width: 10,
+  },
+  embeddedIcon: {
+    fontSize: 14,
+    marginTop: 1,
+    width: 18,
+    textAlign: 'center',
+  },
+  embeddedTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: HertzTheme.text.primary,
+  },
+  embeddedBlurb: {
+    fontSize: 11,
+    color: HertzTheme.text.muted,
+  },
+  embeddedDeepDive: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 10,
+    lineHeight: 15,
+    color: HertzTheme.neon.cyan,
+    opacity: 0.85,
+    marginTop: 3,
+  },
+  embeddedActiveDot: {
+    width: 6,
+    height: 6,
+    marginTop: 4,
+  },
+  embeddedBody: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    paddingTop: 2,
   },
 });

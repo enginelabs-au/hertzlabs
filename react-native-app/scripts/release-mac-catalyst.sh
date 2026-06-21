@@ -45,15 +45,8 @@ xcodebuild -resolvePackageDependencies \
   -workspace HertzLabsBinauralBeats.xcworkspace \
   -scheme HertzLabsBinauralBeats
 
-echo "==> Bundle Release JS"
-mkdir -p "$(dirname "$BUNDLE_PATH")" "$ASSETS_PATH"
-cd "$ROOT"
-npx react-native bundle \
-  --platform ios \
-  --dev false \
-  --entry-file index.js \
-  --bundle-output "$BUNDLE_PATH" \
-  --assets-dest "$ASSETS_PATH"
+echo "==> Bundle Release JS (Hermes bytecode)"
+bash "$ROOT/scripts/bundle-hermes-release.sh" "$(dirname "$BUNDLE_PATH")"
 
 echo "==> Generate ExportOptions with App Store Connect API key"
 node "$ROOT/scripts/write-mac-export-options.mjs" "$EXPORT_PLIST"

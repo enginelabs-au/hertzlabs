@@ -383,7 +383,11 @@ function PromoCodeInput({
       return;
     }
     applyPromo(trimmed, result.entitlement);
-    if (result.entitlement === 'extended_trial' || result.entitlement === 'lifetime') {
+    if (
+      result.entitlement === 'one_month' ||
+      result.entitlement === 'extended_trial' ||
+      result.entitlement === 'lifetime'
+    ) {
       const info = await refreshRcEntitlements().then(async ok => {
         if (ok) {
           try {

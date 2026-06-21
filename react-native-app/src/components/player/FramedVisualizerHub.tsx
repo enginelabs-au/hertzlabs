@@ -15,6 +15,7 @@ import {isPremiumUnlocked} from '../../monetization/isPremiumUnlocked';
 import {quantizeBeatForDisplayWorklet} from '../../audio/beatHzSliderWorklet';
 import {BeatSliderScaleToggle} from './BeatSliderScaleToggle';
 import {clampDriftHz} from '../../audio/channelFrequencies';
+import {commitBeatHzSelection} from '../../audio/commitBeatHzSelection';
 import {
   AUDIBLE_CEILING_HZ,
   AUDIBLE_FLOOR_HZ,
@@ -140,8 +141,7 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
 
   const onSelectBandBeat = useCallback(
     (hz: number) => {
-      dialValues.gestureActive.value = false;
-      setParam('beatHz', hz);
+      commitBeatHzSelection(dialValues, hz, setParam);
     },
     [dialValues, setParam],
   );

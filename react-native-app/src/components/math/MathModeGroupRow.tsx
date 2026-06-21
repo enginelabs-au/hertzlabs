@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MATH_GROUP_META} from './mathModeMeta';
 
@@ -84,7 +85,8 @@ export function MathModeGroupRow({
             );
           })}
           <View style={styles.nestedFold}>
-            <BreathPacerSection foldStyle={styles.nestedFoldInner} />
+            <BreathPacerSection foldStyle={styles.nestedFoldInner} embedded />
+            <ProtocolSequencesSection foldStyle={styles.nestedFoldInner} embedded />
           </View>
         </View>
       )}

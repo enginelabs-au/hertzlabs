@@ -100,7 +100,9 @@ export function NeonSlider({
   useEffect(() => {
     runOnUI(() => {
       'worklet';
-      if (dragging.value === 0 && trackW.value > 0) {
+      if (trackW.value > 0) {
+        // External commits (band chips, store) must win over a stuck Mac mouse drag.
+        dragging.value = 0;
         thumbX.value = value * trackW.value;
         if (isBeatSlider) {
           beatHzOut!.value = beatHzFromSliderNormWorklet(

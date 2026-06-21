@@ -13,6 +13,7 @@ import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {useHertzStore} from '../state/store';
 import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
 import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
+import {usePromoRewardBoot} from './hooks/usePromoRewardBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
 import {subscribeToReferralLinks} from '../services/referralLinkService';
@@ -137,6 +138,7 @@ function useStoreHydrated(): boolean {
 function AppContent(): React.JSX.Element {
   useRevenueCatBoot();
   const hydrated = useStoreHydrated();
+  usePromoRewardBoot();
   const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
   const forceUpdateRequired = useHertzStore(s => s.forceUpdateRequired);
   const activeModal = useHertzStore(s => s.activeModal);

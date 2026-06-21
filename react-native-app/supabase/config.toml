@@ -45,3 +45,15 @@ verify_jwt = false
 
 [functions.submit-wellness-checkin]
 verify_jwt = false
+
+[functions.submit-form]
+verify_jwt = false
+
+[functions.send-app-message]
+verify_jwt = false
+
+[functions.approve-promo-submission]
+verify_jwt = false
+
+[functions.check-promo-rewards]
+verify_jwt = false

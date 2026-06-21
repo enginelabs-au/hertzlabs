@@ -26,11 +26,15 @@ export function WelcomePremiumModal() {
   const scrollInsets = useModalScrollInsets(32);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const markWelcomePremiumClaimed = useHertzStore(s => s.markWelcomePremiumClaimed);
+  const markWelcomePremiumOfferSeen = useHertzStore(s => s.markWelcomePremiumOfferSeen);
   const setWelcomePremiumExpiresAtMs = useHertzStore(s => s.setWelcomePremiumExpiresAtMs);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const [loading, setLoading] = useState(false);
 
-  const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
+  const dismiss = useCallback(() => {
+    markWelcomePremiumOfferSeen();
+    setActiveModal(null);
+  }, [markWelcomePremiumOfferSeen, setActiveModal]);
 
   const handleActivate = useCallback(async () => {
     if (loading) {

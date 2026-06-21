@@ -1,5 +1,7 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 import {MathFoldSection} from './MathFoldSection';
 import {CommandLineCard} from '../layout/CommandLineCard';
 import {CustomFormulaInput} from './CustomFormulaInput';
@@ -36,6 +38,10 @@ export function CustomFormulaSection({
         style={styles.commandLine}
       />
       <CustomFormulaInput embedded onFormulaApplied={onFormulaApplied} />
+      <View style={styles.nestedFold}>
+        <BreathPacerSection foldStyle={styles.nestedFoldInner} embedded />
+        <ProtocolSequencesSection foldStyle={styles.nestedFoldInner} embedded />
+      </View>
     </MathFoldSection>
   );
 }
@@ -44,5 +50,14 @@ const styles = StyleSheet.create({
   commandLine: {
     marginHorizontal: 0,
     marginBottom: 8,
+  },
+  nestedFold: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 8,
+  },
+  nestedFoldInner: {
+    marginHorizontal: 0,
   },
 });

@@ -14,7 +14,10 @@ import {isExperimentalModeActive, isPremiumUnlocked} from '../../monetization/is
 import type {EngineMode} from '../../state/types';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MathFoldSection} from '../math/MathFoldSection';
-import {SimpleSessionAutomationMenu} from '../simple/SimpleSessionAutomationMenu';
+import {SimpleCollapsibleSection} from '../simple/SimpleCollapsibleSection';
+import {SimpleSessionAutomation} from '../simple/SimpleSessionAutomation';
+import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 import {
   formatRecommendationMessage,
   generateGuidance,
@@ -137,6 +140,7 @@ export function AIGuideChatSection({
   const setProtocolDraftSeed = useHertzStore(s => s.setProtocolDraftSeed);
   const noteAiCall = useHertzStore(s => s.noteAiCall);
   const messages = useHertzStore(s => s.guideMessages);
+  const protocolRunning = useHertzStore(s => s.protocolRunning);
   const appendMessages = useHertzStore(s => s.appendGuideMessages);
   const resetChat = useHertzStore(s => s.resetGuideChat);
   const beatHz = useHertzStore(s => s.beatHz);
@@ -588,7 +592,25 @@ export function AIGuideChatSection({
         <Text style={styles.sendBtnText}>{isHome ? 'Go' : 'Send →'}</Text>
       </Pressable>
 
-      {isSimple && <SimpleSessionAutomationMenu style={{marginHorizontal: 0}} />}
+      {isSimple && (
+        <SimpleCollapsibleSection
+          title="Session tools"
+          subtitle="Breath pacing, automation & timed sequences"
+          isActive={protocolRunning || messages.length > 0}
+          style={styles.simpleGuideMenu}>
+          <SimpleSessionAutomation compact />
+          <View style={styles.automationFolds}>
+            <BreathPacerSection foldStyle={styles.protocolFold} embedded />
+            <ProtocolSequencesSection foldStyle={styles.protocolFold} embedded />
+          </View>
+        </SimpleCollapsibleSection>
+      )}
+      {layoutMode === 'advanced' && (
+        <View style={styles.automationFolds}>
+          <BreathPacerSection foldStyle={styles.protocolFold} embedded />
+          <ProtocolSequencesSection foldStyle={styles.protocolFold} embedded />
+        </View>
+      )}
     </>
   );
 
@@ -599,7 +621,7 @@ export function AIGuideChatSection({
         title="AI Guide"
         tag="Session"
         blurb="Describe how you want to feel — the guide suggests entrainment or builds a timed sequence."
-        deepDive="Chat to refine band, Hz, intensity, or multi-step journeys. Tap any past reply to re-apply. Sequences load in Protocol Sequences below."
+        deepDive="Chat to refine band, Hz, intensity, or multi-step journeys. Tap any past reply to re-apply. Sequences load in Protocol Sequences here."
         isActive={messages.length > 0}
         style={foldStyle}>
         {body}
@@ -912,5 +934,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: HertzTheme.neon.green,
+  },
+  protocolFold: {
+    marginHorizontal: 0,
+  },
+  automationFolds: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 8,
+  },
+  simpleGuideMenu: {
+    marginHorizontal: 0,
+    marginTop: 10,
   },
 });

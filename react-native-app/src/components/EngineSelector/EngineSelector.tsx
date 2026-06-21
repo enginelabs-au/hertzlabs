@@ -103,8 +103,8 @@ function EngineRow({meta, isActive, isLocked, isComingSoon, onSelect, onUpgrade}
 
       {expanded && (
         <View style={styles.seqWrap}>
-          <BreathPacerSection foldStyle={styles.seqFold} />
-          <ProtocolSequencesSection foldStyle={styles.seqFold} engineMode={meta.mode} />
+          <BreathPacerSection foldStyle={styles.seqFold} embedded />
+          <ProtocolSequencesSection foldStyle={styles.seqFold} engineMode={meta.mode} embedded />
         </View>
       )}
     </View>

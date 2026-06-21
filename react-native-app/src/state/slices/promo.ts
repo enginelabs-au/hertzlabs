@@ -5,6 +5,7 @@ import {WELCOME_PREMIUM_CAMPAIGN} from '../../monetization/welcomePremiumConstan
 import type {AppStore} from '../types';
 
 export type PromoEntitlement =
+  | 'one_month'
   | 'extended_trial'
   | 'lifetime'
   | 'discount_2mo'
@@ -15,6 +16,7 @@ export function normalizePromoEntitlement(
   value: string | null | undefined,
 ): PromoEntitlement | null {
   switch (value) {
+    case 'one_month':
     case 'extended_trial':
     case 'lifetime':
     case 'discount_2mo':
@@ -28,6 +30,9 @@ export function normalizePromoEntitlement(
       return null;
   }
 }
+
+/** Increment when outreach promo local state should reset on next launch for all users. */
+export const OUTREACH_PROMO_RESET_EPOCH = 3;
 
 export type PromoSlice = {
   /** Last promo code copied or awarded — pre-fills paywall redemption input. */
@@ -52,9 +57,18 @@ export type PromoSlice = {
   reviewRewardClaimed: boolean;
   streakReward7Claimed: boolean;
   streakReward30Claimed: boolean;
+  /** Milestone day numbers (40, 50, 60…) already claimed for +3 day bonuses */
+  streakBonusMilestonesClaimed: number[];
   anniversaryRewardClaimed: boolean;
   wellnessCheckinCount: number;
   lastWellnessCheckinDate: string | null;
+  /** User submitted Make a Post — awaiting admin review (not a grant). */
+  postSubmissionPending: boolean;
+  postRewardGranted: boolean;
+  practitionerSubmissionPending: boolean;
+  practitionerRewardGranted: boolean;
+  betaRequestPending: boolean;
+  betaRewardGranted: boolean;
   /** Unix ms when the user activated the one-time 7-day welcome Premium offer. */
   welcomePremiumClaimedAt: number | null;
   /** Campaign id for the welcome gift the user last claimed (null = never). */
@@ -65,10 +79,14 @@ export type PromoSlice = {
   welcomePremiumExpiryDayReminderShown: boolean;
   /** Which premium-gift reminder is currently being shown. */
   activePremiumGiftReminder: PremiumGiftReminderKind | null;
+  /** Bump to force-reset outreach promo attempt flags on next app launch (persisted). */
+  outreachPromoResetEpoch: number;
 
   setClipboardPromoCode(code: string | null): void;
   applyPromo(code: string, entitlement: PromoEntitlement, expiresAt?: number | null): void;
   markWelcomePremiumClaimed(): void;
+  /** User saw or dismissed the welcome gift offer for the current campaign. */
+  markWelcomePremiumOfferSeen(): void;
   setWelcomePremiumExpiresAtMs(expiresAtMs: number | null): void;
   markWelcomePremiumDayBeforeReminderShown(): void;
   markWelcomePremiumExpiryDayReminderShown(): void;
@@ -82,8 +100,18 @@ export type PromoSlice = {
   markReviewRewardClaimed(): void;
   markStreakReward7Claimed(): void;
   markStreakReward30Claimed(): void;
+  markStreakBonusMilestoneClaimed(milestoneDay: number): void;
   markAnniversaryRewardClaimed(): void;
   recordWellnessCheckin(): void;
+  markPostSubmissionPending(): void;
+  markPractitionerSubmissionPending(): void;
+  markBetaRequestPending(): void;
+  resetOutreachPromoAttempts(): void;
+  syncPromoRewardStatuses(statuses: {
+    post: 'none' | 'pending' | 'approved' | 'rejected';
+    practitioner: 'none' | 'pending' | 'approved' | 'rejected';
+    beta: 'none' | 'pending' | 'approved' | 'rejected';
+  }): void;
 };
 
 export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set => ({
@@ -99,15 +127,23 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   reviewRewardClaimed: false,
   streakReward7Claimed: false,
   streakReward30Claimed: false,
+  streakBonusMilestonesClaimed: [],
   anniversaryRewardClaimed: false,
   wellnessCheckinCount: 0,
   lastWellnessCheckinDate: null,
+  postSubmissionPending: false,
+  postRewardGranted: false,
+  practitionerSubmissionPending: false,
+  practitionerRewardGranted: false,
+  betaRequestPending: false,
+  betaRewardGranted: false,
   welcomePremiumClaimedAt: null,
   welcomePremiumCampaignId: null,
   welcomePremiumExpiresAtMs: null,
   welcomePremiumDayBeforeReminderShown: false,
   welcomePremiumExpiryDayReminderShown: false,
   activePremiumGiftReminder: null,
+  outreachPromoResetEpoch: 0,
 
   applyPromo(code, entitlement, expiresAt = null) {
     const normalized = normalizePromoEntitlement(entitlement);
@@ -193,6 +229,18 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   markStreakReward30Claimed() {
     set({streakReward30Claimed: true});
   },
+  markStreakBonusMilestoneClaimed(milestoneDay) {
+    set(s => {
+      if (s.streakBonusMilestonesClaimed.includes(milestoneDay)) {
+        return {};
+      }
+      return {
+        streakBonusMilestonesClaimed: [...s.streakBonusMilestonesClaimed, milestoneDay].sort(
+          (a, b) => a - b,
+        ),
+      };
+    });
+  },
   markAnniversaryRewardClaimed() {
     set({anniversaryRewardClaimed: true});
   },
@@ -209,12 +257,53 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
     });
   },
 
+  markPostSubmissionPending() {
+    set({postSubmissionPending: true});
+  },
+  markPractitionerSubmissionPending() {
+    set({practitionerSubmissionPending: true});
+  },
+  markBetaRequestPending() {
+    set({betaRequestPending: true});
+  },
+
+  resetOutreachPromoAttempts() {
+    set({
+      postSubmissionPending: false,
+      postRewardGranted: false,
+      practitionerSubmissionPending: false,
+      practitionerRewardGranted: false,
+      betaRequestPending: false,
+      betaRewardGranted: false,
+    });
+  },
+
+  syncPromoRewardStatuses(statuses) {
+    set({
+      postSubmissionPending: statuses.post === 'pending',
+      postRewardGranted: statuses.post === 'approved',
+      practitionerSubmissionPending: statuses.practitioner === 'pending',
+      practitionerRewardGranted: statuses.practitioner === 'approved',
+      betaRequestPending: statuses.beta === 'pending',
+      betaRewardGranted: statuses.beta === 'approved',
+    });
+  },
+
   markWelcomePremiumClaimed() {
     set({
       welcomePremiumClaimedAt: Date.now(),
       welcomePremiumCampaignId: WELCOME_PREMIUM_CAMPAIGN,
       welcomePremiumDayBeforeReminderShown: false,
       welcomePremiumExpiryDayReminderShown: false,
+    });
+  },
+
+  markWelcomePremiumOfferSeen() {
+    set(s => {
+      if (s.welcomePremiumCampaignId === WELCOME_PREMIUM_CAMPAIGN) {
+        return {};
+      }
+      return {welcomePremiumCampaignId: WELCOME_PREMIUM_CAMPAIGN};
     });
   },
 

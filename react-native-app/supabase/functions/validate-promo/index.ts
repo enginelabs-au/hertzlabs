@@ -22,7 +22,10 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+
 const RC_GRANT_MS: Record<string, number> = {
+  one_month: ONE_MONTH_MS,
   extended_trial: RC_GRANT_DURATIONS_MS.threeMonth,
   lifetime: RC_GRANT_DURATIONS_MS.lifetime,
 };
@@ -93,8 +96,12 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // 5. For trial/lifetime: grant RC promotional entitlement (v2 API)
-  if (promo.entitlement === 'extended_trial' || promo.entitlement === 'lifetime') {
+  // 5. For premium grants: call RC promotional entitlement API (v2)
+  if (
+    promo.entitlement === 'one_month' ||
+    promo.entitlement === 'extended_trial' ||
+    promo.entitlement === 'lifetime'
+  ) {
     if (rcAppUserId.length === 0) {
       return json({valid: false, error: 'Could not identify your account. Please sign in and try again.'}, 400);
     }

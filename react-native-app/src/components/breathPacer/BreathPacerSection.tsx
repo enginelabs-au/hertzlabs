@@ -13,9 +13,10 @@ import {NeonSlider} from '../player/NeonSlider';
 
 type BreathPacerSectionProps = {
   foldStyle?: ViewStyle;
+  embedded?: boolean;
 };
 
-export function BreathPacerSection({foldStyle}: BreathPacerSectionProps) {
+export function BreathPacerSection({foldStyle, embedded = false}: BreathPacerSectionProps) {
   const enabled = useHertzStore(s => s.breathPacerEnabled);
   const patternId = useHertzStore(s => s.breathPatternId);
   const deltaDb = useHertzStore(s => s.breathDeltaDb);
@@ -33,6 +34,7 @@ export function BreathPacerSection({foldStyle}: BreathPacerSectionProps) {
       tag="Overlay"
       blurb="Close your eyes — volume follows inhale, hold, exhale cycles in the DSP"
       defaultExpanded={false}
+      embedded={embedded}
       style={foldStyle}>
       <View style={styles.row}>
         <Text style={styles.toggleLabel}>Breath overlay</Text>

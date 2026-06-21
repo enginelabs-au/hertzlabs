@@ -5,4 +5,5 @@ export const SUPABASE_ANON_KEY =
 export const SUPABASE_FUNCTION_HEADERS = {
   'Content-Type': 'application/json',
   apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
 } as const;

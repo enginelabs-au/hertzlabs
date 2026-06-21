@@ -104,7 +104,6 @@ export function BackgroundDopplerField() {
     <GlassCard style={styles.wrap} padding={0}>
       <View style={styles.titleRow}>
         <Text style={styles.title}>DOPPLER SPATIALIZATION</Text>
-        <Text style={styles.spotifyTag}>SPOTIFY MIX</Text>
       </View>
 
       <View style={styles.hintRow}>
@@ -174,9 +173,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 4,
@@ -187,13 +183,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: HertzTheme.text.primary,
     letterSpacing: 1.2,
-  },
-  spotifyTag: {
-    fontFamily: HertzTheme.mono,
-    fontSize: macScaledFont(9),
-    fontWeight: '700',
-    color: HertzTheme.neon.green,
-    letterSpacing: 0.8,
   },
   hintRow: {
     paddingHorizontal: 14,

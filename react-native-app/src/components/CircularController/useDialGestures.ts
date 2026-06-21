@@ -54,6 +54,11 @@ export function useDialGestures(dialValues: DialValues) {
         beatHz: beatHz.value,
         phaseAngle: phaseAngle.value,
       });
+    })
+    .onFinalize(() => {
+      'worklet';
+      axisLock.value = 'none';
+      gestureActive.value = false;
     });
 
   const rotationGesture = Gesture.Rotation()
@@ -75,6 +80,10 @@ export function useDialGestures(dialValues: DialValues) {
         beatHz: beatHz.value,
         phaseAngle: phaseAngle.value,
       });
+    })
+    .onFinalize(() => {
+      'worklet';
+      gestureActive.value = false;
     });
 
   const composedGesture = Gesture.Simultaneous(rotationGesture, panGesture);

@@ -9,8 +9,6 @@ import {getMathPresetFormula} from '../components/math/mathModeFormulas';
 import type {ActiveFormulaDisplay, FormulaAppliedPayload} from '../components/math/activeFormulaDisplay';
 import {ActiveTargetChip} from '../components/math/ActiveTargetChip';
 import {CustomFormulaSection} from '../components/math/CustomFormulaSection';
-import {AIFormulaSection} from '../components/math/AIFormulaSection';
-import {ProtocolSequencesSection} from '../components/protocol/ProtocolSequencesSection';
 import {DEFAULT_BEAT_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -139,15 +137,6 @@ export function MathModeScreen() {
           onUpgrade={openPaywall}
           onFormulaApplied={handleFormulaApplied}
         />
-
-        <AIFormulaSection
-          unlocked={unlocked}
-          onUpgrade={openPaywall}
-          onFormulaApplied={handleFormulaApplied}
-          foldStyle={styles.aiFold}
-        />
-
-        <ProtocolSequencesSection foldStyle={styles.aiFold} />
     </ScreenScrollLayout>
   );
 }
@@ -165,9 +154,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 10,
     marginTop: 4,
-  },
-  aiFold: {
-    marginHorizontal: 16,
-    marginBottom: 8,
   },
 });
