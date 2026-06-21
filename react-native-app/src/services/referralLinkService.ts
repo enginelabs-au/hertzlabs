@@ -1,18 +1,17 @@
 /**
  * Referral deep links without a third-party attribution SDK.
  *
- * Share URL:  https://hertzlabs.app/r/?ref=HZ-XXXXXX
+ * Share URL:  https://enginelabs-au.github.io/hertzlabs/r/?ref=HZ-XXXXXX
  * App scheme: hertzlabs://open?ref=HZ-XXXXXX
  *
  * The /r/ landing page (docs/r/index.html) tries the custom scheme, then falls
- * back to App Store / Play Store. Universal Links / App Links open the app
- * directly when configured on hertzlabs.app.
+ * back to App Store / Play Store.
  */
 
 import {Linking} from 'react-native';
 
-/** Public referral landing page (GitHub Pages / custom domain). */
-export const REFERRAL_LANDING_BASE = 'https://hertzlabs.app/r/';
+/** Public referral landing page (GitHub Pages). */
+export const REFERRAL_LANDING_BASE = 'https://enginelabs-au.github.io/hertzlabs/r/';
 
 /** Custom URI scheme registered in iOS Info.plist + Android manifest. */
 export const APP_SCHEME = 'hertzlabs';
@@ -29,10 +28,10 @@ export function createAppSchemeReferralLink(referralCode: string): string {
 }
 
 /**
- * Extracts a referral code from HTTPS universal links or custom-scheme URLs.
+ * Extracts a referral code from HTTPS links or custom-scheme URLs.
  * Supported:
- *   https://hertzlabs.app/r/?ref=HZ-ABC
- *   https://hertzlabs.app/r/HZ-ABC
+ *   https://enginelabs-au.github.io/hertzlabs/r/?ref=HZ-ABC
+ *   https://enginelabs-au.github.io/hertzlabs/r/HZ-ABC
  *   hertzlabs://open?ref=HZ-ABC
  */
 export function parseReferralFromUrl(url: string): string | null {

@@ -1,4 +1,4 @@
-# Publishes react-native-app/docs to GitHub Pages at https://hertzlabs.app/ (custom domain via docs/CNAME)
+# Publishes react-native-app/docs to GitHub Pages at https://enginelabs-au.github.io/hertzlabs/
 # Repo settings → Pages → Build and deployment → Source: GitHub Actions
 name: Deploy legal pages
 
