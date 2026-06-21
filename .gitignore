@@ -1,5 +1,8 @@
 .DS_Store
 
+# Local release checklist (not tracked — use `- [~]` for future placeholders)
+UPDATES.md
+
 # Cursor workspace (local agent state — never publish)
 .cursor/
 

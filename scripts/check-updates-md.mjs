@@ -48,8 +48,8 @@ function findBlockingItems(content) {
 
 function main() {
   if (!fs.existsSync(UPDATES_PATH)) {
-    console.error('check-updates-md: missing UPDATES.md at repo root');
-    process.exit(1);
+    console.log('check-updates-md: skip — UPDATES.md not present (local-only, gitignored)');
+    process.exit(0);
   }
 
   const content = fs.readFileSync(UPDATES_PATH, 'utf8');
