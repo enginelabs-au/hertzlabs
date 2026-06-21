@@ -57,7 +57,7 @@ Local commits can be gated too: run `./scripts/install-git-hooks.sh` once (uses 
   - **ASC Lifetime (`hertzlabs_lifetime_ultra`):** ✅ Updated to **$59.99** via `POST /v1/inAppPurchasePriceSchedules` (v1 not v2; `${local-id}` format for included resources).
   - **Google Play Annual (`hertzlabs_bb_annual`):** ✅ All **173 regional configs** updated — US to **$29.99/yr**, all others scaled proportionally (×1.2) in their local currencies (e.g. AUD $41.99, GBP £26.99, CAD $41.99, JPY ¥5280). `otherRegionsConfig` USD/EUR baseline also updated.
   - **Google Play Lifetime (`hertzlabs_lifetime_ultra`):** ✅ All **173 regional configs** updated — US to **$59.99**, all others scaled proportionally (×3.0) in their local currencies (e.g. AUD $83.99, GBP £53.99, CAD $83.99, JPY ¥10564). `newRegionsConfig` USD/EUR baseline also updated.
-  - **Note:** Website store cards may still show legacy amounts — update manually if a price display component exists.
+  - **Note:** Website store cards updated to $29.99 annual / $59.99 lifetime; canonical domain `hertzlabs.app` (2026-06-19).
 
 ---
 
