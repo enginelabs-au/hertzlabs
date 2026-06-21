@@ -50,6 +50,7 @@
     "update:pricing": "node scripts/update-pricing.mjs"
   },
   "dependencies": {
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native/codegen": "latest",
     "@sbaiahmed1/react-native-blur": "^4.6.3",
     "@shopify/react-native-skia": "^2.6.4",

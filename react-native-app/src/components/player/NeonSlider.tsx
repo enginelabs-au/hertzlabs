@@ -1,9 +1,11 @@
-import React, {useCallback, useEffect} from 'react';
+import React, {useCallback, useEffect, useRef} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {runOnJS, runOnUI, useAnimatedStyle, useSharedValue} from 'react-native-reanimated';
 import type {SharedValue} from 'react-native-reanimated';
-import {beatHzFromSliderNormWorklet} from '../../audio/beatHzSliderWorklet';
+import {
+  beatHzFromSliderNormWorklet,
+} from '../../audio/beatHzSliderWorklet';
 import {HertzTheme} from '../../theme/hertzTheme';
 
 type NeonSliderProps = {
@@ -79,14 +81,38 @@ export function NeonSlider({
   const reset = useCallback(() => onReset?.(), [onReset]);
   const openPaywall = useCallback(() => onLockedZonePress?.(), [onLockedZonePress]);
 
+  const lastBeatChangeMs = useRef(0);
+  const commitBeatChange = useCallback(
+    (norm: number) => {
+      if (onChange == null) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastBeatChangeMs.current < 50) {
+        return;
+      }
+      lastBeatChangeMs.current = now;
+      onChange(Math.min(1, Math.max(0, norm)));
+    },
+    [onChange],
+  );
+
   useEffect(() => {
     runOnUI(() => {
       'worklet';
       if (dragging.value === 0 && trackW.value > 0) {
         thumbX.value = value * trackW.value;
+        if (isBeatSlider) {
+          beatHzOut!.value = beatHzFromSliderNormWorklet(
+            value,
+            beatSliderMinHz!.value,
+            beatSliderMaxHz!.value,
+            beatSliderScale!.value,
+          );
+        }
       }
     })();
-  }, [value, thumbX, trackW, dragging]);
+  }, [value, thumbX, trackW, dragging, isBeatSlider, beatHzOut, beatSliderMinHz, beatSliderMaxHz, beatSliderScale]);
 
   const clampX = (x: number) => {
     'worklet';
@@ -121,6 +147,9 @@ export function NeonSlider({
           beatSliderMaxHz!.value,
           beatSliderScale!.value,
         );
+        if (onChange) {
+          runOnJS(commitBeatChange)(norm);
+        }
       } else if (onChange) {
         runOnJS(commit)(norm);
       }
@@ -203,6 +232,14 @@ export function NeonSlider({
               trackW.value = w;
               if (dragging.value === 0) {
                 thumbX.value = value * w;
+                if (isBeatSlider) {
+                  beatHzOut!.value = beatHzFromSliderNormWorklet(
+                    value,
+                    beatSliderMinHz!.value,
+                    beatSliderMaxHz!.value,
+                    beatSliderScale!.value,
+                  );
+                }
               }
             })();
           }

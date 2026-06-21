@@ -13,7 +13,7 @@ export const PHASE_COL_W = PHASE_COLUMN_W;
 /** Horizontal beat slider docked at the bottom inside the glass frame. */
 export const IN_FRAME_BEAT_SLIDER_H = 52;
 
-/** Width of the vertical brainwave band rail (left edge of hub; mirrors the phase column). */
+/** Width of the vertical brainwave band rail (legacy; advanced hub uses horizontal bands). */
 export const BAND_RAIL_W = 58;
 
 /** Coloured brainwave band strip below the hub. @deprecated replaced by the in-frame vertical rail (BAND_RAIL_W). */
@@ -52,7 +52,7 @@ export function useHubLayout() {
   const beatSliderH = IN_FRAME_BEAT_SLIDER_H + expExtra;
   const frameH = baseFrameH + expExtra;
   const canvasH = frameH - beatSliderH;
-  const canvasW = Math.max(64, hubW - PHASE_COLUMN_W - BAND_RAIL_W);
+  const canvasW = Math.max(64, hubW - PHASE_COLUMN_W);
   const beatSliderW = Math.max(120, canvasW - 20);
   return {
     hubW,

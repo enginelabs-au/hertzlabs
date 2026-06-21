@@ -17,6 +17,8 @@ import {useHertzStore} from '../state/store';
 import {daysSince} from '../state/slices/promo';
 import {HertzTheme} from '../theme/hertzTheme';
 import {createReferralLink, REFERRAL_LANDING_BASE} from '../services/referralLinkService';
+import {formatPromoCodeDisplay} from '../monetization/promoCodeFormat';
+import {PromoCodeCopyButton} from '../components/monetization/PromoCodeCopyButton';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 
 const FORM_INPUT_ANDROID = Platform.select({
@@ -228,13 +230,14 @@ function ReferralCard({
           <Text style={styles.referralLabel}>YOUR REFERRAL CODE</Text>
           <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
         </View>
-        {!expanded && <Text style={styles.referralCodePreview}>{code}</Text>}
+        {!expanded && <Text style={styles.referralCodePreview}>{formatPromoCodeDisplay(code)}</Text>}
       </Pressable>
       {expanded && (
         <>
-          <Text style={styles.referralCode}>{code}</Text>
+          <Text style={styles.referralCode}>{formatPromoCodeDisplay(code)}</Text>
           <Text style={styles.referralLink}>{shareLink}</Text>
           <View style={styles.referralActions}>
+            <PromoCodeCopyButton code={code} />
             <Pressable style={styles.referralBtn} onPress={() => void handleShare()}>
               <Text style={styles.referralBtnText}>Share Link</Text>
             </Pressable>
@@ -273,7 +276,6 @@ export function PromosScreen() {
   const markStreakReward7Claimed = useHertzStore(s => s.markStreakReward7Claimed);
   const markStreakReward30Claimed = useHertzStore(s => s.markStreakReward30Claimed);
   const markAnniversaryRewardClaimed = useHertzStore(s => s.markAnniversaryRewardClaimed);
-  const recordWellnessCheckin = useHertzStore(s => s.recordWellnessCheckin);
 
   // Initialise on first visit
   useEffect(() => {
@@ -295,8 +297,7 @@ export function PromosScreen() {
     if (lastWellnessCheckinDate == null) {
       return true;
     }
-    const daysAgo = daysSince(lastWellnessCheckinDate);
-    return daysAgo >= 14;
+    return daysSince(lastWellnessCheckinDate) >= 7;
   })();
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -329,26 +330,8 @@ export function PromosScreen() {
   }, [markAnniversaryRewardClaimed, setActiveModal]);
 
   const handleWellnessCheckin = useCallback(() => {
-    Alert.alert(
-      'Wellness Check-in',
-      'Quick 3-question check-in — this data stays on your device only.\n\n' +
-        '1. Mood right now (1–10)?\n2. Sleep quality last night (1–10)?\n3. Focus level today (1–10)?',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Submit',
-          onPress: () => {
-            recordWellnessCheckin();
-            Alert.alert(
-              'Check-in recorded',
-              'Thanks! Your 3-day extension reward code is: HZ-WELL-TY\n\nEnter it on the Redeem screen.',
-              [{text: 'Redeem Now', onPress: () => setActiveModal('promo')}, {text: 'Later'}],
-            );
-          },
-        },
-      ],
-    );
-  }, [recordWellnessCheckin, setActiveModal]);
+    setActiveModal('wellnessCheckin');
+  }, [setActiveModal]);
 
   // Make a Post form state
   const [postUrl, setPostUrl] = useState('');
@@ -597,7 +580,7 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="🧘"
             title="Wellness Check-in"
-            description="Answer a short 3-question wellness survey every 14 days. Data stays on your device."
+            description="Complete a 3-question wellness survey once per week. Responses are saved securely; reward is 3 days Premium."
             reward="3 days free"
             status="available"
             ctaLabel={

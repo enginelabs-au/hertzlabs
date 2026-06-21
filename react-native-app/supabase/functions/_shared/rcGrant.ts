@@ -154,6 +154,7 @@ export async function grantRcPremiumForMs(
 }
 
 export const RC_GRANT_DURATIONS_MS = {
+  threeDay: 3 * 24 * 60 * 60 * 1000,
   weekly: 7 * 24 * 60 * 60 * 1000,
   threeMonth: 90 * 24 * 60 * 60 * 1000,
   lifetime: 100 * 365 * 24 * 60 * 60 * 1000,

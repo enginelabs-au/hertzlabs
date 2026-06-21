@@ -6,8 +6,10 @@ import {useHertzStore} from '../state/store';
 function syncDialFromStore(dialValues: DialValues): void {
   const state = useHertzStore.getState();
   dialValues.carrierHz.value = state.carrierHz;
-  dialValues.beatHz.value = state.beatHz;
-  dialValues.phaseAngle.value = state.phaseAngle;
+  if (!dialValues.gestureActive.value) {
+    dialValues.beatHz.value = state.beatHz;
+    dialValues.phaseAngle.value = state.phaseAngle;
+  }
   dialValues.timingDiffMs.value =
     NATIVE_ENGINE_MODE_CODE[state.engineType] ?? NATIVE_ENGINE_MODE_CODE.binaural;
   dialValues.gain.value = state.gain;
@@ -43,9 +45,13 @@ export function useAudioSharedValues(dialValues: DialValues) {
         balance,
         engineType,
       }) => {
-        carrierHz.value = cHz;
-        beatHz.value = bHz;
-        phaseAngle.value = pA;
+        // While the user drags the beat slider / dial, the UI thread owns beatHz.
+        // Overwriting from store here causes band taps to snap back to the old slider Hz.
+        if (!dialValues.gestureActive.value) {
+          carrierHz.value = cHz;
+          beatHz.value = bHz;
+          phaseAngle.value = pA;
+        }
         timingDiffMs.value =
           NATIVE_ENGINE_MODE_CODE[engineType] ?? NATIVE_ENGINE_MODE_CODE.binaural;
         dialValues.gain.value = gain;

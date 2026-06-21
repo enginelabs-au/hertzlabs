@@ -1,4 +1,4 @@
-import React, {Component, type ErrorInfo, type ReactNode, useEffect, useState} from 'react';
+import React, {Component, Suspense, type ErrorInfo, type ReactNode, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -14,14 +14,6 @@ import {useHertzStore} from '../state/store';
 import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
 import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {MainTabs} from '../navigation/MainTabs';
-import {LegalScreen} from '../screens/LegalScreen';
-import {PaywallScreen} from '../screens/PaywallScreen';
-import {FeedbackScreen} from '../screens/FeedbackScreen';
-import {PromoRedemptionModal} from '../screens/PromoRedemptionModal';
-import {PromosScreen} from '../screens/PromosScreen';
-import {WelcomePremiumModal} from '../screens/WelcomePremiumModal';
-import {RequiredUpdateModal} from '../screens/RequiredUpdateModal';
-import {PremiumGiftExpiryModal} from '../screens/PremiumGiftExpiryModal';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
 import {subscribeToReferralLinks} from '../services/referralLinkService';
 import {reportReferralInstall} from '../services/referralTrackingService';
@@ -33,6 +25,52 @@ import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
 import {HertzTheme} from '../theme/hertzTheme';
 
 const BG = HertzTheme.bg;
+
+const LegalScreen = React.lazy(() =>
+  import('../screens/LegalScreen').then(m => ({default: m.LegalScreen})),
+);
+const PaywallScreen = React.lazy(() =>
+  import('../screens/PaywallScreen').then(m => ({default: m.PaywallScreen})),
+);
+const FeedbackScreen = React.lazy(() =>
+  import('../screens/FeedbackScreen').then(m => ({default: m.FeedbackScreen})),
+);
+const PromoRedemptionModal = React.lazy(() =>
+  import('../screens/PromoRedemptionModal').then(m => ({default: m.PromoRedemptionModal})),
+);
+const PromosScreen = React.lazy(() =>
+  import('../screens/PromosScreen').then(m => ({default: m.PromosScreen})),
+);
+const WellnessCheckinModal = React.lazy(() =>
+  import('../screens/WellnessCheckinModal').then(m => ({default: m.WellnessCheckinModal})),
+);
+const WelcomePremiumModal = React.lazy(() =>
+  import('../screens/WelcomePremiumModal').then(m => ({default: m.WelcomePremiumModal})),
+);
+const RequiredUpdateModal = React.lazy(() =>
+  import('../screens/RequiredUpdateModal').then(m => ({default: m.RequiredUpdateModal})),
+);
+const PremiumGiftExpiryModal = React.lazy(() =>
+  import('../screens/PremiumGiftExpiryModal').then(m => ({default: m.PremiumGiftExpiryModal})),
+);
+
+function ModalLayer({activeModal}: {activeModal: string | null}) {
+  if (activeModal == null) {
+    return null;
+  }
+  return (
+    <Suspense fallback={null}>
+      {activeModal === 'legal' && <LegalScreen />}
+      {activeModal === 'paywall' && <PaywallScreen />}
+      {activeModal === 'feedback' && <FeedbackScreen />}
+      {activeModal === 'promos' && <PromosScreen />}
+      {activeModal === 'promo' && <PromoRedemptionModal />}
+      {activeModal === 'wellnessCheckin' && <WellnessCheckinModal />}
+      {activeModal === 'welcomePremium' && <WelcomePremiumModal />}
+      {activeModal === 'premiumGiftExpiry' && <PremiumGiftExpiryModal />}
+    </Suspense>
+  );
+}
 
 type BoundaryState = {error: Error | null};
 
@@ -101,6 +139,7 @@ function AppContent(): React.JSX.Element {
   const hydrated = useStoreHydrated();
   const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
   const forceUpdateRequired = useHertzStore(s => s.forceUpdateRequired);
+  const activeModal = useHertzStore(s => s.activeModal);
 
   useGrowthEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
 
@@ -175,11 +214,18 @@ function AppContent(): React.JSX.Element {
   }
 
   if (forceUpdateRequired) {
-    return <RequiredUpdateModal />;
+    return (
+      <Suspense fallback={
+        <View style={styles.boot}>
+          <ActivityIndicator color={HertzTheme.neon.cyan} size="large" />
+        </View>
+      }>
+        <RequiredUpdateModal />
+      </Suspense>
+    );
   }
 
   const nativeAudioLinked = isHertzAudioTurboModuleLinked();
-  const activeModal = useHertzStore(s => s.activeModal);
 
   return (
     <>
@@ -191,13 +237,7 @@ function AppContent(): React.JSX.Element {
         </View>
       )}
       {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
-      {activeModal === 'legal' && <LegalScreen />}
-      {activeModal === 'paywall' && <PaywallScreen />}
-      {activeModal === 'feedback' && <FeedbackScreen />}
-      {activeModal === 'promos' && <PromosScreen />}
-      {activeModal === 'promo' && <PromoRedemptionModal />}
-      {activeModal === 'welcomePremium' && <WelcomePremiumModal />}
-      {activeModal === 'premiumGiftExpiry' && <PremiumGiftExpiryModal />}
+      <ModalLayer activeModal={activeModal} />
     </>
   );
 }

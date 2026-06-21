@@ -1,5 +1,6 @@
 import type {StateCreator} from 'zustand';
 import type {PremiumGiftReminderKind} from '../../monetization/premiumGiftReminders';
+import {formatPromoCodeDisplay} from '../../monetization/promoCodeFormat';
 import {WELCOME_PREMIUM_CAMPAIGN} from '../../monetization/welcomePremiumConstants';
 import type {AppStore} from '../types';
 
@@ -29,6 +30,8 @@ export function normalizePromoEntitlement(
 }
 
 export type PromoSlice = {
+  /** Last promo code copied or awarded — pre-fills paywall redemption input. */
+  clipboardPromoCode: string | null;
   /** Promo code last successfully redeemed */
   appliedPromoCode: string | null;
   /** What the code grants */
@@ -63,6 +66,7 @@ export type PromoSlice = {
   /** Which premium-gift reminder is currently being shown. */
   activePremiumGiftReminder: PremiumGiftReminderKind | null;
 
+  setClipboardPromoCode(code: string | null): void;
   applyPromo(code: string, entitlement: PromoEntitlement, expiresAt?: number | null): void;
   markWelcomePremiumClaimed(): void;
   setWelcomePremiumExpiresAtMs(expiresAtMs: number | null): void;
@@ -86,6 +90,7 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   appliedPromoCode: null,
   appliedPromoEntitlement: null,
   appliedPromoExpiresAt: null,
+  clipboardPromoCode: null,
   myReferralCode: null,
   pendingReferrerCode: null,
   streakDays: 0,
@@ -109,11 +114,18 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
     if (normalized == null) {
       return;
     }
+    const formatted = formatPromoCodeDisplay(code);
     set({
-      appliedPromoCode: code.toUpperCase().trim(),
+      appliedPromoCode: formatted,
       appliedPromoEntitlement: normalized,
       appliedPromoExpiresAt: expiresAt ?? null,
+      clipboardPromoCode: formatted,
     });
+  },
+
+  setClipboardPromoCode(code) {
+    const formatted = code == null ? null : formatPromoCodeDisplay(code);
+    set({clipboardPromoCode: formatted});
   },
 
   clearPromo() {
@@ -126,7 +138,7 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
         return {};
       }
       const chars = 'ABCDEFHJKMNPQRSTUVWXYZ23456789';
-      let code = 'HZ-';
+      let code = 'HZ';
       for (let i = 0; i < 6; i++) {
         code += chars[Math.floor(Math.random() * chars.length)];
       }
@@ -187,7 +199,7 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   recordWellnessCheckin() {
     const today = new Date().toISOString().slice(0, 10);
     set(s => {
-      if (s.lastWellnessCheckinDate === today) {
+      if (s.lastWellnessCheckinDate != null && daysSince(s.lastWellnessCheckinDate) < 7) {
         return {};
       }
       return {

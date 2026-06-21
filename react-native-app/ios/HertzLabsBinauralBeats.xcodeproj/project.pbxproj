@@ -70,7 +70,6 @@
 		AC0000010000000000000014 /* HertzLabsBinauralBeatsClip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HertzLabsBinauralBeatsClip.entitlements; sourceTree = "<group>"; };
 		AC0000010000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AC0000010000000000000040 /* HertzLabsBinauralBeats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = HertzLabsBinauralBeats.entitlements; path = HertzLabsBinauralBeats/HertzLabsBinauralBeats.entitlements; sourceTree = "<group>"; };
-		MC0000010000000000000005 /* HertzLabsBinauralBeats-mac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "HertzLabsBinauralBeats-mac.entitlements"; path = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements"; sourceTree = "<group>"; };
 		E8F1A2B22C4D5E6F708192A3 /* GenerativeAI-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GenerativeAI-Info.plist"; path = "HertzLabsBinauralBeats/GenerativeAI-Info.plist"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		HA1E2B3C4D5E6F708192A4 /* HertzAudioModule.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = HertzAudioModule.mm; path = HertzLabsBinauralBeats/HertzAudioBridge/HertzAudioModule.mm; sourceTree = "<group>"; };
@@ -82,6 +81,7 @@
 		HA1E2B3C4D5E6F708192B0 /* HertzAudioNativeEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = HertzAudioNativeEngine.swift; path = HertzLabsBinauralBeats/HertzAudioBridge/HertzAudioNativeEngine.swift; sourceTree = "<group>"; };
 		HA1E2B3C4D5E6F708192B1 /* HertzAudioNativeEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HertzAudioNativeEngine.h; path = HertzLabsBinauralBeats/HertzAudioBridge/HertzAudioNativeEngine.h; sourceTree = "<group>"; };
 		MC0000010000000000000001 /* MacCatalystDesktopWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MacCatalystDesktopWindow.swift; path = HertzLabsBinauralBeats/MacCatalystDesktopWindow.swift; sourceTree = "<group>"; };
+		MC0000010000000000000005 /* HertzLabsBinauralBeats-mac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "HertzLabsBinauralBeats-mac.entitlements"; path = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements"; sourceTree = "<group>"; };
 		SK0000010000000000000001 /* HertzLabsProducts.storekit */ = {isa = PBXFileReference; explicitFileType = text.storekit; path = HertzLabsProducts.storekit; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -385,21 +385,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HertzLabsBinauralBeats/Pods-HertzLabsBinauralBeats-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		MC0000010000000000000004 /* Fix Mac Catalyst prebuilt frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Fix Mac Catalyst prebuilt frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [[ \"$EFFECTIVE_PLATFORM_NAME\" == *maccatalyst* ]]; then\n  ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\"\n  for FW in React-Core-prebuilt/React.framework ReactNativeDependencies/ReactNativeDependencies.framework; do\n    INTERM=\"${PODS_XCFRAMEWORKS_BUILD_DIR}/${FW}\"\n    if [[ -d \"$INTERM\" ]]; then\n      ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\" --framework \"$INTERM\"\n    fi\n  done\nfi\n";
-			showEnvVarsInLog = 0;
-		};
 		MC0000010000000000000003 /* Fix Mac Catalyst embedded frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -413,6 +398,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [[ \"$EFFECTIVE_PLATFORM_NAME\" == *maccatalyst* ]]; then\n  ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\" --embedded \"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+		MC0000010000000000000004 /* Fix Mac Catalyst prebuilt frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Fix Mac Catalyst prebuilt frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ \"$EFFECTIVE_PLATFORM_NAME\" == *maccatalyst* ]]; then\n  ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\"\n  for FW in React-Core-prebuilt/React.framework ReactNativeDependencies/ReactNativeDependencies.framework; do\n    INTERM=\"${PODS_XCFRAMEWORKS_BUILD_DIR}/${FW}\"\n    if [[ -d \"$INTERM\" ]]; then\n      ruby \"${SRCROOT}/scripts/fix-maccatalyst-prebuilt-frameworks.rb\" --framework \"$INTERM\"\n    fi\n  done\nfi\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */

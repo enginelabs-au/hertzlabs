@@ -100,7 +100,7 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
       state.welcomePremiumCampaignId !== WELCOME_PREMIUM_CAMPAIGN
     ) {
       welcomeScheduled.current = true;
-      setActiveModal('welcomePremium');
+      setTimeout(() => setActiveModal('welcomePremium'), 600);
       return;
     }
 

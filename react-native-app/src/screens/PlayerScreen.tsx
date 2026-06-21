@@ -6,6 +6,7 @@ import {EngineDialSection} from '../components/engines/EngineDialSection';
 import {ChannelReadoutRow} from '../components/layout/ChannelReadoutRow';
 import {CategoryTabBar, type EngineCategoryId} from '../components/layout/CategoryTabBar';
 import {useDialSharedValues} from '../components/CircularController/useDialSharedValues';
+import {isMacDesktopBuild} from '../platform/layoutProfile';
 import {useHertzStore} from '../state/store';
 import {DEFAULT_CARRIER_HZ} from '../audio/paramMapping';
 import {
@@ -57,6 +58,7 @@ function AdvancedPlayerScreen() {
   const experimentalMode = useHertzStore(s => s.experimentalMode);
   const experimental = isExperimentalModeActive(tier, experimentalMode);
   const premiumUnlocked = isPremiumUnlocked(tier);
+  const macDesktop = isMacDesktopBuild();
   const updateSettings = useHertzStore(s => s.updateSettings);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const setParam = useHertzStore(s => s.setParam);
@@ -97,7 +99,8 @@ function AdvancedPlayerScreen() {
         )}
 
         <View style={styles.engineControls}>
-          <KineticIndicator active={isKineticModeEnabled} />
+          {!macDesktop && <KineticIndicator active={isKineticModeEnabled} />}
+          {!macDesktop && (
           <Pressable
             style={[styles.kineticToggle, isKineticModeEnabled && styles.kineticToggleActive]}
             onPress={() => updateSettings({isKineticModeEnabled: !isKineticModeEnabled})}
@@ -107,6 +110,7 @@ function AdvancedPlayerScreen() {
               {isKineticModeEnabled ? '◎ Kinetic ON' : '◎ Kinetic OFF'}
             </Text>
           </Pressable>
+          )}
           <Pressable
             style={[
               styles.kineticToggle,

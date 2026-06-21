@@ -1,5 +1,6 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {isMacDesktopBuild} from '../../platform/layoutProfile';
 import {useHertzStore} from '../../state/store';
 import {getBand} from '../ReadoutPanel/brainwaveBands';
 import {GlassCard} from './GlassCard';
@@ -10,12 +11,14 @@ export function PlayerSettingsCard() {
   const isKinetic = useHertzStore(s => s.isKineticModeEnabled);
   const updateSettings = useHertzStore(s => s.updateSettings);
   const band = getBand(beatHz);
+  const macDesktop = isMacDesktopBuild();
 
   return (
     <GlassCard style={styles.card}>
+      {!macDesktop && (
       <View style={styles.row}>
-        <Text style={styles.rowLabel}>Sleep Timer</Text>
-        <Text style={styles.timer}>Off</Text>
+        <Text style={styles.rowLabel}>Kinetic Mode</Text>
+        <Text style={styles.timer}>{isKinetic ? 'On' : 'Off'}</Text>
         <Pressable
           style={[styles.toggle, isKinetic && styles.toggleOn]}
           onPress={() => updateSettings({isKineticModeEnabled: !isKinetic})}
@@ -24,7 +27,8 @@ export function PlayerSettingsCard() {
           <View style={[styles.thumb, isKinetic && styles.thumbOn]} />
         </Pressable>
       </View>
-      <View style={styles.divider} />
+      )}
+      {!macDesktop && <View style={styles.divider} />}
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Effect</Text>
         <Text style={styles.effect}>

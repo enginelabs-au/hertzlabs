@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     return json({valid: false, error: 'Invalid JSON body.'}, 400);
   }
 
-  const code = (body.code ?? '').toUpperCase().trim();
+  const code = normalizePromoCode(body.code ?? '');
   const rcAppUserId = (body.rcAppUserId ?? '').trim();
 
   if (code.length < 4) {
@@ -52,12 +52,13 @@ Deno.serve(async (req: Request) => {
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-  // 1. Look up the promo code
-  const {data: promo, error: promoErr} = await sb
+  const lookupVariants = [code, insertDashes(code)];
+  const {data: promoRows, error: promoErr} = await sb
     .from('promo_codes')
     .select('*')
-    .eq('code', code)
-    .single();
+    .in('code', lookupVariants);
+
+  const promo = promoRows?.[0] ?? null;
 
   if (promoErr != null || promo == null) {
     return json({valid: false, error: 'Code not found or already used.'}, 404);
@@ -83,7 +84,7 @@ Deno.serve(async (req: Request) => {
     const {data: existing} = await sb
       .from('promo_redemptions')
       .select('id')
-      .eq('code', code)
+      .eq('code', promo.code)
       .eq('rc_user_id', rcAppUserId)
       .single();
 
@@ -108,14 +109,14 @@ Deno.serve(async (req: Request) => {
   // 6. Record redemption and increment use_count.
   // The database trigger auto-sets active=false when use_count reaches max_uses.
   await sb.from('promo_redemptions').insert({
-    code,
+    code: promo.code,
     rc_user_id: rcAppUserId.length > 0 ? rcAppUserId : 'anonymous',
   });
 
   await sb
     .from('promo_codes')
     .update({use_count: promo.use_count + 1})
-    .eq('code', code);
+    .eq('code', promo.code);
 
   return json({
     valid: true,
@@ -135,6 +136,18 @@ function clientEntitlement(entitlement: string): string {
     default:
       return entitlement;
   }
+}
+
+function normalizePromoCode(raw: string): string {
+  return raw.toUpperCase().replace(/[\s-]/g, '');
+}
+
+function insertDashes(normalized: string): string {
+  const m = normalized.match(/^(HLP)([A-Z0-9]{4})([A-Z0-9]{4})$/);
+  if (m != null) {
+    return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  return normalized;
 }
 
 function json(body: unknown, status = 200): Response {

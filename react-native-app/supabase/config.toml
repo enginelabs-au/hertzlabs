@@ -42,3 +42,6 @@ verify_jwt = false
 
 [functions.check-app-version]
 verify_jwt = false
+
+[functions.submit-wellness-checkin]
+verify_jwt = false

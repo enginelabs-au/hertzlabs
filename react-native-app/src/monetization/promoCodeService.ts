@@ -1,5 +1,7 @@
 import Purchases from 'react-native-purchases';
 import {PROMO_VALIDATE_URL} from '@env';
+import {normalizePromoCode} from './promoCodeFormat';
+import {SUPABASE_FUNCTION_HEADERS} from './supabaseAnon';
 import {normalizePromoEntitlement, type PromoEntitlement} from '../state/slices/promo';
 
 export type PromoValidationResult =
@@ -32,7 +34,7 @@ export type PromoValidationResult =
 const PROMO_ENDPOINT = PROMO_VALIDATE_URL?.trim() || null;
 
 export async function validatePromoCode(rawCode: string): Promise<PromoValidationResult> {
-  const code = rawCode.toUpperCase().trim();
+  const code = normalizePromoCode(rawCode);
   if (code.length < 4) {
     return {valid: false, error: 'Code is too short.'};
   }
@@ -50,7 +52,7 @@ export async function validatePromoCode(rawCode: string): Promise<PromoValidatio
 
       const res = await fetch(PROMO_ENDPOINT, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: SUPABASE_FUNCTION_HEADERS,
         body: JSON.stringify({code, rcAppUserId: rcUserId}),
       });
       const data: unknown = await res.json();

@@ -1,14 +1,17 @@
 import React, {useEffect, useMemo} from 'react';
 import {StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import Animated from 'react-native-reanimated';
 import {Canvas, Circle, Line, Path, Skia, useCanvasRef} from '@shopify/react-native-skia';
 import {GestureDetector} from 'react-native-gesture-handler';
 import {clampDriftHz, channelFrequencies} from '../../audio/channelFrequencies';
 import {useMathVisualClock} from '../../hooks/useMathVisualClock';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
+import {macScaledFont} from '../../platform/macTypography';
 import {GlassCard} from '../player/GlassCard';
 import {buildDopplerGrid, buildDopplerRings, type DopplerFieldParams} from './dopplerFieldMath';
-import {useDopplerSourceDrag} from './useDopplerSourceDrag';
+import {beatPhaseToSourcePx} from './dopplerSourceMapping';
+import {useDopplerSourceDrag, useDopplerSourceMirror} from './useDopplerSourceDrag';
 
 const FIELD_H = 300;
 const FIELD_FPS = 24;
@@ -43,8 +46,17 @@ export function BackgroundDopplerField() {
   const rightDriftHz = clampDriftHz(useHertzStore(s => s.rightDriftHz));
   const isPlaying = useHertzStore(s => s.isPlaying);
 
+  const tier = useHertzStore(s => s.tier);
+  const beatSliderScale = useHertzStore(s => s.beatSliderScale);
+
+  const anchor = useMemo(
+    () => beatPhaseToSourcePx(plotW, plotH, beatHz, phaseAngle, tier, beatSliderScale),
+    [plotW, plotH, beatHz, phaseAngle, tier, beatSliderScale],
+  );
+
   const timeSec = useMathVisualClock(FIELD_FPS);
-  const {gesture, sourceX, sourceY} = useDopplerSourceDrag({plotW, plotH});
+  const {gesture, sourceX, sourceY, handleStyle} = useDopplerSourceDrag({plotW, plotH});
+  const {mirrorX, mirrorY} = useDopplerSourceMirror(sourceX, sourceY, anchor.cx, anchor.cy);
 
   const params: DopplerFieldParams = useMemo(
     () => ({
@@ -56,8 +68,8 @@ export function BackgroundDopplerField() {
       leftDriftHz,
       rightDriftHz,
       timeSec,
-      sourceX,
-      sourceY,
+      sourceX: mirrorX,
+      sourceY: mirrorY,
     }),
     [
       carrierHz,
@@ -68,8 +80,8 @@ export function BackgroundDopplerField() {
       leftDriftHz,
       rightDriftHz,
       timeSec,
-      sourceX,
-      sourceY,
+      mirrorX,
+      mirrorY,
     ],
   );
 
@@ -82,7 +94,6 @@ export function BackgroundDopplerField() {
   const drawables = useMemo(() => ringsToDrawables(rings), [rings]);
   const grid = useMemo(() => buildDopplerGrid(plotW, plotH), [plotW, plotH]);
 
-  const handleR = 14;
   const canvasRef = useCanvasRef();
 
   useEffect(() => {
@@ -132,21 +143,11 @@ export function BackgroundDopplerField() {
         </Canvas>
 
         <GestureDetector gesture={gesture}>
-          <View
-            style={[
-              styles.handleHit,
-              {
-                left: sourceX - handleR,
-                top: sourceY - handleR,
-                width: handleR * 2,
-                height: handleR * 2,
-              },
-            ]}
-            collapsable={false}>
+          <Animated.View style={[styles.handleHit, handleStyle]} collapsable={false}>
             <View style={styles.handleOuter}>
               <View style={styles.handleInner} />
             </View>
-          </View>
+          </Animated.View>
         </GestureDetector>
 
         <View style={styles.readout} pointerEvents="none">
@@ -182,14 +183,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: HertzTheme.mono,
-    fontSize: 10,
+    fontSize: macScaledFont(10),
     fontWeight: '700',
     color: HertzTheme.text.primary,
     letterSpacing: 1.2,
   },
   spotifyTag: {
     fontFamily: HertzTheme.mono,
-    fontSize: 9,
+    fontSize: macScaledFont(9),
     fontWeight: '700',
     color: HertzTheme.neon.green,
     letterSpacing: 0.8,
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontFamily: HertzTheme.mono,
-    fontSize: 7,
+    fontSize: macScaledFont(7),
     color: HertzTheme.text.muted,
     letterSpacing: 0.3,
   },
@@ -211,6 +212,10 @@ const styles = StyleSheet.create({
   },
   handleHit: {
     position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -239,12 +244,12 @@ const styles = StyleSheet.create({
   },
   readoutLine: {
     fontFamily: HertzTheme.mono,
-    fontSize: 7,
+    fontSize: macScaledFont(7),
     color: 'rgba(255,255,255,0.65)',
   },
   readoutLive: {
     fontFamily: HertzTheme.mono,
-    fontSize: 6,
+    fontSize: macScaledFont(6),
     color: HertzTheme.neon.lime,
     marginTop: 2,
   },

@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import Purchases from 'react-native-purchases';
+import {formatPromoCodeDisplay, normalizePromoCode} from '../monetization/promoCodeFormat';
+import {PromoCodeCopyButton} from '../components/monetization/PromoCodeCopyButton';
 import {refreshRcEntitlements, validatePromoCode} from '../monetization/promoCodeService';
 import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
 import {useHertzStore} from '../state/store';
@@ -30,6 +32,7 @@ type Status = 'idle' | 'loading' | 'success' | 'error';
 export function PromoRedemptionModal() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const applyPromo = useHertzStore(s => s.applyPromo);
+  const clipboardPromoCode = useHertzStore(s => s.clipboardPromoCode);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
 
   const [code, setCode] = useState('');
@@ -38,10 +41,16 @@ export function PromoRedemptionModal() {
   const [errorMsg, setErrorMsg] = useState('');
   const inputRef = useRef<TextInput>(null);
 
+  useEffect(() => {
+    if (code.length === 0 && clipboardPromoCode != null && clipboardPromoCode.length > 0) {
+      setCode(clipboardPromoCode);
+    }
+  }, [clipboardPromoCode, code.length]);
+
   const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
 
   const handleRedeem = useCallback(async () => {
-    const trimmed = code.trim();
+    const trimmed = normalizePromoCode(code);
     if (trimmed.length === 0) {
       return;
     }

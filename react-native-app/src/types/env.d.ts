@@ -8,5 +8,6 @@ declare module '@env' {
   export const GEMINI_API_KEY: string | undefined;
   export const PROMO_VALIDATE_URL: string | undefined;
   export const WELCOME_PREMIUM_URL: string | undefined;
+  export const WELLNESS_CHECKIN_URL: string | undefined;
   export const APP_VERSION_CHECK_URL: string | undefined;
 }

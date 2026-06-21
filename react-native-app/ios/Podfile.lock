@@ -1976,6 +1976,28 @@ PODS:
     - Yoga
   - ReactNativeDependencies (0.85.3)
   - RevenueCat (5.32.0)
+  - RNCClipboard (1.16.3):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNGestureHandler (3.0.0):
     - hermes-engine
     - RCTRequired
@@ -2230,6 +2252,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "ReactNativeBlur (from `../node_modules/@sbaiahmed1/react-native-blur`)"
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
@@ -2403,6 +2426,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@sbaiahmed1/react-native-blur"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNCClipboard:
+    :path: "../node_modules/@react-native-clipboard/clipboard"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNPurchases:
@@ -2497,6 +2522,7 @@ SPEC CHECKSUMS:
   ReactNativeBlur: 1ca228989aa5d9904e14f705a38d88085fabd2ae
   ReactNativeDependencies: a974db2c6952ff3ba0ba8376d71749687ebcf634
   RevenueCat: 7e1d0768fb287c9983173c9b28e39ccbeeb828a9
+  RNCClipboard: 715fa7c6c8366f17d00f05a439ee7488f390fa5f
   RNGestureHandler: ed28fea435eee1ea629ed8372c2e98138a73a472
   RNPurchases: 6070b60f5d8f525a58905df50773f7a3252f0cfa
   RNReanimated: 56d68c745cfbb80187b7d78caa72a738901294ee

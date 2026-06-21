@@ -107,6 +107,7 @@ export const persistedStoreOptions = {
     paywallSoftPromptShown: state.paywallSoftPromptShown,
     // promo slice
     appliedPromoCode: state.appliedPromoCode,
+    clipboardPromoCode: state.clipboardPromoCode,
     appliedPromoEntitlement: state.appliedPromoEntitlement,
     appliedPromoExpiresAt: state.appliedPromoExpiresAt,
     myReferralCode: state.myReferralCode,

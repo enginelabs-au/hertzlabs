@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,9 @@ import {
   normalizePromoEntitlement,
   type PromoEntitlement,
 } from '../state/slices/promo';
-import {validatePromoCode} from '../monetization/promoCodeService';
-import {refreshRcEntitlements} from '../monetization/promoCodeService';
+import {formatPromoCodeDisplay, normalizePromoCode} from '../monetization/promoCodeFormat';
+import {PromoCodeCopyButton} from '../components/monetization/PromoCodeCopyButton';
+import {refreshRcEntitlements, validatePromoCode} from '../monetization/promoCodeService';
 import Purchases from 'react-native-purchases';
 import type {CustomerInfo, Package} from 'react-native-purchases';
 import {
@@ -334,9 +335,10 @@ function ActivePromoBar({
       <View style={styles.promoBannerInfo}>
         <Text style={styles.promoBannerLabel}>PROMO ACTIVE</Text>
         <Text style={styles.promoBannerCode}>
-          {code} — {DISCOUNT_LABELS[entitlement]}
+          {formatPromoCodeDisplay(code)} — {DISCOUNT_LABELS[entitlement]}
         </Text>
       </View>
+      <PromoCodeCopyButton code={code} label="Copy" compact />
       <Pressable onPress={onClear} accessibilityLabel="Remove promo code" style={styles.promoRemove}>
         <Text style={styles.promoRemoveText}>✕</Text>
       </Pressable>
@@ -351,6 +353,7 @@ function PromoCodeInput({
 }) {
   const applyPromo = useHertzStore(s => s.applyPromo);
   const appliedPromoCode = useHertzStore(s => s.appliedPromoCode);
+  const clipboardPromoCode = useHertzStore(s => s.clipboardPromoCode);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -358,8 +361,14 @@ function PromoCodeInput({
   const [success, setSuccess] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
+  useEffect(() => {
+    if (code.length === 0 && clipboardPromoCode != null && clipboardPromoCode.length > 0) {
+      setCode(clipboardPromoCode);
+    }
+  }, [clipboardPromoCode, code.length]);
+
   const handleApply = useCallback(async () => {
-    const trimmed = code.trim().toUpperCase();
+    const trimmed = normalizePromoCode(code);
     if (trimmed.length < 4) {
       setError('Enter a valid promo code.');
       return;

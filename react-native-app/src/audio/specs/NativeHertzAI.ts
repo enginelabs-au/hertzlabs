@@ -23,4 +23,21 @@ export interface Spec extends TurboModule {
   }>;
 }
 
-export default TurboModuleRegistry.getEnforcing<Spec>('HertzAI');
+function isVitestRuntime(): boolean {
+  const proc = (globalThis as {process?: {env?: {VITEST?: string}}}).process;
+  return proc?.env?.VITEST != null;
+}
+
+const _module = isVitestRuntime() ? null : TurboModuleRegistry.get<Spec>('HertzAI');
+
+const noop = () => undefined;
+const noopSub = {remove: noop};
+
+const NativeHertzAI: Spec =
+  _module ??
+  ({
+    generateRecommendation: noop,
+    onAIStatus: (_l: unknown) => noopSub,
+  } as unknown as Spec);
+
+export default NativeHertzAI;

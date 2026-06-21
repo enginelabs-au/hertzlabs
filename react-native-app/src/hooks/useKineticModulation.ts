@@ -3,6 +3,7 @@ import {runOnJS, useAnimatedReaction} from 'react-native-reanimated';
 import type {DialValues} from '../components/CircularController/useDialSharedValues';
 import NativeHertzTelemetry from '../audio/specs/NativeHertzTelemetry';
 import {mountKineticSync} from '../state/middleware/kineticSync';
+import {isMacDesktopBuild} from '../platform/layoutProfile';
 import {useHertzStore} from '../state/store';
 
 /** Sensor reading normalized to 0.0–1.0 */
@@ -59,7 +60,7 @@ export function useKineticModulation(dialValues: DialValues): KineticModulationS
   );
 
   useEffect(() => {
-    if (!isKineticModeEnabled) {
+    if (!isKineticModeEnabled || isMacDesktopBuild()) {
       return;
     }
 
@@ -114,7 +115,7 @@ export function useKineticModulation(dialValues: DialValues): KineticModulationS
   }, [isKineticModeEnabled]);
 
   return {
-    isActive: isKineticModeEnabled,
+    isActive: isKineticModeEnabled && !isMacDesktopBuild(),
     lastFrame: frameRef.current,
     shakeDetected: shakeRef.current,
   };

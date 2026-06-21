@@ -33,8 +33,9 @@ import {
 } from '../ReadoutPanel/brainwaveBands';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
+import {macScaledFont} from '../../platform/macTypography';
+import {AdvancedHubHorizontalBands} from '../home/HomeFreqControls';
 import {HubOscilloscopeCanvas} from '../waveforms';
-import {HubBandRail} from '../hub/HubBandRail';
 import {ExperimentalDial} from './ExperimentalDial';
 import {GlassCard} from './GlassCard';
 import {NeonSlider} from './NeonSlider';
@@ -84,7 +85,7 @@ function HubDockBeatLabel({
 }
 
 export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubProps) {
-  const {hubW, frameH, canvasH, canvasW, beatSliderW, beatSliderH, bandRailW, experimental, isMacWide} =
+  const {hubW, frameH, canvasH, canvasW, beatSliderW, beatSliderH, experimental, isMacWide} =
     useHubLayout();
 
   const setParam = useHertzStore(s => s.setParam);
@@ -123,11 +124,26 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
 
   const openPaywall = useCallback(() => setActiveModal('paywall'), [setActiveModal]);
 
+  const onBeatSliderChange = useCallback(
+    (v: number) => {
+      setParam('beatHz', sliderNormToBeatHz(v, tier, beatSliderScale));
+    },
+    [setParam, tier, beatSliderScale],
+  );
+
   const onBeatSliderComplete = useCallback(
     (v: number) => {
       setParam('beatHz', sliderNormToBeatHz(v, tier, beatSliderScale));
     },
     [setParam, tier, beatSliderScale],
+  );
+
+  const onSelectBandBeat = useCallback(
+    (hz: number) => {
+      dialValues.gestureActive.value = false;
+      setParam('beatHz', hz);
+    },
+    [dialValues, setParam],
   );
 
   // Tap-to-reset target for every beat control (slider + experimental dials).
@@ -158,17 +174,6 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     [setParam],
   );
 
-  const onBandSelect = useCallback(
-    (midHz: number) => {
-      if (!premiumUnlocked && midHz > interactMax) {
-        openPaywall();
-        return;
-      }
-      setParam('beatHz', midHz);
-    },
-    [setParam, premiumUnlocked, interactMax, openPaywall],
-  );
-
   const beatSlider = (
     <NeonSlider
       value={beatNorm}
@@ -178,6 +183,7 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
       beatSliderScale={beatSliderScaleSV}
       lockedNormStart={lockedNormStart}
       onLockedZonePress={premiumUnlocked ? undefined : openPaywall}
+      onChange={onBeatSliderChange}
       onChangeComplete={onBeatSliderComplete}
       onDragBegin={onHubDragBegin}
       onDragEnd={onHubDragEnd}
@@ -192,14 +198,6 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
     <View style={[styles.outer, isMacWide && styles.outerMac]}>
       <GlassCard style={[styles.frame, {width: hubW, height: frameH}]} padding={0}>
         <View style={[styles.hubInner, {width: hubW, height: frameH}]}>
-          <HubBandRail
-            beatHz={storeBeat}
-            beatHzLive={dialValues.beatHz}
-            height={frameH}
-            width={bandRailW}
-            onSelectBand={onBandSelect}
-            experimental={experimental}
-          />
           <View style={[styles.canvasColumn, {width: canvasW, height: frameH}]}>
             <GestureDetector gesture={gesture}>
               <View style={[styles.canvasBox, {width: canvasW, height: canvasH}]}>
@@ -266,6 +264,13 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
           />
         </View>
       </GlassCard>
+      <AdvancedHubHorizontalBands
+        hubWidth={hubW}
+        experimental={experimental}
+        beatHzLive={dialValues.beatHz}
+        gestureActive={dialValues.gestureActive}
+        onSelectBeat={onSelectBandBeat}
+      />
     </View>
   );
 }
@@ -323,7 +328,7 @@ const styles = StyleSheet.create({
   },
   beatLabel: {
     fontFamily: HertzTheme.mono,
-    fontSize: 10,
+    fontSize: macScaledFont(10),
     fontWeight: '700',
     letterSpacing: 0.4,
   },

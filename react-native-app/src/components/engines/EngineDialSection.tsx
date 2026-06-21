@@ -14,9 +14,7 @@ type EngineDialSectionProps = {
 };
 
 /**
- * Visualizer hub (oscilloscope + phase slider + the vertical brainwave band rail
- * down the left edge). The band rail lives inside the hub frame now — see
- * `FramedVisualizerHub` / `HubBandRail`.
+ * Visualizer hub (oscilloscope + phase slider + horizontal band strip below the frame).
  */
 export function EngineDialSection({dialValues: dialValuesProp}: EngineDialSectionProps = {}) {
   // Always create a local set (hooks must be unconditional); prefer the parent's

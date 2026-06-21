@@ -26,17 +26,20 @@ type HubBandRailProps = {
 /** Representative Hz for a band (used when a cell is tapped). */
 function midHzForBand(
   band: (typeof BRAINWAVE_BANDS)[number],
-  maxSelectHz?: number,
+  interactMax?: number,
 ): number {
-  let max = Number.isFinite(band.maxHz) ? band.maxHz : band.minHz + 1;
-  if (maxSelectHz != null) {
-    max = Math.min(max, maxSelectHz);
-  }
-  if (band.minHz === 0 && max <= 0.5) {
+  const rawMax = Number.isFinite(band.maxHz) ? band.maxHz : band.minHz + 1;
+  if (band.minHz === 0 && rawMax <= 0.5) {
     return 0.25;
   }
-  const mid = (band.minHz + max) / 2;
-  return maxSelectHz != null ? Math.min(mid, maxSelectHz) : mid;
+  if (interactMax == null) {
+    return (band.minHz + rawMax) / 2;
+  }
+  if (band.minHz >= interactMax) {
+    return (band.minHz + rawMax) / 2;
+  }
+  const effectiveMax = Math.min(rawMax, interactMax);
+  return (band.minHz + effectiveMax) / 2;
 }
 
 /**
