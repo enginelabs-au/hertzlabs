@@ -119,11 +119,23 @@ Deno.serve(async (req: Request) => {
 
   return json({
     valid: true,
-    entitlement: promo.entitlement,
+    entitlement: clientEntitlement(promo.entitlement),
     label: promo.label,
     description: promo.description,
   });
 });
+
+/** Legacy app builds expect discount_20 / discount_50 in the JSON response. */
+function clientEntitlement(entitlement: string): string {
+  switch (entitlement) {
+    case 'discount_2mo':
+      return 'discount_20';
+    case 'discount_6mo':
+      return 'discount_50';
+    default:
+      return entitlement;
+  }
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

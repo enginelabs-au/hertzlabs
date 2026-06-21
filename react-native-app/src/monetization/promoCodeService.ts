@@ -1,6 +1,6 @@
 import Purchases from 'react-native-purchases';
 import {PROMO_VALIDATE_URL} from '@env';
-import type {PromoEntitlement} from '../state/slices/promo';
+import {normalizePromoEntitlement, type PromoEntitlement} from '../state/slices/promo';
 
 export type PromoValidationResult =
   | {valid: true; entitlement: PromoEntitlement; label: string; description: string}
@@ -26,8 +26,7 @@ export type PromoValidationResult =
  *   3. For extended_trial or lifetime: call the RevenueCat REST API
  *      `POST /v1/subscribers/{rc_app_user_id}/entitlements/{entitlement_id}/promotional`
  *      with the appropriate duration ('three_month' | 'lifetime').
- *   4. For discount_20 / discount_50: return an Apple offer code or Google Play
- *      promotional code that carries through to the native payment sheet.
+ *   4. For discount_2mo / discount_6mo: unlock store promotional offers at checkout.
  */
 
 const PROMO_ENDPOINT = PROMO_VALIDATE_URL?.trim() || null;
@@ -59,7 +58,15 @@ export async function validatePromoCode(rawCode: string): Promise<PromoValidatio
         const err = (data as {error?: string}).error ?? 'Invalid or expired code.';
         return {valid: false, error: err};
       }
-      return data as PromoValidationResult;
+      const parsed = data as PromoValidationResult;
+      if (parsed.valid) {
+        const entitlement = normalizePromoEntitlement(parsed.entitlement);
+        if (entitlement == null) {
+          return {valid: false, error: 'Unsupported promo type.'};
+        }
+        return {...parsed, entitlement};
+      }
+      return parsed;
     } catch {
       return {valid: false, error: 'Could not reach validation server. Check your connection.'};
     }
@@ -78,13 +85,13 @@ export async function validatePromoCode(rawCode: string): Promise<PromoValidatio
         label: 'Lifetime Premium',
         description: 'Lifetime Hertz Labs Premium access at no charge.',
       },
-      'HZDEV-20OFF': {
-        entitlement: 'discount_20',
+      'HZDEV-M2F': {
+        entitlement: 'discount_2mo',
         label: '2 Months Free',
         description: '2 free months added to your Hertz Labs plan.',
       },
-      'HZDEV-50OFF': {
-        entitlement: 'discount_50',
+      'HZDEV-M6F': {
+        entitlement: 'discount_6mo',
         label: '6 Months Free',
         description: '6 free months added to your Hertz Labs plan.',
       },

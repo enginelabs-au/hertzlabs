@@ -11,7 +11,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type {PromoEntitlement} from '../state/slices/promo';
+import {
+  normalizePromoEntitlement,
+  type PromoEntitlement,
+} from '../state/slices/promo';
 import {validatePromoCode} from '../monetization/promoCodeService';
 import {refreshRcEntitlements} from '../monetization/promoCodeService';
 import Purchases from 'react-native-purchases';
@@ -243,23 +246,25 @@ function PackageCard({
 const DISCOUNT_LABELS: Record<PromoEntitlement, string> = {
   extended_trial: '3-month trial',
   lifetime: 'Lifetime',
-  discount_20: '2 months free',
-  discount_50: '6 months free',
+  discount_2mo: '2 months free',
+  discount_6mo: '6 months free',
 };
+
+type DiscountPromoEntitlement = 'discount_2mo' | 'discount_6mo';
 
 /**
  * Offer IDs created in App Store Connect (underscores) and Google Play (hyphens).
  * Keyed by entitlement → plan type → platform offer ID.
  */
 const PROMO_OFFER_IDS: Record<
-  'discount_20' | 'discount_50',
+  DiscountPromoEntitlement,
   {monthly: {ios: string; android: string}; annual: {ios: string; android: string}}
 > = {
-  discount_20: {
+  discount_2mo: {
     monthly: {ios: 'hz_2mo_free_monthly', android: 'hz-2mo-free-monthly'},
     annual: {ios: 'hz_2mo_free_annual', android: 'hz-2mo-free-annual'},
   },
-  discount_50: {
+  discount_6mo: {
     monthly: {ios: 'hz_6mo_free_monthly', android: 'hz-6mo-free-monthly'},
     annual: {ios: 'hz_6mo_free_annual', android: 'hz-6mo-free-annual'},
   },
@@ -277,7 +282,7 @@ function planTypeKey(pkg: Package): 'monthly' | 'annual' | null {
  */
 async function purchaseWithOffer(
   pkg: Package,
-  entitlement: 'discount_20' | 'discount_50',
+  entitlement: DiscountPromoEntitlement,
 ): Promise<Awaited<ReturnType<typeof Purchases.purchasePackage>>> {
   const planKey = planTypeKey(pkg);
   const offerMap = planKey ? PROMO_OFFER_IDS[entitlement][planKey] : null;
@@ -529,11 +534,12 @@ export function PaywallScreen() {
       }
       setPurchasing(true);
       try {
+        const discountEntitlement = normalizePromoEntitlement(appliedPromoEntitlement);
         const isDiscountPromo =
-          appliedPromoEntitlement === 'discount_20' || appliedPromoEntitlement === 'discount_50';
+          discountEntitlement === 'discount_2mo' || discountEntitlement === 'discount_6mo';
         const result =
           isDiscountPromo && plan.pkg != null
-            ? await purchaseWithOffer(plan.pkg, appliedPromoEntitlement)
+            ? await purchaseWithOffer(plan.pkg, discountEntitlement)
             : plan.pkg != null
               ? await Purchases.purchasePackage(plan.pkg)
               : await Purchases.purchaseStoreProduct(plan.storeProduct!);

@@ -3,7 +3,30 @@ import type {PremiumGiftReminderKind} from '../../monetization/premiumGiftRemind
 import {WELCOME_PREMIUM_CAMPAIGN} from '../../monetization/welcomePremiumConstants';
 import type {AppStore} from '../types';
 
-export type PromoEntitlement = 'extended_trial' | 'lifetime' | 'discount_20' | 'discount_50';
+export type PromoEntitlement =
+  | 'extended_trial'
+  | 'lifetime'
+  | 'discount_2mo'
+  | 'discount_6mo';
+
+/** Map legacy / edge-compat entitlement strings to canonical promo entitlements. */
+export function normalizePromoEntitlement(
+  value: string | null | undefined,
+): PromoEntitlement | null {
+  switch (value) {
+    case 'extended_trial':
+    case 'lifetime':
+    case 'discount_2mo':
+    case 'discount_6mo':
+      return value;
+    case 'discount_20':
+      return 'discount_2mo';
+    case 'discount_50':
+      return 'discount_6mo';
+    default:
+      return null;
+  }
+}
 
 export type PromoSlice = {
   /** Promo code last successfully redeemed */
@@ -82,9 +105,13 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   activePremiumGiftReminder: null,
 
   applyPromo(code, entitlement, expiresAt = null) {
+    const normalized = normalizePromoEntitlement(entitlement);
+    if (normalized == null) {
+      return;
+    }
     set({
       appliedPromoCode: code.toUpperCase().trim(),
-      appliedPromoEntitlement: entitlement,
+      appliedPromoEntitlement: normalized,
       appliedPromoExpiresAt: expiresAt ?? null,
     });
   },

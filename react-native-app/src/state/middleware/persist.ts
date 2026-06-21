@@ -2,6 +2,7 @@ import {MMKV} from 'react-native-mmkv';
 import type {StateStorage} from 'zustand/middleware';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import {clampDriftHz} from '../../audio/channelFrequencies';
+import {normalizePromoEntitlement} from '../slices/promo';
 import type {AppStore} from '../types';
 
 // react-native-mmkv v3 uses NitroModules (JSI).  The factory call is lazy
@@ -76,6 +77,7 @@ export const persistedStoreOptions = {
         state.breathGainAnchor = state.gain;
       }
       state.breathClockStartedAtMs = state.breathPacerEnabled ? Date.now() : null;
+      state.appliedPromoEntitlement = normalizePromoEntitlement(state.appliedPromoEntitlement);
     }
   },
   partialize: (state: AppStore) => ({
