@@ -1,6 +1,6 @@
 import {SUPABASE_ANON_KEY, SUPABASE_FUNCTION_HEADERS} from '../monetization/supabaseAnon';
 import {getRcAppUserId} from './getRcAppUserId';
-import {useHertzStore} from '../state/store';
+import {getOutreachPlatform} from './outreachPlatform';
 
 const SUBMIT_FORM_URL =
   'https://mvawkzhwgtlwxwkssvyg.supabase.co/functions/v1/submit-form';
@@ -9,11 +9,10 @@ export async function submitPromoForm(
   payload: Record<string, string>,
 ): Promise<{ok: boolean; message: string}> {
   const rcUserId = await getRcAppUserId();
-  const referralCode = useHertzStore.getState().myReferralCode;
   const body = {
     ...payload,
+    platform: payload.platform ?? getOutreachPlatform(),
     rc_user_id: rcUserId ?? undefined,
-    referral_code: referralCode ?? undefined,
   };
   try {
     const res = await fetch(SUBMIT_FORM_URL, {

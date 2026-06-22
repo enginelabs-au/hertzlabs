@@ -7,8 +7,15 @@
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 import {adminReviewEmailHtml} from '../_shared/approveLink.ts';
-import {outreachSubjectTag, type OutreachPromoType, userShareCodeNoteHtml} from '../_shared/outreachPromo.ts';
+import {
+  allocateOutreachCodes,
+  type OutreachCodeBundle,
+} from '../_shared/allocateStoreOfferCode.ts';
+import {outreachSubjectTag, type OutreachPromoType} from '../_shared/outreachPromo.ts';
+import {outreachSuccessMessage} from '../_shared/storePromoCopy.ts';
+import {outreachPlatformLabel} from '../_shared/outreachPlatform.ts';
 import {escapeHtml, sendResendEmail} from '../_shared/resend.ts';
+import {isValidEmail, OUTREACH_PROMO_CATEGORIES} from '../_shared/email.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -57,7 +64,6 @@ Deno.serve(async (req: Request) => {
   const platform = String(body.platform ?? '').trim().slice(0, 32);
   const appVersion = String(body.app_version ?? '').trim().slice(0, 32);
   const rcUserId = String(body.rc_user_id ?? '').trim() || null;
-  const referralCode = String(body.referral_code ?? '').trim() || null;
 
   if (subject.length < 3 || subject.length > 200) {
     return json({error: 'Subject is required.'}, 400);
@@ -65,12 +71,16 @@ Deno.serve(async (req: Request) => {
   if (message.length < MIN_MESSAGE || message.length > MAX_MESSAGE) {
     return json({error: `Message must be ${MIN_MESSAGE}–${MAX_MESSAGE} characters.`}, 400);
   }
-  if (fromEmail.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
+  const outreachType = PROMO_CATEGORY[category];
+  const isOutreachPromo = outreachType != null || OUTREACH_PROMO_CATEGORIES.has(category);
+  if (isOutreachPromo && !isValidEmail(fromEmail)) {
+    return json({error: 'A valid email is required so we can send your offer code.'}, 400);
+  }
+  if (fromEmail.length > 0 && !isValidEmail(fromEmail)) {
     return json({error: 'Invalid reply email address.'}, 400);
   }
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  const outreachType = PROMO_CATEGORY[category];
 
   let approveId: string | undefined;
   if (outreachType === 'post') {
@@ -82,8 +92,8 @@ Deno.serve(async (req: Request) => {
         post_url: postUrl,
         platform: platformLine,
         description: message,
+        email: fromEmail,
         rc_user_id: rcUserId,
-        referral_code: referralCode,
       })
       .select('id')
       .single();
@@ -122,7 +132,6 @@ Deno.serve(async (req: Request) => {
       category,
       from_email: fromEmail || null,
       rc_user_id: rcUserId,
-      referral_code: referralCode,
       platform: platform || null,
       app_version: appVersion || null,
       status: 'pending',
@@ -136,25 +145,49 @@ Deno.serve(async (req: Request) => {
   }
 
   const messageId = inserted?.id as string | undefined;
-  const promoApproveId =
-    outreachType === 'beta' ? messageId : outreachType != null ? approveId : undefined;
+  const submissionId =
+    outreachType === 'beta'
+      ? messageId
+      : outreachType === 'post'
+        ? approveId
+        : outreachType === 'practitioner'
+          ? approveId
+          : undefined;
+
+  let codeBundle: OutreachCodeBundle = {
+    primary: null,
+    apple: null,
+    google: null,
+    appleRemaining: 0,
+    googleRemaining: 0,
+  };
+  if (outreachType != null) {
+    codeBundle = await allocateOutreachCodes(
+      sb,
+      outreachType,
+      platform,
+      submissionId ?? null,
+      rcUserId,
+    );
+  }
 
   const details = `<h2>${escapeHtml(subject)}</h2>
 <p><b>Category:</b> ${escapeHtml(category)}</p>
 ${fromEmail ? `<p><b>Reply to:</b> <a href="mailto:${escapeHtml(fromEmail)}">${escapeHtml(fromEmail)}</a></p>` : ''}
 <p><b>RC User ID:</b> ${escapeHtml(rcUserId ?? '—')}</p>
-${userShareCodeNoteHtml(referralCode)}
-<p><b>Platform:</b> ${escapeHtml(platform || '—')}</p>
+<p><b>Platform:</b> ${escapeHtml(outreachPlatformLabel(platform))}</p>
 <p><b>App version:</b> ${escapeHtml(appVersion || '—')}</p>
 <pre style="white-space:pre-wrap;font-family:system-ui,sans-serif">${escapeHtml(message)}</pre>`;
 
   const html =
     outreachType != null
-      ? adminReviewEmailHtml(outreachType, details, promoApproveId)
+      ? adminReviewEmailHtml(outreachType, details, codeBundle, platform)
       : details;
 
   const emailSubject =
-    outreachType != null ? `${subject} ${outreachSubjectTag(outreachType)}` : subject;
+    outreachType != null
+      ? `${subject} ${outreachSubjectTag(outreachType, codeBundle.primary?.code)}`
+      : subject;
 
   const sent = await sendResendEmail({
     to: TO_MAP[toKey],
@@ -171,7 +204,7 @@ ${userShareCodeNoteHtml(referralCode)}
     success: true,
     message:
       outreachType != null
-        ? 'Request sent for review. Premium is applied when the team approves or when you redeem the code they send you.'
+        ? outreachSuccessMessage(platform)
         : 'Message sent. We aim to reply within two business days.',
   });
 });

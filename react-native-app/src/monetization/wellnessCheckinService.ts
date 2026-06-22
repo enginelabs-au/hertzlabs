@@ -1,7 +1,7 @@
 import Purchases from 'react-native-purchases';
-import {Platform} from 'react-native';
 import {PROMO_VALIDATE_URL, WELLNESS_CHECKIN_URL} from '@env';
 import appVersion from '../../app.version.json';
+import {getOutreachPlatform} from '../promos/outreachPlatform';
 import {SUPABASE_FUNCTION_HEADERS} from './supabaseAnon';
 
 export type WellnessCheckinPayload = {
@@ -11,7 +11,7 @@ export type WellnessCheckinPayload = {
 };
 
 export type WellnessCheckinResult =
-  | {ok: true; message: string; expiresAtMs: number | null}
+  | {ok: true; message: string; code: string | null; redeemUrl: string | null; expiresAtMs: number | null}
   | {ok: false; error: string; nextAvailableAt?: string};
 
 const ENDPOINT =
@@ -44,7 +44,7 @@ export async function submitWellnessCheckin(
         mood: payload.mood,
         sleepQuality: payload.sleepQuality,
         focusLevel: payload.focusLevel,
-        platform: Platform.OS,
+        platform: getOutreachPlatform(),
         appVersion: `${appVersion.versionName} (${appVersion.versionCode})`,
       }),
     });
@@ -53,6 +53,7 @@ export async function submitWellnessCheckin(
       message?: string;
       error?: string;
       code?: string;
+      redeemUrl?: string;
       nextAvailableAt?: string;
       expiresAtMs?: number | null;
     };
@@ -69,7 +70,9 @@ export async function submitWellnessCheckin(
     }
     return {
       ok: true,
-      message: data.message ?? 'Check-in saved. Premium extended.',
+      message: data.message ?? 'Check-in saved.',
+      code: data.code ?? null,
+      redeemUrl: data.redeemUrl ?? null,
       expiresAtMs: data.expiresAtMs ?? null,
     };
   } catch {

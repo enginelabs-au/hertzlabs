@@ -47,7 +47,8 @@
     "test:watch": "vitest",
     "android": "node scripts/sync-native-secrets.js && node scripts/fix-android-codegen.mjs && (adb reverse tcp:8081 tcp:8081 || true) && react-native run-android",
     "ios": "node scripts/sync-native-secrets.js && react-native run-ios",
-    "update:pricing": "node scripts/update-pricing.mjs"
+    "import:store-offer-codes": "node scripts/import-store-offer-codes.mjs",
+    "reset:promo-test-state": "node scripts/reset-promo-test-state.mjs"
   },
   "dependencies": {
     "@react-native-clipboard/clipboard": "^1.16.3",

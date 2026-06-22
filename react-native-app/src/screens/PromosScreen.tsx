@@ -5,13 +5,11 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import Purchases from 'react-native-purchases';
 import {requestAppReview} from '../monetization/requestAppReview';
 import {useHertzStore} from '../state/store';
 import {daysSince} from '../state/slices/promo';
@@ -19,18 +17,28 @@ import {HertzTheme} from '../theme/hertzTheme';
 import {macScaledFont} from '../platform/macTypography';
 
 const fs = macScaledFont;
-import {createReferralLink} from '../services/referralLinkService';
-import {formatPromoCodeDisplay} from '../monetization/promoCodeFormat';
-import {PromoCodeCopyButton} from '../components/monetization/PromoCodeCopyButton';
+import {storeListingShareLabel, shareStoreListing} from '../services/referralLinkService';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {HELLO_EMAIL} from '../constants/appInfo';
 import {AppMessageForm} from '../components/messaging/AppMessageForm';
 import {sendPractitionerFallback, sendPromoPostFallback} from '../promos/promoMessageFallback';
 import {fetchPromoRewardStatus} from '../promos/checkPromoRewards';
+import {claimPromoReward, type InAppRewardType} from '../promos/claimPromoReward';
+import {registerReferrer} from '../promos/registerReferrer';
+import {showStoreOfferAlert} from '../promos/showStoreOfferAlert';
 import {submitPromoForm} from '../promos/submitPromoForm';
 import {getRcAppUserId} from '../promos/getRcAppUserId';
-import {refreshRcEntitlements} from '../monetization/promoCodeService';
-import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
+import {isValidEmail} from '../utils/email';
+import {
+  betaApprovedNote,
+  betaPendingNote,
+  outreachSubmitSuffix,
+  promoApprovedAlertBody,
+  promoCodeNoun,
+  promoPendingReviewLine,
+  promoRedeemFooter,
+  rateAppDescription,
+} from '../monetization/storePromoCopy';
 import {
   nextUnclaimedStreakBonus,
   STREAK_BONUS_DAYS,
@@ -174,11 +182,14 @@ function EarnCard({
             </Pressable>
           )}
           {isClaimed && (
-            <Text style={styles.claimedNote}>Reward has been applied to your account.</Text>
+            <Text style={styles.claimedNote}>
+              Store offer claimed — open Promos → Redeem and paste your App Store or Google Play
+              code.
+            </Text>
           )}
           {isPending && (
             <Text style={styles.claimedNote}>
-              Submitted for review. Premium is applied after the team approves your submission
+              {promoPendingReviewLine()}
               (usually within 48 hours). Reply to our email if you have questions.
             </Text>
           )}
@@ -200,44 +211,6 @@ function StreakBar({current, target}: {current: number; target: number}) {
       </View>
       <Text style={styles.streakBarLabel}>
         {current} / {target} days
-      </Text>
-    </View>
-  );
-}
-
-function ReferralCodeSection({code}: {code: string}) {
-  const [shareLink, setShareLink] = useState(createReferralLink(code));
-
-  useEffect(() => {
-    setShareLink(createReferralLink(code));
-  }, [code]);
-
-  const handleShare = useCallback(async () => {
-    try {
-      await Share.share({
-        message: `Try Hertz Labs — binaural beats for focus, sleep & meditation. Use my link: ${shareLink}`,
-        url: shareLink,
-        title: 'Hertz Labs — Binaural Beats',
-      });
-    } catch {
-      // dismissed
-    }
-  }, [shareLink]);
-
-  return (
-    <View style={styles.referralInline}>
-      <Text style={styles.referralLabel}>YOUR REFERRAL CODE</Text>
-      <Text style={styles.referralCode}>{formatPromoCodeDisplay(code)}</Text>
-      <Text style={styles.referralLink}>{shareLink}</Text>
-      <View style={styles.referralActions}>
-        <PromoCodeCopyButton code={code} />
-        <Pressable style={styles.referralBtn} onPress={() => void handleShare()}>
-          <Text style={styles.referralBtnText}>Share Link</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.referralNote}>
-        Earn 1 month free for each friend who installs via your link, plus an extra month when they
-        purchase any plan (up to 6 months total).
       </Text>
     </View>
   );
@@ -268,23 +241,35 @@ export function PromosScreen() {
   const practitionerRewardGranted = useHertzStore(s => s.practitionerRewardGranted);
   const betaRequestPending = useHertzStore(s => s.betaRequestPending);
   const betaRewardGranted = useHertzStore(s => s.betaRewardGranted);
+  const shareLinkRewardClaimed = useHertzStore(s => s.shareLinkRewardClaimed);
 
   const generateMyReferralCode = useHertzStore(s => s.generateMyReferralCode);
+  const setClipboardPromoCode = useHertzStore(s => s.setClipboardPromoCode);
   const markPostSubmissionPending = useHertzStore(s => s.markPostSubmissionPending);
   const markPractitionerSubmissionPending = useHertzStore(s => s.markPractitionerSubmissionPending);
   const markBetaRequestPending = useHertzStore(s => s.markBetaRequestPending);
   const syncPromoRewardStatuses = useHertzStore(s => s.syncPromoRewardStatuses);
-  const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const markReviewRewardClaimed = useHertzStore(s => s.markReviewRewardClaimed);
   const markStreakReward7Claimed = useHertzStore(s => s.markStreakReward7Claimed);
   const markStreakReward30Claimed = useHertzStore(s => s.markStreakReward30Claimed);
   const markStreakBonusMilestoneClaimed = useHertzStore(s => s.markStreakBonusMilestoneClaimed);
   const markAnniversaryRewardClaimed = useHertzStore(s => s.markAnniversaryRewardClaimed);
+  const markShareLinkRewardClaimed = useHertzStore(s => s.markShareLinkRewardClaimed);
+
+  const [pendingReferInstallClaims, setPendingReferInstallClaims] = useState(0);
+  const [claimingReward, setClaimingReward] = useState(false);
 
   // Initialise on first visit
   useEffect(() => {
     generateMyReferralCode();
   }, [generateMyReferralCode]);
+
+  useEffect(() => {
+    if (myReferralCode == null) {
+      return;
+    }
+    void registerReferrer(myReferralCode);
+  }, [myReferralCode]);
 
   // Sync admin-approved rewards from server (post / practitioner / beta).
   const prevRewardSnapshot = useRef<{post: boolean; practitioner: boolean; beta: boolean}>({
@@ -309,42 +294,45 @@ export function PromosScreen() {
       };
 
       syncPromoRewardStatuses(statuses);
+      setPendingReferInstallClaims(statuses.pendingReferInstallClaims);
       prevRewardSnapshot.current = {
         post: statuses.post === 'approved',
         practitioner: statuses.practitioner === 'approved',
         beta: statuses.beta === 'approved',
       };
 
-      if (
-        statuses.post === 'approved' ||
-        statuses.practitioner === 'approved' ||
-        statuses.beta === 'approved'
-      ) {
-        const refreshed = await refreshRcEntitlements();
-        if (refreshed) {
-          try {
-            const info = await Purchases.getCustomerInfo();
-            _hydrateFromRC(info, REVENUECAT_ENTITLEMENT);
-          } catch {
-            // Non-fatal
-          }
-        }
-      }
-
       if (newlyApproved.post) {
-        Alert.alert(
-          'Post approved',
-          'Your Make a Post reward is active. Premium should appear now — if not, fully close and reopen the app.',
-          [{text: 'OK'}],
-        );
+        Alert.alert('Post approved', promoApprovedAlertBody(), [{text: 'OK'}]);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [syncPromoRewardStatuses, _hydrateFromRC]);
+  }, [syncPromoRewardStatuses]);
 
   const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
+
+  const claimStoreReward = useCallback(
+    async (rewardType: InAppRewardType, rewardKey?: string): Promise<boolean> => {
+      setClaimingReward(true);
+      const result = await claimPromoReward(rewardType, rewardKey);
+      setClaimingReward(false);
+      if (!result.ok) {
+        Alert.alert('Could not claim reward', result.error, [{text: 'OK'}]);
+        return false;
+      }
+      setClipboardPromoCode(result.code);
+      setPendingReferInstallClaims(result.pendingReferInstallClaims);
+      showStoreOfferAlert({
+        title: 'Reward claimed',
+        code: result.code,
+        onCopy: setClipboardPromoCode,
+        onRedeem: () => setActiveModal('promo'),
+      });
+      return true;
+    },
+    [setActiveModal, setClipboardPromoCode],
+  );
 
   // Derived booleans
   const anniversaryUnlocked =
@@ -368,36 +356,46 @@ export function PromosScreen() {
 
   const handleReview = useCallback(async () => {
     await requestAppReview();
-    markReviewRewardClaimed();
-    Alert.alert(
-      'Thank you! 🙏',
-      "Your reward code will be emailed to you within 24 hours — keep an eye on your inbox.",
-      [{text: 'OK'}],
-    );
-  }, [markReviewRewardClaimed]);
+    const claimed = await claimStoreReward('review');
+    if (claimed) {
+      markReviewRewardClaimed();
+    }
+  }, [claimStoreReward, markReviewRewardClaimed]);
 
-  const handleStreak7 = useCallback(() => {
-    markStreakReward7Claimed();
-    setActiveModal('promo');
-  }, [markStreakReward7Claimed, setActiveModal]);
+  const handleStreak7 = useCallback(async () => {
+    const claimed = await claimStoreReward('streak_7');
+    if (claimed) {
+      markStreakReward7Claimed();
+    }
+  }, [claimStoreReward, markStreakReward7Claimed]);
 
-  const handleStreak30 = useCallback(() => {
-    markStreakReward30Claimed();
-    setActiveModal('promo');
-  }, [markStreakReward30Claimed, setActiveModal]);
+  const handleStreak30 = useCallback(async () => {
+    const claimed = await claimStoreReward('streak_30');
+    if (claimed) {
+      markStreakReward30Claimed();
+    }
+  }, [claimStoreReward, markStreakReward30Claimed]);
 
-  const handleStreakBonus = useCallback(() => {
+  const handleStreakBonus = useCallback(async () => {
     if (nextStreakBonus == null) {
       return;
     }
-    markStreakBonusMilestoneClaimed(nextStreakBonus);
-    setActiveModal('promo');
-  }, [markStreakBonusMilestoneClaimed, nextStreakBonus, setActiveModal]);
+    const claimed = await claimStoreReward('streak_bonus', String(nextStreakBonus));
+    if (claimed) {
+      markStreakBonusMilestoneClaimed(nextStreakBonus);
+    }
+  }, [claimStoreReward, markStreakBonusMilestoneClaimed, nextStreakBonus]);
 
-  const handleAnniversary = useCallback(() => {
-    markAnniversaryRewardClaimed();
-    setActiveModal('promo');
-  }, [markAnniversaryRewardClaimed, setActiveModal]);
+  const handleAnniversary = useCallback(async () => {
+    const claimed = await claimStoreReward('anniversary');
+    if (claimed) {
+      markAnniversaryRewardClaimed();
+    }
+  }, [claimStoreReward, markAnniversaryRewardClaimed]);
+
+  const handleReferInstallClaim = useCallback(async () => {
+    await claimStoreReward('refer_install');
+  }, [claimStoreReward]);
 
   const handleWellnessCheckin = useCallback(() => {
     setActiveModal('wellnessCheckin');
@@ -407,6 +405,7 @@ export function PromosScreen() {
   const [postUrl, setPostUrl] = useState('');
   const [postPlatform, setPostPlatform] = useState('');
   const [postDesc, setPostDesc] = useState('');
+  const [postEmail, setPostEmail] = useState('');
   const [postSubmitting, setPostSubmitting] = useState(false);
 
   // Practitioner form state
@@ -433,8 +432,18 @@ export function PromosScreen() {
       ? 'pending'
       : 'available';
 
+  const postEmailOk = isValidEmail(postEmail);
+  const practEmailOk = isValidEmail(practEmail);
+  const postCanSubmit = postUrl.trim().length > 0 && postEmailOk && !postSubmitting;
+  const practCanSubmit = practName.trim().length > 0 && practEmailOk && !practSubmitting;
+
   const handleMakePost = useCallback(async () => {
-    if (!postUrl.trim() || postSubmitting) return;
+    if (!postCanSubmit) {
+      if (!postEmailOk) {
+        Alert.alert('Email required', 'Enter a valid email so we can send your offer code when approved.', [{text: 'OK'}]);
+      }
+      return;
+    }
     const rcUserId = await getRcAppUserId();
     if (rcUserId == null) {
       Alert.alert(
@@ -449,19 +458,21 @@ export function PromosScreen() {
       postUrl: postUrl.trim(),
       platform: postPlatform.trim(),
       description: postDesc.trim(),
+      email: postEmail.trim(),
     };
     const result = await submitPromoForm({
       type: 'post',
       post_url: fields.postUrl,
       platform: fields.platform,
       description: fields.description,
+      email: fields.email,
     });
     setPostSubmitting(false);
     if (result.ok) {
       markPostSubmissionPending();
       Alert.alert(
         'Submitted for review',
-        `${result.message} Premium is applied after the team approves your post — not immediately on submit.`,
+        `${result.message} ${outreachSubmitSuffix()}`,
         [{text: 'OK'}],
       );
       return;
@@ -471,16 +482,21 @@ export function PromosScreen() {
       markPostSubmissionPending();
       Alert.alert(
         'Sent for review',
-        `${fallback.message} Premium is applied after the team approves your post.`,
+        `${fallback.message} ${outreachSubmitSuffix()}`,
         [{text: 'OK'}],
       );
     } else {
       Alert.alert('Could not submit', fallback.message, [{text: 'OK'}]);
     }
-  }, [postUrl, postPlatform, postDesc, postSubmitting, markPostSubmissionPending]);
+  }, [postCanSubmit, postEmailOk, postUrl, postPlatform, postDesc, postEmail, markPostSubmissionPending]);
 
   const handlePractitioner = useCallback(async () => {
-    if (!practName.trim() || !practEmail.trim() || practSubmitting) return;
+    if (!practCanSubmit) {
+      if (!practEmailOk) {
+        Alert.alert('Email required', 'Enter a valid email so we can send your offer code when approved.', [{text: 'OK'}]);
+      }
+      return;
+    }
     setPractSubmitting(true);
     const fields = {
       fullName: practName.trim(),
@@ -502,7 +518,7 @@ export function PromosScreen() {
       markPractitionerSubmissionPending();
       Alert.alert(
         'Application received',
-        `${result.message} Premium is applied after the team reviews your application — not immediately on submit.`,
+        `${result.message} ${outreachSubmitSuffix()}`,
         [{text: 'OK'}],
       );
       return;
@@ -512,36 +528,37 @@ export function PromosScreen() {
       markPractitionerSubmissionPending();
       Alert.alert(
         'Sent for review',
-        `${fallback.message} Premium is applied after the team reviews your application.`,
+        `${fallback.message} ${outreachSubmitSuffix()}`,
         [{text: 'OK'}],
       );
     } else {
       Alert.alert('Could not submit', fallback.message, [{text: 'OK'}]);
     }
   }, [
+    practCanSubmit,
+    practEmailOk,
     practName,
     practCredentials,
     practPractice,
     practWebsite,
     practEmail,
-    practSubmitting,
     markPractitionerSubmissionPending,
   ]);
 
-  const shareReferralLink = useCallback(async () => {
-    if (myReferralCode == null) {
+  const handleShareStoreListing = useCallback(async () => {
+    await shareStoreListing();
+  }, []);
+
+  const handleShareWithReward = useCallback(async () => {
+    const shared = await shareStoreListing();
+    if (!shared || shareLinkRewardClaimed) {
       return;
     }
-    const link = createReferralLink(myReferralCode);
-    try {
-      await Share.share({
-        message: `Hertz Labs — binaural beats for focus, sleep & meditation. ${link}`,
-        url: link,
-      });
-    } catch {
-      // dismissed
+    const claimed = await claimStoreReward('share_link');
+    if (claimed) {
+      markShareLinkRewardClaimed();
     }
-  }, [myReferralCode]);
+  }, [claimStoreReward, markShareLinkRewardClaimed, shareLinkRewardClaimed]);
 
   // ────────────────────────────────────────────────────────────────────────────
 
@@ -553,7 +570,7 @@ export function PromosScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title}>Earn Free Premium</Text>
-            <Text style={styles.subtitle}>Complete actions to earn promo codes</Text>
+            <Text style={styles.subtitle}>Complete actions to earn {promoCodeNoun()}s</Text>
           </View>
           <Pressable style={styles.closeBtn} onPress={dismiss} accessibilityLabel="Close">
             <Text style={styles.closeBtnText}>✕</Text>
@@ -632,13 +649,26 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="👥"
             title="Refer a Friend"
-            description="Share your unique link. Earn 1 month free per install, plus 1 more if they purchase (up to 6 months)."
+            description="Send the App Store or Google Play link to a friend. When they install, claim a store offer code here (up to 6 months)."
             reward="Up to 6 months"
             rewardVariant="cyan"
             status="available"
+            ctaLabel={storeListingShareLabel()}
+            onCta={() => void handleShareStoreListing()}
             extra={
-              myReferralCode != null && expandedCardId === 'refer-friend' ? (
-                <ReferralCodeSection code={myReferralCode} />
+              pendingReferInstallClaims > 0 ? (
+                <Pressable
+                  style={styles.cardBtn}
+                  onPress={() => void handleReferInstallClaim()}
+                  disabled={claimingReward}>
+                  {claimingReward ? (
+                    <ActivityIndicator size="small" color={GOLD} />
+                  ) : (
+                    <Text style={styles.cardBtnText}>
+                      Claim {promoCodeNoun()} ({pendingReferInstallClaims})
+                    </Text>
+                  )}
+                </Pressable>
               ) : undefined
             }
           />
@@ -649,7 +679,7 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="⭐"
             title="Leave a Review"
-            description="Rate Hertz Labs in the App Store or Google Play."
+            description={rateAppDescription()}
             reward="7 days free"
             status={reviewRewardClaimed ? 'claimed' : 'available'}
             ctaLabel="Rate the App"
@@ -662,16 +692,11 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="📱"
             title="Share with a Link"
-            description="Share your unique referral link to any platform. Tracked via link attribution."
-            reward="7 days free"
-            status="available"
-            ctaLabel="Share Now"
-            onCta={() => void shareReferralLink()}
-            extra={
-              myReferralCode != null && expandedCardId === 'share-link' ? (
-                <ReferralCodeSection code={myReferralCode} />
-              ) : undefined
-            }
+            description="Send the store listing link once to earn a one-time store offer code."
+            reward="1 store offer"
+            status={shareLinkRewardClaimed ? 'claimed' : 'available'}
+            ctaLabel={shareLinkRewardClaimed ? undefined : storeListingShareLabel()}
+            onCta={() => void handleShareWithReward()}
           />
 
           <EarnCard
@@ -716,10 +741,21 @@ export function PromosScreen() {
                     textAlignVertical="top"
                     {...FORM_INPUT_ANDROID}
                   />
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Your email (required — we send your offer code here)"
+                    placeholderTextColor="rgba(255,255,255,0.25)"
+                    value={postEmail}
+                    onChangeText={setPostEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    {...FORM_INPUT_ANDROID}
+                  />
                   <Pressable
-                    style={[styles.formBtn, (!postUrl.trim() || postSubmitting) && styles.formBtnDisabled]}
+                    style={[styles.formBtn, !postCanSubmit && styles.formBtnDisabled]}
                     onPress={() => void handleMakePost()}
-                    disabled={!postUrl.trim() || postSubmitting}>
+                    disabled={!postCanSubmit}>
                     {postSubmitting
                       ? <ActivityIndicator size="small" color={GOLD} />
                       : <Text style={styles.formBtnText}>Submit for Review</Text>
@@ -842,18 +878,19 @@ export function PromosScreen() {
                   />
                   <TextInput
                     style={styles.formInput}
-                    placeholder="Your email (required)"
+                    placeholder="Your email (required — we send your offer code here)"
                     placeholderTextColor="rgba(255,255,255,0.25)"
                     value={practEmail}
                     onChangeText={setPractEmail}
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    autoCorrect={false}
                     {...FORM_INPUT_ANDROID}
                   />
                   <Pressable
-                    style={[styles.formBtn, (!practName.trim() || !practEmail.trim() || practSubmitting) && styles.formBtnDisabled]}
+                    style={[styles.formBtn, !practCanSubmit && styles.formBtnDisabled]}
                     onPress={() => void handlePractitioner()}
-                    disabled={!practName.trim() || !practEmail.trim() || practSubmitting}>
+                    disabled={!practCanSubmit}>
                     {practSubmitting
                       ? <ActivityIndicator size="small" color={GOLD} />
                       : <Text style={styles.formBtnText}>Submit Application</Text>
@@ -885,7 +922,7 @@ export function PromosScreen() {
                   subject="Hertz Labs — Beta tester interest"
                   category="promo_beta"
                   placeholder="Tell us why you want to beta test and any devices you use…"
-                  prompt={`Apply for beta access — message goes to ${HELLO_EMAIL}. Include your email so we can reply.`}
+                  prompt={`Apply for beta access — message goes to ${HELLO_EMAIL}. Your email below is required so we can send your offer code.`}
                   sendLabel="Send beta request"
                   requireFromEmail
                   fromEmailPlaceholder="Your email (required — we reply here when approved)"
@@ -893,9 +930,7 @@ export function PromosScreen() {
                 />
                 ) : (
                   <Text style={styles.formNote}>
-                    {betaReviewStatus === 'pending'
-                      ? 'Your beta request is under review. Premium is applied after the team replies to your email.'
-                      : 'Beta reward has been applied to your account.'}
+                    {betaReviewStatus === 'pending' ? betaPendingNote() : betaApprovedNote()}
                   </Text>
                 )
               ) : undefined
@@ -907,12 +942,12 @@ export function PromosScreen() {
             style={styles.footerLink}
             onPress={() => setActiveModal('promo')}
             accessibilityRole="button">
-            <Text style={styles.footerLinkText}>Already have a code? Redeem it here →</Text>
+            <Text style={styles.footerLinkText}>{promoRedeemFooter()}</Text>
           </Pressable>
 
           <Text style={styles.legalNote}>
-            Referral rewards are credited after your friend installs and opens the app. Share
-            rewards require a qualifying action. Only one reward per action. Subject to Hertz Labs
+            Store offer codes are redeemed through the App Store or Google Play. Share rewards
+            require completing the share action. Only one reward per action. Subject to Hertz Labs
             Terms of Service. Incentivised reviews must reflect honest opinions.
           </Text>
         </ScrollView>

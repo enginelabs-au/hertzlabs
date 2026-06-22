@@ -1,7 +1,7 @@
 import type {StateStorage} from 'zustand/middleware';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import {clampDriftHz} from '../../audio/channelFrequencies';
-import {normalizePromoEntitlement, OUTREACH_PROMO_RESET_EPOCH} from '../slices/promo';
+import {normalizePromoEntitlement, PROMO_CLAIM_RESET_EPOCH} from '../slices/promo';
 import type {AppStore} from '../types';
 import {STORE_KEY, zustandStorage} from './persistStorage';
 
@@ -26,14 +26,27 @@ export const persistedStoreOptions = {
       }
       state.breathClockStartedAtMs = state.breathPacerEnabled ? Date.now() : null;
       state.appliedPromoEntitlement = normalizePromoEntitlement(state.appliedPromoEntitlement);
-      if ((state.outreachPromoResetEpoch ?? 0) < OUTREACH_PROMO_RESET_EPOCH) {
+      const resetEpoch = state.promoClaimResetEpoch ?? state.outreachPromoResetEpoch ?? 0;
+      if (resetEpoch < PROMO_CLAIM_RESET_EPOCH) {
+        state.reviewRewardClaimed = false;
+        state.streakReward7Claimed = false;
+        state.streakReward30Claimed = false;
+        state.streakBonusMilestonesClaimed = [];
+        state.anniversaryRewardClaimed = false;
+        state.wellnessCheckinCount = 0;
+        state.lastWellnessCheckinDate = null;
+        state.shareLinkRewardClaimed = false;
         state.postSubmissionPending = false;
         state.postRewardGranted = false;
         state.practitionerSubmissionPending = false;
         state.practitionerRewardGranted = false;
         state.betaRequestPending = false;
         state.betaRewardGranted = false;
-        state.outreachPromoResetEpoch = OUTREACH_PROMO_RESET_EPOCH;
+        state.appliedPromoCode = null;
+        state.appliedPromoEntitlement = null;
+        state.appliedPromoExpiresAt = null;
+        state.clipboardPromoCode = null;
+        state.promoClaimResetEpoch = PROMO_CLAIM_RESET_EPOCH;
       }
     }
   },
@@ -85,7 +98,8 @@ export const persistedStoreOptions = {
     practitionerRewardGranted: state.practitionerRewardGranted,
     betaRequestPending: state.betaRequestPending,
     betaRewardGranted: state.betaRewardGranted,
-    outreachPromoResetEpoch: state.outreachPromoResetEpoch,
+    shareLinkRewardClaimed: state.shareLinkRewardClaimed,
+    promoClaimResetEpoch: state.promoClaimResetEpoch,
     welcomePremiumClaimedAt: state.welcomePremiumClaimedAt,
     welcomePremiumCampaignId: state.welcomePremiumCampaignId,
     welcomePremiumExpiresAtMs: state.welcomePremiumExpiresAtMs,

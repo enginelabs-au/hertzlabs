@@ -1,34 +1,17 @@
 /**
- * Hertz Labs — validate-promo edge function
+ * Hertz Labs — validate-promo (retired)
  *
- * POST /functions/v1/validate-promo
- * Body: { code: string, rcAppUserId: string }
- *
- * 200: { valid: true, entitlement, label, description }
- * 4xx: { valid: false, error: string }
- *
- * Uses Supabase service role to read/write promo_codes and promo_redemptions.
- * Calls the RevenueCat REST API to grant the entitlement for trial/lifetime codes.
+ * Custom HLP codes and RevenueCat promotional grants are disabled.
+ * Rewards use App Store Offer Codes / Google Play promo codes via claim-promo-reward.
  */
-
-import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-import {grantRcPremiumForMs, RC_GRANT_DURATIONS_MS} from '../_shared/rcGrant.ts';
-
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
-
-const RC_GRANT_MS: Record<string, number> = {
-  one_month: ONE_MONTH_MS,
-  extended_trial: RC_GRANT_DURATIONS_MS.threeMonth,
-  lifetime: RC_GRANT_DURATIONS_MS.lifetime,
-};
+const RETIRED_MESSAGE =
+  'Custom promo codes are no longer supported. Earn rewards in Promos — each reward gives an App Store or Google Play offer code to redeem under Promos → Redeem.';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -39,123 +22,20 @@ Deno.serve(async (req: Request) => {
     return json({valid: false, error: 'Method not allowed.'}, 405);
   }
 
-  let body: {code?: string; rcAppUserId?: string};
+  let body: {code?: string};
   try {
     body = await req.json();
   } catch {
     return json({valid: false, error: 'Invalid JSON body.'}, 400);
   }
 
-  const code = normalizePromoCode(body.code ?? '');
-  const rcAppUserId = (body.rcAppUserId ?? '').trim();
-
-  if (code.length < 4) {
-    return json({valid: false, error: 'Code is too short.'}, 400);
+  const normalized = (body.code ?? '').toUpperCase().replace(/[\s-]/g, '');
+  if (normalized.startsWith('HLP')) {
+    return json({valid: false, error: RETIRED_MESSAGE}, 410);
   }
 
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-  const lookupVariants = [code, insertDashes(code)];
-  const {data: promoRows, error: promoErr} = await sb
-    .from('promo_codes')
-    .select('*')
-    .in('code', lookupVariants);
-
-  const promo = promoRows?.[0] ?? null;
-
-  if (promoErr != null || promo == null) {
-    return json({valid: false, error: 'Code not found or already used.'}, 404);
-  }
-
-  // 2. Reject deactivated codes (manually retired or auto-deactivated after max uses)
-  if (promo.active === false) {
-    return json({valid: false, error: 'This code is no longer active.'}, 410);
-  }
-
-  // 3. Check expiry
-  if (promo.expires_at != null && new Date(promo.expires_at) < new Date()) {
-    return json({valid: false, error: 'This code has expired.'}, 410);
-  }
-
-  // 4. Check use limit (belt-and-suspenders alongside the trigger)
-  if (promo.max_uses != null && promo.use_count >= promo.max_uses) {
-    return json({valid: false, error: 'This code has reached its redemption limit.'}, 410);
-  }
-
-  // 4. Check duplicate redemption by this RC user
-  if (rcAppUserId.length > 0) {
-    const {data: existing} = await sb
-      .from('promo_redemptions')
-      .select('id')
-      .eq('code', promo.code)
-      .eq('rc_user_id', rcAppUserId)
-      .single();
-
-    if (existing != null) {
-      return json({valid: false, error: 'You have already redeemed this code.'}, 409);
-    }
-  }
-
-  // 5. For premium grants: call RC promotional entitlement API (v2)
-  if (
-    promo.entitlement === 'one_month' ||
-    promo.entitlement === 'extended_trial' ||
-    promo.entitlement === 'lifetime'
-  ) {
-    if (rcAppUserId.length === 0) {
-      return json({valid: false, error: 'Could not identify your account. Please sign in and try again.'}, 400);
-    }
-
-    const durationMs = RC_GRANT_MS[promo.entitlement];
-    const grant = await grantRcPremiumForMs(rcAppUserId, durationMs);
-    if (!grant.ok) {
-      return json({valid: false, error: grant.error}, grant.status ?? 502);
-    }
-  }
-
-  // 6. Record redemption and increment use_count.
-  // The database trigger auto-sets active=false when use_count reaches max_uses.
-  await sb.from('promo_redemptions').insert({
-    code: promo.code,
-    rc_user_id: rcAppUserId.length > 0 ? rcAppUserId : 'anonymous',
-  });
-
-  await sb
-    .from('promo_codes')
-    .update({use_count: promo.use_count + 1})
-    .eq('code', promo.code);
-
-  return json({
-    valid: true,
-    entitlement: clientEntitlement(promo.entitlement),
-    label: promo.label,
-    description: promo.description,
-  });
+  return json({valid: false, error: RETIRED_MESSAGE}, 410);
 });
-
-/** Legacy app builds expect discount_20 / discount_50 in the JSON response. */
-function clientEntitlement(entitlement: string): string {
-  switch (entitlement) {
-    case 'discount_2mo':
-      return 'discount_20';
-    case 'discount_6mo':
-      return 'discount_50';
-    default:
-      return entitlement;
-  }
-}
-
-function normalizePromoCode(raw: string): string {
-  return raw.toUpperCase().replace(/[\s-]/g, '');
-}
-
-function insertDashes(normalized: string): string {
-  const m = normalized.match(/^(HLP)([A-Z0-9]{4})([A-Z0-9]{4})$/);
-  if (m != null) {
-    return `${m[1]}-${m[2]}-${m[3]}`;
-  }
-  return normalized;
-}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

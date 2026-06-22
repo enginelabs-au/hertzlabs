@@ -8,6 +8,7 @@
  */
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
+import {pendingReferInstallClaims} from '../_shared/inAppPromoRewards.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -59,10 +60,13 @@ Deno.serve(async (req: Request) => {
       .limit(1),
   ]);
 
+  const pendingReferrals = await pendingReferInstallClaims(sb, rcAppUserId);
+
   return json({
     post: mapStatus(postRows.data?.[0]?.status as string | undefined),
     practitioner: mapStatus(practRows.data?.[0]?.status as string | undefined),
     beta: mapStatus(betaRows.data?.[0]?.status as string | undefined),
+    pendingReferInstallClaims: pendingReferrals,
   });
 });
 

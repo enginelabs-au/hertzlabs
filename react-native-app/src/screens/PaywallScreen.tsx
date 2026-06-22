@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,16 +8,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import {
-  normalizePromoEntitlement,
-  type PromoEntitlement,
-} from '../state/slices/promo';
-import {formatPromoCodeDisplay, normalizePromoCode} from '../monetization/promoCodeFormat';
-import {PromoCodeCopyButton} from '../components/monetization/PromoCodeCopyButton';
-import {refreshRcEntitlements, validatePromoCode} from '../monetization/promoCodeService';
+import type {PromoEntitlement} from '../state/slices/promo';
+import {usesStoreNativeRedemption} from '../monetization/appleStoreCompliance';
+import {AppStoreOfferRedemptionPanel} from '../components/monetization/AppStoreOfferRedemptionPanel';
 import Purchases from 'react-native-purchases';
 import type {CustomerInfo, Package} from 'react-native-purchases';
 import {
@@ -320,148 +315,11 @@ async function purchaseWithOffer(
   return Purchases.purchasePackage(pkg);
 }
 
-function ActivePromoBar({
-  code,
-  entitlement,
-  onClear,
-}: {
-  code: string;
-  entitlement: PromoEntitlement;
-  onClear: () => void;
-}) {
-  return (
-    <View style={styles.promoBanner}>
-      <Text style={styles.promoBannerIcon}>🎟</Text>
-      <View style={styles.promoBannerInfo}>
-        <Text style={styles.promoBannerLabel}>PROMO ACTIVE</Text>
-        <Text style={styles.promoBannerCode}>
-          {formatPromoCodeDisplay(code)} — {DISCOUNT_LABELS[entitlement]}
-        </Text>
-      </View>
-      <PromoCodeCopyButton code={code} label="Copy" compact />
-      <Pressable onPress={onClear} accessibilityLabel="Remove promo code" style={styles.promoRemove}>
-        <Text style={styles.promoRemoveText}>✕</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function PromoCodeInput({
-  onApplied,
-}: {
-  onApplied: (entitlement: PromoEntitlement) => void;
-}) {
-  const applyPromo = useHertzStore(s => s.applyPromo);
-  const appliedPromoCode = useHertzStore(s => s.appliedPromoCode);
-  const clipboardPromoCode = useHertzStore(s => s.clipboardPromoCode);
-  const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const inputRef = useRef<TextInput>(null);
-
-  useEffect(() => {
-    if (code.length === 0 && clipboardPromoCode != null && clipboardPromoCode.length > 0) {
-      setCode(clipboardPromoCode);
-    }
-  }, [clipboardPromoCode, code.length]);
-
-  const handleApply = useCallback(async () => {
-    const trimmed = normalizePromoCode(code);
-    if (trimmed.length < 4) {
-      setError('Enter a valid promo code.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-    const result = await validatePromoCode(trimmed);
-    setLoading(false);
-    if (!result.valid) {
-      setError(result.error);
-      return;
-    }
-    applyPromo(trimmed, result.entitlement);
-    if (
-      result.entitlement === 'one_month' ||
-      result.entitlement === 'extended_trial' ||
-      result.entitlement === 'lifetime'
-    ) {
-      const info = await refreshRcEntitlements().then(async ok => {
-        if (ok) {
-          try {
-            const Purchases_ = (await import('react-native-purchases')).default;
-            return Purchases_.getCustomerInfo();
-          } catch {
-            return null;
-          }
-        }
-        return null;
-      });
-      if (info != null) {
-        _hydrateFromRC(info, ENTITLEMENT_ID);
-      }
-    }
-    setSuccess(true);
-    setCode('');
-    inputRef.current?.blur();
-    onApplied(result.entitlement);
-  }, [code, applyPromo, _hydrateFromRC, onApplied]);
-
-  if (appliedPromoCode != null) {
-    return null;
-  }
-
-  return (
-    <View style={styles.promoInputWrapper}>
-      <Text style={styles.promoInputLabel}>PROMO CODE</Text>
-      <View style={styles.promoInputRow}>
-        <TextInput
-          ref={inputRef}
-          style={styles.promoInput}
-          placeholder="Enter code"
-          placeholderTextColor="rgba(255,255,255,0.25)"
-          value={code}
-          onChangeText={t => {
-            setCode(t.toUpperCase());
-            setError(null);
-            setSuccess(false);
-          }}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          returnKeyType="done"
-          onSubmitEditing={() => void handleApply()}
-          editable={!loading}
-          maxLength={20}
-          includeFontPadding={false}
-        />
-        <Pressable
-          style={[styles.promoApplyBtn, (loading || code.trim().length < 4) && styles.promoApplyBtnDisabled]}
-          onPress={() => void handleApply()}
-          disabled={loading || code.trim().length < 4}
-          accessibilityRole="button"
-          accessibilityLabel="Apply promo code">
-          {loading ? (
-            <ActivityIndicator size="small" color={GOLD} />
-          ) : (
-            <Text style={styles.promoApplyText}>Apply</Text>
-          )}
-        </Pressable>
-      </View>
-      {error != null && <Text style={styles.promoInputError}>{error}</Text>}
-      {success && <Text style={styles.promoInputSuccess}>Code applied!</Text>}
-    </View>
-  );
-}
-
 export function PaywallScreen() {
   const scrollInsets = useModalScrollInsets(24);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
-  const appliedPromoCode = useHertzStore(s => s.appliedPromoCode);
-  const appliedPromoEntitlement = useHertzStore(s => s.appliedPromoEntitlement);
-  const clearPromo = useHertzStore(s => s.clearPromo);
+  const storeNativeRedemption = usesStoreNativeRedemption();
 
   const [plans, setPlans] = useState<PaywallPlan[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -547,20 +405,12 @@ export function PaywallScreen() {
       }
       setPurchasing(true);
       try {
-        const discountEntitlement = normalizePromoEntitlement(appliedPromoEntitlement);
-        const isDiscountPromo =
-          discountEntitlement === 'discount_2mo' || discountEntitlement === 'discount_6mo';
         const result =
-          isDiscountPromo && plan.pkg != null
-            ? await purchaseWithOffer(plan.pkg, discountEntitlement)
-            : plan.pkg != null
-              ? await Purchases.purchasePackage(plan.pkg)
-              : await Purchases.purchaseStoreProduct(plan.storeProduct!);
+          plan.pkg != null
+            ? await Purchases.purchasePackage(plan.pkg)
+            : await Purchases.purchaseStoreProduct(plan.storeProduct!);
         setCustomerInfo(result.customerInfo);
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
-        if (isDiscountPromo) {
-          clearPromo();
-        }
       } catch (e) {
         // RevenueCat throws with code; user-cancelled is not an error to alert
         const msg = e instanceof Error ? e.message : String(e);
@@ -572,7 +422,7 @@ export function PaywallScreen() {
         setPurchasing(false);
       }
     },
-    [purchasing, storeUnavailableDetail, _hydrateFromRC, dismiss, appliedPromoEntitlement, clearPromo],
+    [purchasing, storeUnavailableDetail, _hydrateFromRC],
   );
 
   const handleRestore = useCallback(async () => {
@@ -625,15 +475,6 @@ export function PaywallScreen() {
           keyboardShouldPersistTaps="handled">
           <ActiveSubscriptionCard summary={subscriptionSummary} />
 
-          {/* Active promo banner */}
-          {appliedPromoCode != null && appliedPromoEntitlement != null && (
-            <ActivePromoBar
-              code={appliedPromoCode}
-              entitlement={appliedPromoEntitlement}
-              onClear={clearPromo}
-            />
-          )}
-
           {/* Feature comparison */}
           <PremiumFeatureList />
 
@@ -684,8 +525,13 @@ export function PaywallScreen() {
             ))}
           </View>
 
-          {/* Inline promo code input */}
-          <PromoCodeInput onApplied={() => {}} />
+          {storeNativeRedemption && (
+            <AppStoreOfferRedemptionPanel
+              variant="inline"
+              showCodeInput={false}
+              onBrowsePromos={() => setActiveModal('promos')}
+            />
+          )}
 
           {/* Restore */}
           <Pressable

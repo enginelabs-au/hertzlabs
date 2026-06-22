@@ -1,32 +1,20 @@
 /**
- * Hertz Labs — approve-promo-submission
+ * Hertz Labs — approve-promo-submission (deprecated)
  *
- * GET /functions/v1/approve-promo-submission?type=post|practitioner|beta&id=UUID&token=SECRET
+ * Legacy one-click approve links are disabled. Premium is granted only when the user
+ * redeems an App Store Offer Code or Google Play promo code you send by email.
  *
- * Admin one-click approve from review email. Grants RevenueCat Premium and marks approved.
- * Set PROMO_APPROVE_SECRET in Supabase secrets.
+ * GET still marks the submission approved in Supabase (for in-app status UI) but does
+ * NOT grant RevenueCat promotional entitlements.
  */
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-import {escapeHtml, sendResendEmail} from '../_shared/resend.ts';
-import {grantRcPremiumForMs, RC_GRANT_DURATIONS_MS} from '../_shared/rcGrant.ts';
-import {
-  outreachPromoCode,
-  outreachRewardLabel,
-  type OutreachPromoType,
-} from '../_shared/outreachPromo.ts';
+import {escapeHtml} from '../_shared/resend.ts';
+import {outreachRewardLabel, type OutreachPromoType} from '../_shared/outreachPromo.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const APPROVE_SECRET = Deno.env.get('PROMO_APPROVE_SECRET') ?? '';
-
-const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
-
-const GRANT_MS: Record<string, number> = {
-  post: ONE_MONTH_MS,
-  practitioner: RC_GRANT_DURATIONS_MS.threeMonth,
-  beta: ONE_MONTH_MS,
-};
 
 const TABLE: Record<string, string> = {
   post: 'post_submissions',
@@ -36,7 +24,7 @@ const TABLE: Record<string, string> = {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'GET') {
-    return htmlPage('Method not allowed', 'Use the approve link from the review email.', false);
+    return htmlPage('Method not allowed', 'This endpoint only accepts GET from legacy links.', false);
   }
 
   const url = new URL(req.url);
@@ -49,7 +37,7 @@ Deno.serve(async (req: Request) => {
   }
   const outreachType = type as OutreachPromoType;
   if (APPROVE_SECRET.length === 0 || token !== APPROVE_SECRET) {
-    return htmlPage('Unauthorized', 'Invalid approve token.', false);
+    return htmlPage('Unauthorized', 'Invalid or expired link.', false);
   }
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -60,52 +48,14 @@ Deno.serve(async (req: Request) => {
     return htmlPage('Not found', 'Submission could not be found.', false);
   }
 
-  if (row.status === 'approved') {
-    return htmlPage('Already approved', 'This submission was already approved.', true);
+  if (row.status !== 'approved') {
+    await sb.from(table).update({status: 'approved'}).eq('id', id);
   }
 
-  const rcUserId = String(row.rc_user_id ?? '').trim();
-  if (rcUserId.length === 0) {
-    return htmlPage(
-      'Missing account id',
-      'No RevenueCat user id on this submission — ask the user to reopen the app and resubmit.',
-      false,
-    );
-  }
-
-  const durationMs = GRANT_MS[type];
-  const grant = await grantRcPremiumForMs(rcUserId, durationMs);
-  if (!grant.ok) {
-    return htmlPage('Grant failed', grant.error, false);
-  }
-
-  await sb.from(table).update({status: 'approved'}).eq('id', id);
-
-  const replyEmail =
-    type === 'practitioner'
-      ? String(row.email ?? '').trim()
-      : type === 'beta'
-        ? String(row.from_email ?? '').trim()
-        : '';
-
-  if (replyEmail.length > 0) {
-    const rewardLabel = outreachRewardLabel(outreachType);
-    const promoCode = outreachPromoCode(outreachType);
-    await sendResendEmail({
-      to: replyEmail,
-      subject: 'Hertz Labs — your reward is active',
-      html: `<p>Hi,</p>
-<p>Thanks for being part of Hertz Labs. Your submission has been approved and <b>${escapeHtml(rewardLabel)}</b> has been added to your account.</p>
-<p>Open the app — Premium should be active now. If it does not appear within a minute, fully close and reopen the app.</p>
-<p style="margin-top:16px">If Premium is not showing, redeem this code in the app (<b>Promos → Redeem</b> or the paywall promo field):</p>
-<p style="font-family:ui-monospace,monospace;font-size:18px;color:#FBBF24">${escapeHtml(promoCode)}</p>
-<p>— Hertz Labs</p>`,
-    });
-  }
-
+  const rewardLabel = outreachRewardLabel(outreachType);
   return htmlPage(
-    'Approved',
-    `Premium granted for RC user ${escapeHtml(rcUserId)}.`,
+    'Marked approved',
+    `Submission marked approved in the app. Send the user an App Store or Google Play promo code by email — ${escapeHtml(rewardLabel)} unlocks when they redeem through the store. Automatic Premium grants are disabled.`,
     true,
   );
 });

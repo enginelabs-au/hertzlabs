@@ -4,15 +4,15 @@
  * POST /functions/v1/submit-wellness-checkin
  * Body: { rcAppUserId, mood, sleepQuality, focusLevel, platform?, appVersion? }
  *
- * Stores wellness responses and grants 3 days Premium (RevenueCat) — once per 7 days per user.
+ * Stores wellness responses. Premium is not granted server-side — use store promo codes for rewards.
  */
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-import {grantRcPremiumForMs, RC_GRANT_DURATIONS_MS} from '../_shared/rcGrant.ts';
+import {allocateInAppReward} from '../_shared/inAppPromoRewards.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const COOLDOWN_MS = RC_GRANT_DURATIONS_MS.weekly;
+const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -92,15 +92,26 @@ Deno.serve(async (req: Request) => {
     return json({ok: false, error: 'Could not save check-in — please try again.'}, 500);
   }
 
-  const grant = await grantRcPremiumForMs(rcAppUserId, RC_GRANT_DURATIONS_MS.threeDay);
-  if (!grant.ok) {
-    return json({ok: false, error: grant.error}, grant.status ?? 502);
+  const platform = (body.platform ?? '').trim();
+  const reward = await allocateInAppReward(sb, 'wellness', platform, rcAppUserId);
+
+  if (!reward.ok) {
+    return json({
+      ok: true,
+      message:
+        'Thanks for checking in! We could not assign an offer code automatically — contact support@enginelabs.com.au if you need help.',
+      code: null,
+      redeemUrl: null,
+    });
   }
 
   return json({
     ok: true,
-    message: 'Thanks! 3 days of Premium have been added to your account.',
-    expiresAtMs: grant.expiresAtMs ?? null,
+    message: 'Thanks for checking in! Your App Store / Google Play offer code is ready — redeem it under Promos → Redeem.',
+    code: reward.claim.code,
+    store: reward.claim.store,
+    redeemUrl: reward.claim.redeemUrl,
+    expiresAtMs: null,
   });
 });
 

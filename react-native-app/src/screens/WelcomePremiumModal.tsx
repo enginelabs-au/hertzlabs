@@ -10,6 +10,12 @@ import {
 } from 'react-native';
 import Purchases from 'react-native-purchases';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
+import {usesStoreNativeRedemption} from '../monetization/appleStoreCompliance';
+import {
+  welcomeGiftFinePrint,
+  welcomeGiftHero,
+  welcomeGiftSubtitle,
+} from '../monetization/storePromoCopy';
 import {activateWelcomePremium} from '../monetization/welcomePremiumService';
 import {parseRcExpirationMs} from '../monetization/premiumGiftReminders';
 import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
@@ -30,6 +36,7 @@ export function WelcomePremiumModal() {
   const setWelcomePremiumExpiresAtMs = useHertzStore(s => s.setWelcomePremiumExpiresAtMs);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const [loading, setLoading] = useState(false);
+  const storeNativeRedemption = usesStoreNativeRedemption();
 
   const dismiss = useCallback(() => {
     markWelcomePremiumOfferSeen();
@@ -40,6 +47,14 @@ export function WelcomePremiumModal() {
     if (loading) {
       return;
     }
+
+    if (storeNativeRedemption) {
+      markWelcomePremiumOfferSeen();
+      markWelcomePremiumClaimed();
+      setActiveModal('paywall');
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await activateWelcomePremium();
@@ -96,7 +111,16 @@ export function WelcomePremiumModal() {
     } finally {
       setLoading(false);
     }
-  }, [loading, markWelcomePremiumClaimed, setWelcomePremiumExpiresAtMs, _hydrateFromRC, dismiss]);
+  }, [
+    loading,
+    storeNativeRedemption,
+    markWelcomePremiumClaimed,
+    markWelcomePremiumOfferSeen,
+    setActiveModal,
+    setWelcomePremiumExpiresAtMs,
+    _hydrateFromRC,
+    dismiss,
+  ]);
 
   return (
     <View style={styles.overlay}>
@@ -106,8 +130,9 @@ export function WelcomePremiumModal() {
             <Text style={styles.eyebrow}>WELCOME GIFT</Text>
             <Text style={styles.title}>7 Days of Premium, Free</Text>
             <Text style={styles.subtitle}>
-              Every Hertz Labs member gets a complimentary week of Premium — on us. Already on
-              Premium? We will add 7 free days to your current access.
+              {storeNativeRedemption
+                ? welcomeGiftSubtitle()
+                : 'Every Hertz Labs member gets a complimentary week of Premium — on us. Already on Premium? We will add 7 free days to your current access.'}
             </Text>
           </View>
           <Pressable style={styles.closeBtn} onPress={dismiss} accessibilityLabel="Close">
@@ -121,8 +146,9 @@ export function WelcomePremiumModal() {
           <View style={styles.heroCard}>
             <Text style={styles.heroIcon}>✦</Text>
             <Text style={styles.heroText}>
-              Tap Activate Premium below to unlock every engine mode, the full 0–500 Hz range,
-              background playback, and advanced controls for the next 7 days.
+              {storeNativeRedemption
+                ? welcomeGiftHero()
+                : 'Tap Activate Premium below to unlock every engine mode, the full 0–500 Hz range, background playback, and advanced controls for the next 7 days.'}
             </Text>
           </View>
 
@@ -145,11 +171,15 @@ export function WelcomePremiumModal() {
             onPress={() => void handleActivate()}
             disabled={loading}
             accessibilityRole="button"
-            accessibilityLabel="Activate Premium for 7 days free">
+            accessibilityLabel={
+              storeNativeRedemption ? 'View plans and start free trial' : 'Activate Premium for 7 days free'
+            }>
             {loading ? (
               <ActivityIndicator color="#000" />
             ) : (
-              <Text style={styles.activateBtnText}>Activate Premium</Text>
+              <Text style={styles.activateBtnText}>
+                {storeNativeRedemption ? 'View Plans & Start Free Trial' : 'Activate Premium'}
+              </Text>
             )}
           </Pressable>
 
@@ -158,8 +188,7 @@ export function WelcomePremiumModal() {
           </Pressable>
 
           <Text style={styles.finePrint}>
-            One-time offer per account. No payment required. Premium features revert to the free tier
-            after 7 days unless you subscribe.
+            {storeNativeRedemption ? welcomeGiftFinePrint() : 'One-time offer per account. No payment required. Premium features revert to the free tier after 7 days unless you subscribe.'}
           </Text>
         </ScrollView>
       </View>

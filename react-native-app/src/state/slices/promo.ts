@@ -31,8 +31,11 @@ export function normalizePromoEntitlement(
   }
 }
 
-/** Increment when outreach promo local state should reset on next launch for all users. */
-export const OUTREACH_PROMO_RESET_EPOCH = 3;
+/** Increment to force-reset all local promo claim flags on next app launch. */
+export const PROMO_CLAIM_RESET_EPOCH = 8;
+
+/** @deprecated use PROMO_CLAIM_RESET_EPOCH */
+export const OUTREACH_PROMO_RESET_EPOCH = PROMO_CLAIM_RESET_EPOCH;
 
 export type PromoSlice = {
   /** Last promo code copied or awarded — pre-fills paywall redemption input. */
@@ -69,6 +72,8 @@ export type PromoSlice = {
   practitionerRewardGranted: boolean;
   betaRequestPending: boolean;
   betaRewardGranted: boolean;
+  /** One-time store offer for sharing referral link (Share with a Link card). */
+  shareLinkRewardClaimed: boolean;
   /** Unix ms when the user activated the one-time 7-day welcome Premium offer. */
   welcomePremiumClaimedAt: number | null;
   /** Campaign id for the welcome gift the user last claimed (null = never). */
@@ -79,8 +84,8 @@ export type PromoSlice = {
   welcomePremiumExpiryDayReminderShown: boolean;
   /** Which premium-gift reminder is currently being shown. */
   activePremiumGiftReminder: PremiumGiftReminderKind | null;
-  /** Bump to force-reset outreach promo attempt flags on next app launch (persisted). */
-  outreachPromoResetEpoch: number;
+  /** Bump to force-reset promo claim flags on next app launch (persisted). */
+  promoClaimResetEpoch: number;
 
   setClipboardPromoCode(code: string | null): void;
   applyPromo(code: string, entitlement: PromoEntitlement, expiresAt?: number | null): void;
@@ -102,11 +107,12 @@ export type PromoSlice = {
   markStreakReward30Claimed(): void;
   markStreakBonusMilestoneClaimed(milestoneDay: number): void;
   markAnniversaryRewardClaimed(): void;
+  markShareLinkRewardClaimed(): void;
   recordWellnessCheckin(): void;
   markPostSubmissionPending(): void;
   markPractitionerSubmissionPending(): void;
   markBetaRequestPending(): void;
-  resetOutreachPromoAttempts(): void;
+  resetPromoClaimState(): void;
   syncPromoRewardStatuses(statuses: {
     post: 'none' | 'pending' | 'approved' | 'rejected';
     practitioner: 'none' | 'pending' | 'approved' | 'rejected';
@@ -137,13 +143,14 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   practitionerRewardGranted: false,
   betaRequestPending: false,
   betaRewardGranted: false,
+  shareLinkRewardClaimed: false,
   welcomePremiumClaimedAt: null,
   welcomePremiumCampaignId: null,
   welcomePremiumExpiresAtMs: null,
   welcomePremiumDayBeforeReminderShown: false,
   welcomePremiumExpiryDayReminderShown: false,
   activePremiumGiftReminder: null,
-  outreachPromoResetEpoch: 0,
+  promoClaimResetEpoch: 0,
 
   applyPromo(code, entitlement, expiresAt = null) {
     const normalized = normalizePromoEntitlement(entitlement);
@@ -244,6 +251,9 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   markAnniversaryRewardClaimed() {
     set({anniversaryRewardClaimed: true});
   },
+  markShareLinkRewardClaimed() {
+    set({shareLinkRewardClaimed: true});
+  },
   recordWellnessCheckin() {
     const today = new Date().toISOString().slice(0, 10);
     set(s => {
@@ -265,6 +275,29 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   },
   markBetaRequestPending() {
     set({betaRequestPending: true});
+  },
+
+  resetPromoClaimState() {
+    set({
+      reviewRewardClaimed: false,
+      streakReward7Claimed: false,
+      streakReward30Claimed: false,
+      streakBonusMilestonesClaimed: [],
+      anniversaryRewardClaimed: false,
+      wellnessCheckinCount: 0,
+      lastWellnessCheckinDate: null,
+      shareLinkRewardClaimed: false,
+      postSubmissionPending: false,
+      postRewardGranted: false,
+      practitionerSubmissionPending: false,
+      practitionerRewardGranted: false,
+      betaRequestPending: false,
+      betaRewardGranted: false,
+      appliedPromoCode: null,
+      appliedPromoEntitlement: null,
+      appliedPromoExpiresAt: null,
+      clipboardPromoCode: null,
+    });
   },
 
   resetOutreachPromoAttempts() {

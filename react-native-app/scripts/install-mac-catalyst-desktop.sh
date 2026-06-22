@@ -57,6 +57,9 @@ xcodebuild \
   -configuration "$MAC_CONFIG" \
   -destination "$MAC_DEST" \
   -derivedDataPath "$BUILD_DIR/DerivedData" \
+  ARCHS=arm64 \
+  EXCLUDED_ARCHS=x86_64 \
+  ONLY_ACTIVE_ARCH=YES \
   CODE_SIGNING_ALLOWED=NO \
   build
 

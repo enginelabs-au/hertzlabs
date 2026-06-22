@@ -464,7 +464,7 @@
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeats/HertzLabsBinauralBeats.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = HertzLabsBinauralBeats/Info.plist;
@@ -478,7 +478,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
 					"$(inherited)",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.3;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-fcxx-modules",
@@ -512,7 +512,7 @@
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeats/HertzLabsBinauralBeats.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "HertzLabsBinauralBeats/HertzLabsBinauralBeats-mac.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				INFOPLIST_FILE = HertzLabsBinauralBeats/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -525,7 +525,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
 					"$(inherited)",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.3;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-fcxx-modules",
@@ -724,7 +724,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeatsClip/HertzLabsBinauralBeatsClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 256U2M55W7;
 				ENABLE_PREVIEWS = YES;
@@ -740,7 +740,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
 					"$(inherited)",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.3;
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hertzlabs.binauralbeats.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -758,7 +758,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = HertzLabsBinauralBeatsClip/HertzLabsBinauralBeatsClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 256U2M55W7;
 				ENABLE_PREVIEWS = YES;
@@ -774,7 +774,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib/swift",
 					"$(inherited)",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.3;
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hertzlabs.binauralbeats.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";

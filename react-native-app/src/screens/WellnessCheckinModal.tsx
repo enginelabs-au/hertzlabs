@@ -7,10 +7,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import Purchases from 'react-native-purchases';
-import {refreshRcEntitlements} from '../monetization/promoCodeService';
 import {submitWellnessCheckin} from '../monetization/wellnessCheckinService';
-import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
+import {formatPromoCodeDisplay} from '../monetization/promoCodeFormat';
+import {promoCodeNoun} from '../monetization/storePromoCopy';
+import {showStoreOfferAlert} from '../promos/showStoreOfferAlert';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
@@ -54,7 +54,7 @@ function ScoreRow({
 export function WellnessCheckinModal() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const recordWellnessCheckin = useHertzStore(s => s.recordWellnessCheckin);
-  const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
+  const setClipboardPromoCode = useHertzStore(s => s.setClipboardPromoCode);
 
   const [mood, setMood] = useState<number | null>(null);
   const [sleepQuality, setSleepQuality] = useState<number | null>(null);
@@ -62,6 +62,7 @@ export function WellnessCheckinModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [rewardCode, setRewardCode] = useState<string | null>(null);
 
   const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
 
@@ -80,17 +81,12 @@ export function WellnessCheckinModal() {
       return;
     }
     recordWellnessCheckin();
-    const refreshed = await refreshRcEntitlements();
-    if (refreshed) {
-      try {
-        const info = await Purchases.getCustomerInfo();
-        _hydrateFromRC(info, REVENUECAT_ENTITLEMENT);
-      } catch {
-        /* non-fatal */
-      }
-    }
     setSuccess(result.message);
-  }, [mood, sleepQuality, focusLevel, recordWellnessCheckin, _hydrateFromRC]);
+    if (result.code != null) {
+      setRewardCode(result.code);
+      setClipboardPromoCode(result.code);
+    }
+  }, [mood, sleepQuality, focusLevel, recordWellnessCheckin, setClipboardPromoCode]);
 
   return (
     <View style={styles.overlay}>
@@ -105,6 +101,23 @@ export function WellnessCheckinModal() {
         {success != null ? (
           <View style={styles.successBox}>
             <Text style={styles.successText}>{success}</Text>
+            {rewardCode != null && (
+              <Text style={styles.codeText}>{formatPromoCodeDisplay(rewardCode)}</Text>
+            )}
+            {rewardCode != null && (
+              <Pressable
+                style={styles.secondaryBtn}
+                onPress={() => {
+                  showStoreOfferAlert({
+                    title: 'Wellness reward',
+                    code: rewardCode,
+                    onCopy: setClipboardPromoCode,
+                    onRedeem: () => setActiveModal('promo'),
+                  });
+                }}>
+                <Text style={styles.secondaryBtnText}>Redeem {promoCodeNoun()}</Text>
+              </Pressable>
+            )}
             <Pressable style={styles.primaryBtn} onPress={dismiss}>
               <Text style={styles.primaryBtnText}>Done</Text>
             </Pressable>
@@ -113,7 +126,7 @@ export function WellnessCheckinModal() {
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <Text style={styles.intro}>
               Rate each area from 1 (low) to 10 (excellent). Responses are saved securely so we
-              can improve Hertz Labs. Reward: 3 days Premium — once per week.
+              can improve Hertz Labs. Reward: one {promoCodeNoun()} — once per week.
             </Text>
 
             <ScoreRow
@@ -280,5 +293,28 @@ const styles = StyleSheet.create({
     color: '#34D399',
     fontSize: 14,
     lineHeight: 20,
+  },
+  codeText: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 20,
+    letterSpacing: 1.5,
+    color: '#FBBF24',
+    textAlign: 'center',
+  },
+  secondaryBtn: {
+    minHeight: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  secondaryBtnText: {
+    fontFamily: HertzTheme.mono,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FBBF24',
+    letterSpacing: 0.5,
   },
 });

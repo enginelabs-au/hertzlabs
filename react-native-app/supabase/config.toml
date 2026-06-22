@@ -57,3 +57,9 @@ verify_jwt = false
 
 [functions.check-promo-rewards]
 verify_jwt = false
+
+[functions.claim-promo-reward]
+verify_jwt = false
+
+[functions.register-referrer]
+verify_jwt = false

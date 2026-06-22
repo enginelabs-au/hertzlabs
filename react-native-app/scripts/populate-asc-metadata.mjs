@@ -39,7 +39,7 @@ const LOCALES = [
       },
       annual: {
         name: 'Hertz Labs Premium Annual',
-        description: 'Full year of premium access. 7-day free trial.',
+        description: 'All premium modes, AI & background.',
       },
     },
     lifetime: {
@@ -56,7 +56,7 @@ const LOCALES = [
       },
       annual: {
         name: 'Hertz Labs Premium Annual',
-        description: 'Full access all year. 7-day free trial included.',
+        description: 'All premium modes, AI & background.',
       },
     },
     lifetime: {

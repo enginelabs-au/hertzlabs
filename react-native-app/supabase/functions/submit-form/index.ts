@@ -7,8 +7,13 @@
 
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 import {adminReviewEmailHtml} from '../_shared/approveLink.ts';
-import {outreachSubjectTag, userShareCodeNoteHtml} from '../_shared/outreachPromo.ts';
+import {
+  allocateOutreachCodes,
+} from '../_shared/allocateStoreOfferCode.ts';
+import {outreachSubjectTag} from '../_shared/outreachPromo.ts';
+import {outreachPlatformLabel} from '../_shared/outreachPlatform.ts';
 import {escapeHtml, sendResendEmail} from '../_shared/resend.ts';
+import {isValidEmail} from '../_shared/email.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -38,9 +43,13 @@ Deno.serve(async (req: Request) => {
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   if (type === 'post') {
-    const {post_url, platform, description, rc_user_id, referral_code} = body as Record<string, string>;
+    const {post_url, platform, description, email, rc_user_id} = body as Record<string, string>;
     if (!post_url || post_url.trim().length < 5) {
       return json({error: 'Post URL is required.'}, 400);
+    }
+    const replyEmail = String(email ?? '').trim();
+    if (!isValidEmail(replyEmail)) {
+      return json({error: 'A valid email is required so we can send your offer code.'}, 400);
     }
     const rcId = String(rc_user_id ?? '').trim();
     if (rcId.length === 0) {
@@ -52,8 +61,8 @@ Deno.serve(async (req: Request) => {
       post_url: post_url.trim(),
       platform: platform?.trim() ?? null,
       description: description?.trim() ?? null,
+      email: replyEmail,
       rc_user_id: rcId,
-      referral_code: referral_code ?? null,
     }).select('id').single();
     if (error != null) {
       console.error('[submit-form] DB insert error:', error);
@@ -61,28 +70,41 @@ Deno.serve(async (req: Request) => {
     }
 
     const postId = inserted?.id as string | undefined;
+    const platformStr = String(platform ?? '').trim();
+    const bundle = await allocateOutreachCodes(
+      sb,
+      'post',
+      platformStr,
+      postId ?? null,
+      rcId,
+    );
+
     const details = `<h2>New "Make a Post" Submission</h2>
        <p><b>Post URL:</b> <a href="${escapeHtml(post_url)}">${escapeHtml(post_url)}</a></p>
-       <p><b>Platform:</b> ${escapeHtml(platform ?? '—')}</p>
+       <p><b>Platform:</b> ${escapeHtml(outreachPlatformLabel(platform ?? ''))}</p>
        <p><b>Description:</b> ${escapeHtml(description ?? '—')}</p>
-       <p><b>RC User ID:</b> ${escapeHtml(rc_user_id ?? 'anonymous')}</p>
-       ${userShareCodeNoteHtml(referral_code)}
+       <p><b>Reply email:</b> <a href="mailto:${escapeHtml(replyEmail)}">${escapeHtml(replyEmail)}</a></p>
+       <p><b>RC User ID:</b> ${escapeHtml(rcId)}</p>
        <p style="color:#888">Review in <a href="https://supabase.com/dashboard/project/mvawkzhwgtlwxwkssvyg/editor">Supabase → post_submissions</a></p>`;
 
     await sendEmail(
-      `📸 New Post Submission — Hertz Labs ${outreachSubjectTag('post')}`,
-      postId != null ? adminReviewEmailHtml('post', details, postId) : adminReviewEmailHtml('post', details),
+      `📸 New Post Submission — Hertz Labs ${outreachSubjectTag('post', bundle.primary?.code)}`,
+      adminReviewEmailHtml('post', details, bundle, platformStr),
     );
 
     return json({success: true, message: 'Submission received. We\'ll review it within 48 hours.'});
   }
 
-  const {full_name, credentials, practice, website, email, rc_user_id, referral_code} = body as Record<
+  const {full_name, credentials, practice, website, email, rc_user_id, platform} = body as Record<
     string,
     string
   >;
   if (!full_name?.trim() || !email?.trim()) {
     return json({error: 'Name and email are required.'}, 400);
+  }
+  const replyEmail = email.trim();
+  if (!isValidEmail(replyEmail)) {
+    return json({error: 'A valid email is required so we can send your offer code.'}, 400);
   }
   const rcId = String(rc_user_id ?? '').trim();
   if (rcId.length === 0) {
@@ -95,7 +117,7 @@ Deno.serve(async (req: Request) => {
     credentials: credentials?.trim() ?? null,
     practice: practice?.trim() ?? null,
     website: website?.trim() ?? null,
-    email: email.trim(),
+    email: replyEmail,
     rc_user_id: rcId,
   }).select('id').single();
   if (error != null) {
@@ -104,19 +126,27 @@ Deno.serve(async (req: Request) => {
   }
 
   const practId = inserted?.id as string | undefined;
+  const platformStr = String(platform ?? '').trim();
+  const bundle = await allocateOutreachCodes(
+    sb,
+    'practitioner',
+    platformStr,
+    practId ?? null,
+    rcId,
+  );
+
   const details = `<h2>New Practitioner / Therapist Application</h2>
      <p><b>Name:</b> ${escapeHtml(full_name)}</p>
      <p><b>Credentials / Role:</b> ${escapeHtml(credentials ?? '—')}</p>
      <p><b>Practice / Organisation:</b> ${escapeHtml(practice ?? '—')}</p>
      <p><b>Website:</b> ${website ? `<a href="${escapeHtml(website)}">${escapeHtml(website)}</a>` : '—'}</p>
      <p><b>Email:</b> <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>
-     <p><b>RC User ID:</b> ${escapeHtml(rc_user_id ?? 'anonymous')}</p>
-     ${userShareCodeNoteHtml(referral_code)}
+     <p><b>RC User ID:</b> ${escapeHtml(rcId)}</p>
      <p style="color:#888">Review in <a href="https://supabase.com/dashboard/project/mvawkzhwgtlwxwkssvyg/editor">Supabase → practitioner_applications</a></p>`;
 
   await sendEmail(
-    `🩺 New Practitioner Application — Hertz Labs ${outreachSubjectTag('practitioner')}`,
-    practId != null ? adminReviewEmailHtml('practitioner', details, practId) : adminReviewEmailHtml('practitioner', details),
+    `New Practitioner Application — Hertz Labs ${outreachSubjectTag('practitioner', bundle.primary?.code)}`,
+    adminReviewEmailHtml('practitioner', details, bundle, platformStr),
   );
 
   return json({success: true, message: 'Application received. We\'ll be in touch within 3 business days.'});

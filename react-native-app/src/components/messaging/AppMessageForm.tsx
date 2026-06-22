@@ -15,7 +15,9 @@ import {
   sendAppMessage,
   type AppMessageRecipient,
 } from '../../services/sendAppMessage';
+import {promoCodeNoun} from '../../monetization/storePromoCopy';
 import {HertzTheme} from '../../theme/hertzTheme';
+import {isValidEmail} from '../../utils/email';
 
 const FORM_INPUT_ANDROID = Platform.select({
   android: {includeFontPadding: false} as const,
@@ -65,7 +67,7 @@ export function AppMessageForm({
   const accent = isPromo ? '#FBBF24' : HertzTheme.neon.cyan;
   const trimmedMessage = message.trim();
   const trimmedEmail = fromEmail.trim();
-  const emailOk = !requireFromEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+  const emailOk = !requireFromEmail || isValidEmail(trimmedEmail);
   const canSend = trimmedMessage.length >= 8 && emailOk && !sending && !sent;
 
   const handleSend = useCallback(async () => {
@@ -95,7 +97,7 @@ export function AppMessageForm({
       <View style={[styles.wrap, style]}>
         <Text style={[styles.sentText, isPromo && styles.sentTextPromo]}>
           Message sent to {RECIPIENT_LABEL[to]}. We will review your request and reply by email
-          when approved — Premium is applied after review, not on submit.
+          with an {promoCodeNoun()} when approved.
         </Text>
       </View>
     );
@@ -143,9 +145,11 @@ export function AppMessageForm({
         )}
       </Pressable>
       <Text style={styles.note}>
-        {trimmedMessage.length < 8
-          ? `Message needs at least 8 characters (${trimmedMessage.length}/8).`
-          : `Sends to ${RECIPIENT_LABEL[to]} via Hertz Labs.`}
+        {requireFromEmail && trimmedEmail.length > 0 && !emailOk
+          ? 'Enter a valid email address.'
+          : trimmedMessage.length < 8
+            ? `Message needs at least 8 characters (${trimmedMessage.length}/8).`
+            : `Sends to ${RECIPIENT_LABEL[to]} via Hertz Labs.`}
       </Text>
     </View>
   );

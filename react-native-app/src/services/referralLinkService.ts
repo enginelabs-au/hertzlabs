@@ -1,39 +1,57 @@
 /**
- * Referral deep links without a third-party attribution SDK.
+ * Referral deep links (incoming) + store listing share (outgoing).
  *
- * Share URL:  https://enginelabs-au.github.io/hertzlabs/r/?ref=HZ-XXXXXX
- * App scheme: hertzlabs://open?ref=HZ-XXXXXX
+ * Outgoing share uses the App Store / Google Play listing for this device only —
+ * no copy-paste codes or landing-page URLs.
  *
- * The /r/ landing page (docs/r/index.html) tries the custom scheme, then falls
- * back to App Store / Play Store.
+ * Incoming attribution still accepts legacy landing-page and custom-scheme links.
  */
 
-import {Linking} from 'react-native';
+import {Linking, Platform, Share} from 'react-native';
+import {APP_STORE_URL, PLAY_STORE_URL} from '../constants/appInfo';
 
-/** Public referral landing page (GitHub Pages). */
+/** @deprecated Legacy landing page — still parsed for incoming links. */
 export const REFERRAL_LANDING_BASE = 'https://enginelabs-au.github.io/hertzlabs/r/';
 
-/** Custom URI scheme registered in iOS Info.plist + Android manifest. */
 export const APP_SCHEME = 'hertzlabs';
 
-/** Builds the shareable HTTPS referral link for a user's code. */
-export function createReferralLink(referralCode: string): string {
-  const code = referralCode.trim();
-  return `${REFERRAL_LANDING_BASE}?ref=${encodeURIComponent(code)}`;
+const SHARE_INTRO = 'Try Hertz Labs — binaural beats for focus, sleep & meditation.';
+
+/** Direct store listing URL for the current platform. */
+export function storeListingUrl(): string {
+  return Platform.OS === 'android' ? PLAY_STORE_URL : APP_STORE_URL;
 }
 
-/** Builds the in-app custom-scheme link (used by the web landing page). */
+export function storeListingShareLabel(): string {
+  return Platform.OS === 'android' ? 'Share on Google Play' : 'Share App Store Link';
+}
+
+/**
+ * Opens the system share sheet with a single store link (no duplicate URL on iOS).
+ * Returns true if the user completed a share action.
+ */
+export async function shareStoreListing(): Promise<boolean> {
+  const link = storeListingUrl();
+  try {
+    const result =
+      Platform.OS === 'ios'
+        ? await Share.share({url: link, title: 'Hertz Labs'})
+        : await Share.share({message: `${SHARE_INTRO}\n${link}`});
+    return result.action === Share.sharedAction;
+  } catch {
+    return false;
+  }
+}
+
+/** @deprecated Use storeListingUrl() — kept for legacy callers. */
+export function createReferralLink(_referralCode: string): string {
+  return storeListingUrl();
+}
+
 export function createAppSchemeReferralLink(referralCode: string): string {
   return `${APP_SCHEME}://open?ref=${encodeURIComponent(referralCode.trim())}`;
 }
 
-/**
- * Extracts a referral code from HTTPS links or custom-scheme URLs.
- * Supported:
- *   https://enginelabs-au.github.io/hertzlabs/r/?ref=HZ-ABC
- *   https://enginelabs-au.github.io/hertzlabs/r/HZ-ABC
- *   hertzlabs://open?ref=HZ-ABC
- */
 export function parseReferralFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
@@ -59,10 +77,6 @@ export function parseReferralFromUrl(url: string): string | null {
   return null;
 }
 
-/**
- * Subscribe to cold-start and warm deep links via React Native Linking.
- * Returns an unsubscribe function.
- */
 export function subscribeToReferralLinks(onReferral: (referralCode: string) => void): () => void {
   const handle = (url: string | null | undefined) => {
     if (url == null || url.length === 0) {

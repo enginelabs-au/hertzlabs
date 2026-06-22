@@ -1,8 +1,7 @@
-import {Platform} from 'react-native';
 import {APP_VERSION} from '../constants/appInfo';
 import {SUPABASE_FUNCTION_HEADERS} from '../monetization/supabaseAnon';
+import {getOutreachPlatform} from '../promos/outreachPlatform';
 import {getRcAppUserId} from '../promos/getRcAppUserId';
-import {useHertzStore} from '../state/store';
 
 const SEND_MESSAGE_URL =
   'https://mvawkzhwgtlwxwkssvyg.supabase.co/functions/v1/send-app-message';
@@ -21,7 +20,6 @@ export async function sendAppMessage(
   input: SendAppMessageInput,
 ): Promise<{ok: boolean; message: string}> {
   const rcUserId = await getRcAppUserId();
-  const referralCode = useHertzStore.getState().myReferralCode;
   try {
     const res = await fetch(SEND_MESSAGE_URL, {
       method: 'POST',
@@ -32,10 +30,9 @@ export async function sendAppMessage(
         message: input.message,
         category: input.category,
         from_email: input.fromEmail?.trim() || undefined,
-        platform: Platform.OS,
+        platform: getOutreachPlatform(),
         app_version: APP_VERSION,
         rc_user_id: rcUserId ?? undefined,
-        referral_code: referralCode ?? undefined,
       }),
     });
     const data = (await res.json()) as {
