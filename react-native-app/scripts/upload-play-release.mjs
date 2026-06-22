@@ -5,6 +5,14 @@
  * Usage:
  *   node scripts/upload-play-release.mjs [path/to/app-release.aab]
  *   PLAY_TRACK=production node scripts/upload-play-release.mjs
+ *   PLAY_VERSION_CODE=24 PLAY_ASSIGN_ONLY=1 PLAY_TRACK=production node scripts/upload-play-release.mjs
+ *
+ * Env:
+ *   PLAY_TRACK — internal | alpha | beta | production (default: internal)
+ *   PLAY_RELEASE_NAME — release label (default: from app.version.json versionName)
+ *   PLAY_RELEASE_NOTES — en-US release notes text
+ *   PLAY_ASSIGN_ONLY=1 — skip upload; assign an existing bundle versionCode to the track
+ *   PLAY_VERSION_CODE — versionCode when PLAY_ASSIGN_ONLY=1
  */
 import fs from 'fs';
 import path from 'path';
@@ -22,6 +30,17 @@ const envPath = path.join(appRoot, '.env');
 
 const PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME ?? 'com.hertzlabs.binauralbeats';
 const TRACK = process.env.PLAY_TRACK ?? 'internal';
+const ASSIGN_ONLY = process.env.PLAY_ASSIGN_ONLY === '1';
+const ASSIGN_VERSION_CODE = process.env.PLAY_VERSION_CODE
+  ? Number(process.env.PLAY_VERSION_CODE)
+  : null;
+const versionJson = JSON.parse(
+  fs.readFileSync(path.join(appRoot, 'app.version.json'), 'utf8'),
+);
+const RELEASE_NAME = process.env.PLAY_RELEASE_NAME ?? versionJson.versionName ?? 'release';
+const RELEASE_NOTES =
+  process.env.PLAY_RELEASE_NOTES ??
+  'Store-native promo redemption and bug fixes.';
 const DEFAULT_AAB = path.join(
   appRoot,
   'android/app/build/outputs/bundle/release/app-release.aab',
@@ -68,7 +87,7 @@ async function uploadBundle(token, editId, aabPath) {
 }
 
 async function main() {
-  if (!fs.existsSync(AAB_PATH)) {
+  if (!ASSIGN_ONLY && !fs.existsSync(AAB_PATH)) {
     console.error(`AAB not found: ${AAB_PATH}`);
     process.exit(1);
   }
@@ -78,8 +97,12 @@ async function main() {
   const serviceAccount = loadServiceAccount(credPath);
   const token = await getGoogleAccessToken(serviceAccount);
 
-  console.log(`Uploading ${AAB_PATH}`);
   console.log(`Package: ${PACKAGE_NAME}, track: ${TRACK}`);
+  if (ASSIGN_ONLY) {
+    console.log(`Assign-only mode, versionCode=${ASSIGN_VERSION_CODE}`);
+  } else {
+    console.log(`Uploading ${AAB_PATH}`);
+  }
 
   const editRes = await playApiRequest(token, 'POST', `${BASE}/edits`, {});
   if (editRes.status >= 300) {
@@ -93,20 +116,30 @@ async function main() {
   }
   console.log(`Edit id: ${editId}`);
 
-  const upload = await uploadBundle(token, editId, AAB_PATH);
-  if (upload.status >= 300) {
-    console.error('Bundle upload failed:', upload.status, upload.json);
-    process.exit(1);
+  let versionCode = ASSIGN_VERSION_CODE;
+  if (ASSIGN_ONLY) {
+    if (!Number.isInteger(versionCode) || versionCode <= 0) {
+      console.error('PLAY_ASSIGN_ONLY requires PLAY_VERSION_CODE (positive integer).');
+      process.exit(1);
+    }
+  } else {
+    const upload = await uploadBundle(token, editId, AAB_PATH);
+    if (upload.status >= 300) {
+      console.error('Bundle upload failed:', upload.status, upload.json);
+      process.exit(1);
+    }
+    versionCode = upload.json?.versionCode;
+    console.log(`Uploaded bundle versionCode=${versionCode}`);
   }
-  const versionCode = upload.json?.versionCode;
-  console.log(`Uploaded bundle versionCode=${versionCode}`);
 
   const trackRes = await playApiRequest(token, 'PUT', `${BASE}/edits/${editId}/tracks/${TRACK}`, {
     track: TRACK,
     releases: [
       {
+        name: RELEASE_NAME,
         status: 'completed',
         versionCodes: [versionCode],
+        releaseNotes: [{language: 'en-US', text: RELEASE_NOTES}],
       },
     ],
   });
