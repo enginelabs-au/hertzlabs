@@ -35,28 +35,22 @@ export function PremiumGiftExpiryModal() {
   const kind = useHertzStore(s => s.activePremiumGiftReminder);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const setActivePremiumGiftReminder = useHertzStore(s => s.setActivePremiumGiftReminder);
-  const markDayBefore = useHertzStore(s => s.markWelcomePremiumDayBeforeReminderShown);
-  const markExpiryDay = useHertzStore(s => s.markWelcomePremiumExpiryDayReminderShown);
+  const dismissPremiumGiftReminderForSession = useHertzStore(
+    s => s.dismissPremiumGiftReminderForSession,
+  );
 
   const dismiss = useCallback(() => {
-    if (kind === 'dayBefore') {
-      markDayBefore();
-    } else if (kind === 'expiryDay') {
-      markExpiryDay();
+    if (kind != null) {
+      dismissPremiumGiftReminderForSession(kind);
     }
     setActivePremiumGiftReminder(null);
     setActiveModal(null);
-  }, [kind, markDayBefore, markExpiryDay, setActiveModal, setActivePremiumGiftReminder]);
+  }, [kind, dismissPremiumGiftReminderForSession, setActiveModal, setActivePremiumGiftReminder]);
 
   const openPaywall = useCallback(() => {
-    if (kind === 'dayBefore') {
-      markDayBefore();
-    } else if (kind === 'expiryDay') {
-      markExpiryDay();
-    }
     setActivePremiumGiftReminder(null);
     setActiveModal('paywall');
-  }, [kind, markDayBefore, markExpiryDay, setActiveModal, setActivePremiumGiftReminder]);
+  }, [setActiveModal, setActivePremiumGiftReminder]);
 
   if (kind == null) {
     return null;

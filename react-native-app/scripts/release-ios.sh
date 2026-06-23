@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IOS="$ROOT/ios"
 ARCHIVE_PATH="${ARCHIVE_PATH:-/tmp/hertz-release-v3/HertzLabsBinauralBeats.xcarchive}"
 EXPORT_PATH="${EXPORT_PATH:-/tmp/hertz-release-v3/export}"
+EXPORT_PLIST="${EXPORT_PLIST:-/tmp/hertz-release-v3/ExportOptions.plist}"
 BUNDLE_PATH="${BUNDLE_PATH:-/tmp/hertz-release-v3/main.jsbundle}"
 ASSETS_PATH="${ASSETS_PATH:-/tmp/hertz-release-v3/assets}"
 
@@ -49,12 +50,15 @@ if [ -d "$ASSETS_PATH" ]; then
   rsync -a "$ASSETS_PATH/" "$APP_PATH/"
 fi
 
+echo "==> Generate ExportOptions with App Store Connect API key"
+node "$ROOT/scripts/write-ios-export-options.mjs" "$EXPORT_PLIST"
+
 echo "==> Export + upload to App Store Connect"
 rm -rf "$EXPORT_PATH"
 xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
   -exportPath "$EXPORT_PATH" \
-  -exportOptionsPlist ExportOptions.plist \
+  -exportOptionsPlist "$EXPORT_PLIST" \
   -allowProvisioningUpdates
 
 echo "==> Done"

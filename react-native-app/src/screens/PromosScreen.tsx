@@ -356,10 +356,24 @@ export function PromosScreen() {
 
   const handleReview = useCallback(async () => {
     await requestAppReview();
-    const claimed = await claimStoreReward('review');
-    if (claimed) {
-      markReviewRewardClaimed();
-    }
+    Alert.alert(
+      'Finish your review',
+      'After you submit your rating in the store, tap Claim reward to receive your offer code.',
+      [
+        {text: 'Not now', style: 'cancel'},
+        {
+          text: 'Claim reward',
+          onPress: () => {
+            void (async () => {
+              const claimed = await claimStoreReward('review');
+              if (claimed) {
+                markReviewRewardClaimed();
+              }
+            })();
+          },
+        },
+      ],
+    );
   }, [claimStoreReward, markReviewRewardClaimed]);
 
   const handleStreak7 = useCallback(async () => {
@@ -554,10 +568,24 @@ export function PromosScreen() {
     if (!shared || shareLinkRewardClaimed) {
       return;
     }
-    const claimed = await claimStoreReward('share_link');
-    if (claimed) {
-      markShareLinkRewardClaimed();
-    }
+    Alert.alert(
+      'Share completed?',
+      'If you shared Hertz Labs with someone, tap Claim reward to receive your offer code.',
+      [
+        {text: 'Not now', style: 'cancel'},
+        {
+          text: 'Claim reward',
+          onPress: () => {
+            void (async () => {
+              const claimed = await claimStoreReward('share_link');
+              if (claimed) {
+                markShareLinkRewardClaimed();
+              }
+            })();
+          },
+        },
+      ],
+    );
   }, [claimStoreReward, markShareLinkRewardClaimed, shareLinkRewardClaimed]);
 
   // ────────────────────────────────────────────────────────────────────────────

@@ -33,15 +33,16 @@ export function WelcomePremiumModal() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const markWelcomePremiumClaimed = useHertzStore(s => s.markWelcomePremiumClaimed);
   const markWelcomePremiumOfferSeen = useHertzStore(s => s.markWelcomePremiumOfferSeen);
+  const dismissWelcomePremiumForSession = useHertzStore(s => s.dismissWelcomePremiumForSession);
   const setWelcomePremiumExpiresAtMs = useHertzStore(s => s.setWelcomePremiumExpiresAtMs);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const [loading, setLoading] = useState(false);
   const storeNativeRedemption = usesStoreNativeRedemption();
 
   const dismiss = useCallback(() => {
-    markWelcomePremiumOfferSeen();
+    dismissWelcomePremiumForSession();
     setActiveModal(null);
-  }, [markWelcomePremiumOfferSeen, setActiveModal]);
+  }, [dismissWelcomePremiumForSession, setActiveModal]);
 
   const handleActivate = useCallback(async () => {
     if (loading) {

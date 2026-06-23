@@ -318,6 +318,8 @@ async function purchaseWithOffer(
 export function PaywallScreen() {
   const scrollInsets = useModalScrollInsets(24);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
+  const markPaywallSoftPromptShown = useHertzStore(s => s.markPaywallSoftPromptShown);
+  const dismissPaywallNudgeForSession = useHertzStore(s => s.dismissPaywallNudgeForSession);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const storeNativeRedemption = usesStoreNativeRedemption();
 
@@ -387,7 +389,10 @@ export function PaywallScreen() {
     void loadOfferings();
   }, [loadOfferings]);
 
-  const dismiss = useCallback(() => setActiveModal(null), [setActiveModal]);
+  const dismiss = useCallback(() => {
+    dismissPaywallNudgeForSession();
+    setActiveModal(null);
+  }, [dismissPaywallNudgeForSession, setActiveModal]);
 
   const handlePurchase = useCallback(
     async (plan: PaywallPlan) => {
@@ -411,6 +416,9 @@ export function PaywallScreen() {
             : await Purchases.purchaseStoreProduct(plan.storeProduct!);
         setCustomerInfo(result.customerInfo);
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
+        if (Object.keys(result.customerInfo.entitlements.active).includes(ENTITLEMENT_ID)) {
+          markPaywallSoftPromptShown();
+        }
       } catch (e) {
         // RevenueCat throws with code; user-cancelled is not an error to alert
         const msg = e instanceof Error ? e.message : String(e);
@@ -422,7 +430,7 @@ export function PaywallScreen() {
         setPurchasing(false);
       }
     },
-    [purchasing, storeUnavailableDetail, _hydrateFromRC],
+    [purchasing, storeUnavailableDetail, _hydrateFromRC, markPaywallSoftPromptShown],
   );
 
   const handleRestore = useCallback(async () => {
@@ -435,6 +443,9 @@ export function PaywallScreen() {
       setCustomerInfo(info);
       _hydrateFromRC(info, ENTITLEMENT_ID);
       const isActive = Object.keys(info.entitlements.active).includes(ENTITLEMENT_ID);
+      if (isActive) {
+        markPaywallSoftPromptShown();
+      }
       Alert.alert(
         isActive ? 'Restored' : 'Nothing to Restore',
         isActive
@@ -449,7 +460,7 @@ export function PaywallScreen() {
     } finally {
       setRestoring(false);
     }
-  }, [restoring, _hydrateFromRC, dismiss]);
+  }, [restoring, _hydrateFromRC, dismiss, markPaywallSoftPromptShown]);
 
   return (
     <View style={styles.overlay}>

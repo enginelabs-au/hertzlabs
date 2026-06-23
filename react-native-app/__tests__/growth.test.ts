@@ -1,7 +1,10 @@
 import {describe, expect, it} from 'vitest';
+import {WELCOME_PREMIUM_CAMPAIGN} from '../src/monetization/welcomePremiumConstants';
 import {
   shouldOfferReviewPrompt,
+  shouldShowForceUpdateOverlay,
   shouldShowPaywallNudge,
+  shouldShowWelcomePremiumOffer,
 } from '../src/state/slices/growth';
 
 describe('growth engagement gates', () => {
@@ -41,6 +44,7 @@ describe('growth engagement gates', () => {
         appLaunchCount: 3,
         cumulativePlaybackSec: 200,
         paywallSoftPromptShown: false,
+        paywallNudgeDismissedAtLaunch: null,
       }),
     ).toBe(false);
 
@@ -50,6 +54,7 @@ describe('growth engagement gates', () => {
         appLaunchCount: 2,
         cumulativePlaybackSec: 120,
         paywallSoftPromptShown: false,
+        paywallNudgeDismissedAtLaunch: null,
       }),
     ).toBe(true);
 
@@ -59,7 +64,64 @@ describe('growth engagement gates', () => {
         appLaunchCount: 5,
         cumulativePlaybackSec: 600,
         paywallSoftPromptShown: true,
+        paywallNudgeDismissedAtLaunch: null,
       }),
     ).toBe(false);
+
+    expect(
+      shouldShowPaywallNudge({
+        tier: 'free',
+        appLaunchCount: 5,
+        cumulativePlaybackSec: 600,
+        paywallSoftPromptShown: false,
+        paywallNudgeDismissedAtLaunch: 5,
+      }),
+    ).toBe(false);
+  });
+
+  it('shows force update overlay until dismissed for the session', () => {
+    expect(
+      shouldShowForceUpdateOverlay({
+        forceUpdateRequired: true,
+        forceUpdateDismissedAtLaunch: null,
+        appLaunchCount: 3,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldShowForceUpdateOverlay({
+        forceUpdateRequired: true,
+        forceUpdateDismissedAtLaunch: 3,
+        appLaunchCount: 3,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldShowForceUpdateOverlay({
+        forceUpdateRequired: true,
+        forceUpdateDismissedAtLaunch: 3,
+        appLaunchCount: 4,
+      }),
+    ).toBe(true);
+  });
+
+  it('re-shows welcome premium after a new launch when dismissed', () => {
+    expect(
+      shouldShowWelcomePremiumOffer({
+        welcomePremiumCampaignId: null,
+        welcomePremiumDismissedAtLaunch: 2,
+        appLaunchCount: 2,
+        campaignId: WELCOME_PREMIUM_CAMPAIGN,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldShowWelcomePremiumOffer({
+        welcomePremiumCampaignId: null,
+        welcomePremiumDismissedAtLaunch: 2,
+        appLaunchCount: 3,
+        campaignId: WELCOME_PREMIUM_CAMPAIGN,
+      }),
+    ).toBe(true);
   });
 });

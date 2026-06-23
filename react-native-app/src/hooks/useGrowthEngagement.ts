@@ -7,17 +7,20 @@ import {resolvePremiumGiftReminder} from '../monetization/premiumGiftReminders';
 import {checkAppUpdateRequired} from '../services/appUpdateService';
 import {
   shouldOfferReviewPrompt,
+  shouldShowForceUpdateOverlay,
   shouldShowPaywallNudge,
+  shouldShowPremiumGiftReminder,
+  shouldShowWelcomePremiumOffer,
 } from '../state/slices/growth';
 
 const PLAYBACK_TICK_MS = 1000;
 
 /**
  * Tracks launches + playback time, checks mandatory updates, then triggers growth prompts:
- * - blocking update screen when remote policy requires it (every launch until updated)
+ * - dismissible update overlay when remote policy requires it (re-shown each launch until updated)
  * - welcome Premium gift activation
  * - Premium gift expiry reminders (1 day before + on expiry day)
- * - paywall nudge after demonstrated value (free tier, once)
+ * - paywall nudge after demonstrated value (free tier, until subscribe)
  * - review prompt after 3+ min cumulative playback (once per version)
  */
 export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean): void {
@@ -25,6 +28,7 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
   const tier = useHertzStore(s => s.tier);
   const activeModal = useHertzStore(s => s.activeModal);
   const forceUpdateRequired = useHertzStore(s => s.forceUpdateRequired);
+  const forceUpdateDismissedAtLaunch = useHertzStore(s => s.forceUpdateDismissedAtLaunch);
   const appLaunchCount = useHertzStore(s => s.appLaunchCount);
   const cumulativePlaybackSec = useHertzStore(s => s.cumulativePlaybackSec);
   const reviewPromptedForVersion = useHertzStore(s => s.reviewPromptedForVersion);
@@ -43,7 +47,6 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
   const recordAppLaunch = useHertzStore(s => s.recordAppLaunch);
   const addPlaybackSeconds = useHertzStore(s => s.addPlaybackSeconds);
   const markReviewPromptShown = useHertzStore(s => s.markReviewPromptShown);
-  const markPaywallSoftPromptShown = useHertzStore(s => s.markPaywallSoftPromptShown);
   const setForceUpdateRequired = useHertzStore(s => s.setForceUpdateRequired);
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const setActivePremiumGiftReminder = useHertzStore(s => s.setActivePremiumGiftReminder);
@@ -57,6 +60,12 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
   const welcomeScheduled = useRef(false);
   const premiumGiftScheduled = useRef(false);
   const updateCheckStarted = useRef(false);
+
+  const showForceUpdateOverlay = shouldShowForceUpdateOverlay({
+    forceUpdateRequired,
+    forceUpdateDismissedAtLaunch,
+    appLaunchCount,
+  });
 
   useEffect(() => {
     if (!hydrated || updateCheckStarted.current) {
@@ -89,7 +98,7 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
   }, [promptsEnabled, isPlaying, addPlaybackSeconds]);
 
   useEffect(() => {
-    if (!promptsEnabled || forceUpdateRequired || activeModal != null) {
+    if (!promptsEnabled || showForceUpdateOverlay || activeModal != null) {
       return;
     }
 
@@ -97,7 +106,12 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
 
     if (
       !welcomeScheduled.current &&
-      state.welcomePremiumCampaignId !== WELCOME_PREMIUM_CAMPAIGN
+      shouldShowWelcomePremiumOffer({
+        welcomePremiumCampaignId: state.welcomePremiumCampaignId,
+        welcomePremiumDismissedAtLaunch: state.welcomePremiumDismissedAtLaunch,
+        appLaunchCount: state.appLaunchCount,
+        campaignId: WELCOME_PREMIUM_CAMPAIGN,
+      })
     ) {
       welcomeScheduled.current = true;
       setTimeout(() => setActiveModal('welcomePremium'), 600);
@@ -114,7 +128,16 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
       expiryDayShown: state.welcomePremiumExpiryDayReminderShown,
     });
 
-    if (!premiumGiftScheduled.current && giftReminder != null) {
+    if (
+      !premiumGiftScheduled.current &&
+      giftReminder != null &&
+      shouldShowPremiumGiftReminder({
+        kind: giftReminder,
+        premiumGiftDayBeforeDismissedAtLaunch: state.premiumGiftDayBeforeDismissedAtLaunch,
+        premiumGiftExpiryDayDismissedAtLaunch: state.premiumGiftExpiryDayDismissedAtLaunch,
+        appLaunchCount: state.appLaunchCount,
+      })
+    ) {
       premiumGiftScheduled.current = true;
       setActivePremiumGiftReminder(giftReminder);
       setActiveModal('premiumGiftExpiry');
@@ -128,10 +151,10 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
         appLaunchCount: state.appLaunchCount,
         cumulativePlaybackSec: state.cumulativePlaybackSec,
         paywallSoftPromptShown: state.paywallSoftPromptShown,
+        paywallNudgeDismissedAtLaunch: state.paywallNudgeDismissedAtLaunch,
       })
     ) {
       paywallScheduled.current = true;
-      markPaywallSoftPromptShown();
       setActiveModal('paywall');
       return;
     }
@@ -151,7 +174,7 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
     }
   }, [
     promptsEnabled,
-    forceUpdateRequired,
+    showForceUpdateOverlay,
     activeModal,
     tier,
     appLaunchCount,
@@ -164,7 +187,6 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
     welcomePremiumExpiresAtMs,
     welcomePremiumDayBeforeReminderShown,
     welcomePremiumExpiryDayReminderShown,
-    markPaywallSoftPromptShown,
     markReviewPromptShown,
     setActiveModal,
     setActivePremiumGiftReminder,

@@ -84,9 +84,8 @@ export function WellnessCheckinModal() {
     setSuccess(result.message);
     if (result.code != null) {
       setRewardCode(result.code);
-      setClipboardPromoCode(result.code);
     }
-  }, [mood, sleepQuality, focusLevel, recordWellnessCheckin, setClipboardPromoCode]);
+  }, [mood, sleepQuality, focusLevel, recordWellnessCheckin]);
 
   return (
     <View style={styles.overlay}>
@@ -108,6 +107,7 @@ export function WellnessCheckinModal() {
               <Pressable
                 style={styles.secondaryBtn}
                 onPress={() => {
+                  setClipboardPromoCode(rewardCode);
                   showStoreOfferAlert({
                     title: 'Wellness reward',
                     code: rewardCode,

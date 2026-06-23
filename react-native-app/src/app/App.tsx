@@ -16,6 +16,7 @@ import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {usePromoRewardBoot} from './hooks/usePromoRewardBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
+import {shouldShowForceUpdateOverlay} from '../state/slices/growth';
 import {subscribeToReferralLinks} from '../services/referralLinkService';
 import {reportReferralInstall} from '../services/referralTrackingService';
 import {installAudioSync} from '../state/middleware/audioSync';
@@ -141,6 +142,8 @@ function AppContent(): React.JSX.Element {
   usePromoRewardBoot();
   const hasAcceptedSafetyTerms = useHertzStore(s => s.hasAcceptedSafetyTerms);
   const forceUpdateRequired = useHertzStore(s => s.forceUpdateRequired);
+  const forceUpdateDismissedAtLaunch = useHertzStore(s => s.forceUpdateDismissedAtLaunch);
+  const appLaunchCount = useHertzStore(s => s.appLaunchCount);
   const activeModal = useHertzStore(s => s.activeModal);
 
   useGrowthEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
@@ -215,17 +218,11 @@ function AppContent(): React.JSX.Element {
     );
   }
 
-  if (forceUpdateRequired) {
-    return (
-      <Suspense fallback={
-        <View style={styles.boot}>
-          <ActivityIndicator color={HertzTheme.neon.cyan} size="large" />
-        </View>
-      }>
-        <RequiredUpdateModal />
-      </Suspense>
-    );
-  }
+  const showForceUpdateOverlay = shouldShowForceUpdateOverlay({
+    forceUpdateRequired,
+    forceUpdateDismissedAtLaunch,
+    appLaunchCount,
+  });
 
   const nativeAudioLinked = isHertzAudioTurboModuleLinked();
 
@@ -240,6 +237,11 @@ function AppContent(): React.JSX.Element {
       )}
       {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
       <ModalLayer activeModal={activeModal} />
+      {showForceUpdateOverlay && (
+        <Suspense fallback={null}>
+          <RequiredUpdateModal />
+        </Suspense>
+      )}
     </>
   );
 }

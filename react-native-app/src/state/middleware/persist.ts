@@ -75,6 +75,11 @@ export const persistedStoreOptions = {
     cumulativePlaybackSec: state.cumulativePlaybackSec,
     reviewPromptedForVersion: state.reviewPromptedForVersion,
     paywallSoftPromptShown: state.paywallSoftPromptShown,
+    forceUpdateDismissedAtLaunch: state.forceUpdateDismissedAtLaunch,
+    welcomePremiumDismissedAtLaunch: state.welcomePremiumDismissedAtLaunch,
+    paywallNudgeDismissedAtLaunch: state.paywallNudgeDismissedAtLaunch,
+    premiumGiftDayBeforeDismissedAtLaunch: state.premiumGiftDayBeforeDismissedAtLaunch,
+    premiumGiftExpiryDayDismissedAtLaunch: state.premiumGiftExpiryDayDismissedAtLaunch,
     // promo slice
     appliedPromoCode: state.appliedPromoCode,
     clipboardPromoCode: state.clipboardPromoCode,

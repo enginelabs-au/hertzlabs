@@ -1,4 +1,5 @@
 import type {StateCreator} from 'zustand';
+import type {PremiumGiftReminderKind} from '../../monetization/premiumGiftReminders';
 import type {AppStore} from '../types';
 
 export const GROWTH_REVIEW_MIN_PLAYBACK_SEC = 180;
@@ -13,15 +14,25 @@ export type GrowthSlice = {
   cumulativePlaybackSec: number;
   /** App version string we last showed the native review prompt for. */
   reviewPromptedForVersion: string | null;
-  /** One-time post-value paywall nudge for free users. */
+  /** Set when user subscribes — stops the post-value paywall nudge permanently. */
   paywallSoftPromptShown: boolean;
-  /** Blocking update screen — set each launch from remote policy. */
+  /** Remote policy says a store update is required (checked each launch). */
   forceUpdateRequired: boolean;
+  /** Launch count when user dismissed the update overlay for the current session. */
+  forceUpdateDismissedAtLaunch: number | null;
+  welcomePremiumDismissedAtLaunch: number | null;
+  paywallNudgeDismissedAtLaunch: number | null;
+  premiumGiftDayBeforeDismissedAtLaunch: number | null;
+  premiumGiftExpiryDayDismissedAtLaunch: number | null;
   recordAppLaunch(): void;
   addPlaybackSeconds(seconds: number): void;
   markReviewPromptShown(version: string): void;
   markPaywallSoftPromptShown(): void;
   setForceUpdateRequired(required: boolean): void;
+  dismissForceUpdateForSession(): void;
+  dismissWelcomePremiumForSession(): void;
+  dismissPaywallNudgeForSession(): void;
+  dismissPremiumGiftReminderForSession(kind: PremiumGiftReminderKind): void;
 };
 
 export const createGrowthSlice: StateCreator<AppStore, [], [], GrowthSlice> = set => ({
@@ -30,6 +41,11 @@ export const createGrowthSlice: StateCreator<AppStore, [], [], GrowthSlice> = se
   reviewPromptedForVersion: null,
   paywallSoftPromptShown: false,
   forceUpdateRequired: false,
+  forceUpdateDismissedAtLaunch: null,
+  welcomePremiumDismissedAtLaunch: null,
+  paywallNudgeDismissedAtLaunch: null,
+  premiumGiftDayBeforeDismissedAtLaunch: null,
+  premiumGiftExpiryDayDismissedAtLaunch: null,
 
   recordAppLaunch() {
     set(s => ({appLaunchCount: s.appLaunchCount + 1}));
@@ -53,7 +69,77 @@ export const createGrowthSlice: StateCreator<AppStore, [], [], GrowthSlice> = se
   setForceUpdateRequired(required) {
     set({forceUpdateRequired: required});
   },
+
+  dismissForceUpdateForSession() {
+    set(s => ({forceUpdateDismissedAtLaunch: s.appLaunchCount}));
+  },
+
+  dismissWelcomePremiumForSession() {
+    set(s => ({welcomePremiumDismissedAtLaunch: s.appLaunchCount}));
+  },
+
+  dismissPaywallNudgeForSession() {
+    set(s => ({paywallNudgeDismissedAtLaunch: s.appLaunchCount}));
+  },
+
+  dismissPremiumGiftReminderForSession(kind) {
+    set(s =>
+      kind === 'dayBefore'
+        ? {premiumGiftDayBeforeDismissedAtLaunch: s.appLaunchCount}
+        : {premiumGiftExpiryDayDismissedAtLaunch: s.appLaunchCount},
+    );
+  },
 });
+
+/** True when the user closed a growth prompt during this cold start. */
+export function wasGrowthPromptDismissedThisLaunch(
+  dismissedAtLaunch: number | null,
+  appLaunchCount: number,
+): boolean {
+  return dismissedAtLaunch === appLaunchCount;
+}
+
+export function shouldShowForceUpdateOverlay(input: {
+  forceUpdateRequired: boolean;
+  forceUpdateDismissedAtLaunch: number | null;
+  appLaunchCount: number;
+}): boolean {
+  return (
+    input.forceUpdateRequired &&
+    !wasGrowthPromptDismissedThisLaunch(
+      input.forceUpdateDismissedAtLaunch,
+      input.appLaunchCount,
+    )
+  );
+}
+
+export function shouldShowWelcomePremiumOffer(input: {
+  welcomePremiumCampaignId: string | null;
+  welcomePremiumDismissedAtLaunch: number | null;
+  appLaunchCount: number;
+  campaignId: string;
+}): boolean {
+  return (
+    input.welcomePremiumCampaignId !== input.campaignId &&
+    !wasGrowthPromptDismissedThisLaunch(
+      input.welcomePremiumDismissedAtLaunch,
+      input.appLaunchCount,
+    )
+  );
+}
+
+export function shouldShowPremiumGiftReminder(input: {
+  kind: PremiumGiftReminderKind;
+  premiumGiftDayBeforeDismissedAtLaunch: number | null;
+  premiumGiftExpiryDayDismissedAtLaunch: number | null;
+  appLaunchCount: number;
+}): boolean {
+  const dismissedAt =
+    input.kind === 'dayBefore'
+      ? input.premiumGiftDayBeforeDismissedAtLaunch
+      : input.premiumGiftExpiryDayDismissedAtLaunch;
+  return !wasGrowthPromptDismissedThisLaunch(dismissedAt, input.appLaunchCount);
+}
 
 export function shouldOfferReviewPrompt(input: {
   appLaunchCount: number;
@@ -73,11 +159,16 @@ export function shouldShowPaywallNudge(input: {
   appLaunchCount: number;
   cumulativePlaybackSec: number;
   paywallSoftPromptShown: boolean;
+  paywallNudgeDismissedAtLaunch: number | null;
 }): boolean {
   return (
     input.tier === 'free' &&
     !input.paywallSoftPromptShown &&
     input.appLaunchCount >= GROWTH_PAYWALL_NUDGE_MIN_LAUNCHES &&
-    input.cumulativePlaybackSec >= GROWTH_PAYWALL_NUDGE_MIN_PLAYBACK_SEC
+    input.cumulativePlaybackSec >= GROWTH_PAYWALL_NUDGE_MIN_PLAYBACK_SEC &&
+    !wasGrowthPromptDismissedThisLaunch(
+      input.paywallNudgeDismissedAtLaunch,
+      input.appLaunchCount,
+    )
   );
 }
