@@ -5,9 +5,15 @@ import {useDerivedValue, useFrameCallback, useSharedValue} from 'react-native-re
 import type {DialValues} from '../CircularController/useDialSharedValues';
 import {buildHubScopePaths} from './hubPathBuilders';
 import {HertzTheme} from '../../theme/hertzTheme';
-import {bandStrokeFromHex} from './bandStrokeColors';
+import {bandStrokeFromHex, photicStrokeFromPalette} from './bandStrokeColors';
 import {getBand} from '../ReadoutPanel/brainwaveBands';
 import {NeonRadiantPath} from './NeonRadiantPath';
+import {
+  photicFlashLuminanceAtTime,
+  photicPaletteForBeatHz,
+  photicVisualTimeSec,
+} from '../../audio/photicStrobeMath';
+import {usePhoticStrobeClock, usePhoticStrobeEnabledSV} from '../../hooks/usePhoticStrobeClock';
 
 const CHANNEL_LEFT = HertzTheme.channel.left;
 const CHANNEL_RIGHT = HertzTheme.channel.right;
@@ -51,6 +57,10 @@ function HubOscilloscopeCanvasInner({
   const w = Math.max(64, width);
   const h = Math.max(64, height);
 
+  const photicEnabledSV = usePhoticStrobeEnabledSV();
+  const {clockMs: photicClockMs, isPlayingSV, anchorFrameMs, anchorElapsedSec} =
+    usePhoticStrobeClock();
+
   // Monotonic UI-thread clock — same pattern as LissajousCanvas (reliable on device).
   const time = useSharedValue(0);
   useFrameCallback(
@@ -93,11 +103,31 @@ function HubOscilloscopeCanvasInner({
   const liveStrokes = useDerivedValue(() => {
     'worklet';
     const beat = dialValues.beatHz.value;
+    const phase = dialValues.phaseAngle.value;
     const g = dialValues.gain.value;
     const gainPart = Math.min(1, Math.max(0.4, g * 1.2));
     const beatPart = Math.min(1, Math.max(0.45, Math.log10(beat + 1) / 1.55));
     const intensity = Math.min(1, gainPart * (0.65 + beatPart * 0.55));
     const chIntensity = Math.min(1, intensity * 1.05);
+
+    if (photicEnabledSV.value) {
+      const timeSec = photicVisualTimeSec(
+        photicClockMs.value,
+        isPlayingSV.value,
+        anchorFrameMs.value,
+        anchorElapsedSec.value,
+      );
+      const palette = photicPaletteForBeatHz(beat);
+      const luminance = photicFlashLuminanceAtTime(timeSec, beat, phase);
+      return {
+        left: photicStrokeFromPalette(palette, luminance, chIntensity),
+        right: photicStrokeFromPalette(palette, luminance, chIntensity),
+        back: photicStrokeFromPalette(palette, luminance, intensity * 0.48),
+        mid: photicStrokeFromPalette(palette, luminance, intensity * 0.72),
+        front: photicStrokeFromPalette(palette, luminance, intensity),
+      };
+    }
+
     const hex = getBand(beat).hexColor;
     return {
       // Channel hues swapped per design: left trace = green, right trace = orange.
@@ -107,7 +137,7 @@ function HubOscilloscopeCanvasInner({
       mid: bandStrokeFromHex(hex, intensity * 0.72),
       front: bandStrokeFromHex(hex, intensity),
     };
-  }, [dialValues]);
+  }, [dialValues, photicEnabledSV, photicClockMs, isPlayingSV, anchorFrameMs, anchorElapsedSec]);
 
   const leftStroke = useDerivedValue(() => liveStrokes.value.left, [liveStrokes]);
   const rightStroke = useDerivedValue(() => liveStrokes.value.right, [liveStrokes]);

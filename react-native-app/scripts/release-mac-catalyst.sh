@@ -74,6 +74,13 @@ if [[ -d "$ASSETS_PATH" ]]; then
 fi
 rm -f "$RES_DIR/ip.txt"
 
+if [[ "${SKIP_ASC_UPLOAD:-}" == "1" ]]; then
+  echo "==> Skipping export + upload (SKIP_ASC_UPLOAD=1)"
+  echo "Archive: $ARCHIVE_PATH"
+  plutil -p "$APP_PATH/Contents/Info.plist" | rg 'CFBundleShortVersionString|CFBundleVersion|CFBundleSupportedPlatforms|UIDeviceFamily'
+  exit 0
+fi
+
 echo "==> Export + upload to App Store Connect (macOS)"
 rm -rf "$EXPORT_PATH"
 xcodebuild -exportArchive \

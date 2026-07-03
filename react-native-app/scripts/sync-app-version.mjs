@@ -110,6 +110,10 @@ if (pbxChanged) {
 }
 
 const versionBumped = prevVersionCode != null && prevVersionCode !== versionCode;
-if (versionBumped) {
+if (versionBumped && process.env.SKIP_FORCE_UPDATE_PUBLISH !== '1') {
   await publishForceUpdatePolicy(versionCode);
+} else if (versionBumped) {
+  console.log(
+    'sync-app-version: skip Supabase force-update publish (SKIP_FORCE_UPDATE_PUBLISH=1)',
+  );
 }

@@ -37,6 +37,7 @@ import {HertzTheme} from '../../theme/hertzTheme';
 import {macScaledFont} from '../../platform/macTypography';
 import {AdvancedHubHorizontalBands} from '../home/HomeFreqControls';
 import {HubOscilloscopeCanvas} from '../waveforms';
+import {PhoticStrobeToggle} from '../waveforms/PhoticStrobeToggle';
 import {ExperimentalDial} from './ExperimentalDial';
 import {GlassCard} from './GlassCard';
 import {NeonSlider} from './NeonSlider';
@@ -196,6 +197,9 @@ export function FramedVisualizerHub({dialValues, gesture}: FramedVisualizerHubPr
 
   return (
     <View style={[styles.outer, isMacWide && styles.outerMac]}>
+      <View style={{width: hubW}}>
+        <PhoticStrobeToggle />
+      </View>
       <GlassCard style={[styles.frame, {width: hubW, height: frameH}]} padding={0}>
         <View style={[styles.hubInner, {width: hubW, height: frameH}]}>
           <View style={[styles.canvasColumn, {width: canvasW, height: frameH}]}>
@@ -280,6 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 2,
+    gap: 0,
   },
   outerMac: {
     alignItems: 'stretch',
@@ -296,6 +301,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   canvasBox: {
+    position: 'relative',
     backgroundColor: 'transparent',
     overflow: 'hidden',
   },

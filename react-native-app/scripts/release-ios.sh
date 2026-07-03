@@ -53,6 +53,13 @@ fi
 echo "==> Generate ExportOptions with App Store Connect API key"
 node "$ROOT/scripts/write-ios-export-options.mjs" "$EXPORT_PLIST"
 
+if [[ "${SKIP_ASC_UPLOAD:-}" == "1" ]]; then
+  echo "==> Skipping export + upload (SKIP_ASC_UPLOAD=1)"
+  echo "Archive: $ARCHIVE_PATH"
+  plutil -p "$APP_PATH/Info.plist" | rg 'CFBundleShortVersionString|CFBundleVersion'
+  exit 0
+fi
+
 echo "==> Export + upload to App Store Connect"
 rm -rf "$EXPORT_PATH"
 xcodebuild -exportArchive \

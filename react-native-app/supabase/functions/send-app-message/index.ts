@@ -73,6 +73,10 @@ Deno.serve(async (req: Request) => {
   }
   const outreachType = PROMO_CATEGORY[category];
   const isOutreachPromo = outreachType != null || OUTREACH_PROMO_CATEGORIES.has(category);
+  const isAffiliateApply = category === 'feedback_affiliate_apply';
+  if (isAffiliateApply && !isValidEmail(fromEmail)) {
+    return json({error: 'A valid email is required for affiliate applications.'}, 400);
+  }
   if (isOutreachPromo && !isValidEmail(fromEmail)) {
     return json({error: 'A valid email is required so we can send your offer code.'}, 400);
   }
@@ -187,7 +191,9 @@ ${fromEmail ? `<p><b>Reply to:</b> <a href="mailto:${escapeHtml(fromEmail)}">${e
   const emailSubject =
     outreachType != null
       ? `${subject} ${outreachSubjectTag(outreachType, codeBundle.primary?.code)}`
-      : subject;
+      : isAffiliateApply
+        ? `[Affiliate Apply] ${subject}`
+        : subject;
 
   const sent = await sendResendEmail({
     to: TO_MAP[toKey],

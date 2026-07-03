@@ -22,6 +22,24 @@ import {REVENUECAT_ENTITLEMENT} from '../monetization/iapCatalog';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 
+const ACTIVATE_TIMEOUT_MS = 20_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer != null) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 const GOLD = '#FBBF24';
 const GOLD_DIM = 'rgba(251,191,36,0.12)';
 const GOLD_BORDER = 'rgba(251,191,36,0.35)';
@@ -58,7 +76,11 @@ export function WelcomePremiumModal() {
 
     setLoading(true);
     try {
-      const result = await activateWelcomePremium();
+      const result = await withTimeout(
+        activateWelcomePremium(),
+        ACTIVATE_TIMEOUT_MS,
+        'Premium activation',
+      );
       if (!result.ok) {
         Alert.alert('Could not activate', result.error, [{text: 'OK'}]);
         return;
@@ -75,8 +97,12 @@ export function WelcomePremiumModal() {
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
         try {
-          await Purchases.invalidateCustomerInfoCache();
-          const info = await Purchases.getCustomerInfo();
+          await withTimeout(Purchases.invalidateCustomerInfoCache(), 8_000, 'Purchases refresh');
+          const info = await withTimeout(
+            Purchases.getCustomerInfo(),
+            8_000,
+            'Purchases customer info',
+          );
           _hydrateFromRC(info, REVENUECAT_ENTITLEMENT);
           const ent = info.entitlements.active[REVENUECAT_ENTITLEMENT] as
             | {expirationDate?: string | null}
@@ -109,6 +135,12 @@ export function WelcomePremiumModal() {
           : 'Your Premium access is being applied. If features are still locked, fully close and reopen the app.';
 
       Alert.alert('Premium activated', successBody, [{text: 'Start exploring', onPress: dismiss}]);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message.includes('timed out')
+          ? 'Activation is taking too long. Check your connection and try again, or tap Maybe later.'
+          : 'Something went wrong. Please try again.';
+      Alert.alert('Could not activate', message, [{text: 'OK'}]);
     } finally {
       setLoading(false);
     }
@@ -143,6 +175,7 @@ export function WelcomePremiumModal() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.scrollContent, scrollInsets]}>
           <View style={styles.heroCard}>
             <Text style={styles.heroIcon}>✦</Text>

@@ -61,6 +61,8 @@ export const persistedStoreOptions = {
     isKineticModeEnabled: state.isKineticModeEnabled,
     beatSliderScale: state.beatSliderScale,
     experimentalMode: state.experimentalMode,
+    photicStrobeEnabled: state.photicStrobeEnabled,
+    photicStrobeConsentGiven: state.photicStrobeConsentGiven,
     lastUsedParams: state.lastUsedParams,
     custom: state.custom,
     tier: state.tier,

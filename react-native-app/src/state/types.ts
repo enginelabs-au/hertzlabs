@@ -135,8 +135,13 @@ export type SettingsSlice = {
    * 20 Hz-20 kHz range while the main slider remains the beat-speed control.
    */
   experimentalMode: boolean;
+  /** Screen photic strobe (AVE) — off by default; requires explicit consent. */
+  photicStrobeEnabled: boolean;
+  photicStrobeConsentGiven: boolean;
+  setPhoticStrobeEnabled(enabled: boolean): void;
+  setPhoticStrobeConsentGiven(given: boolean): void;
   lastUsedParams: AudioParamsValues | null;
-  updateSettings(settings: Partial<Omit<SettingsSlice, 'updateSettings'>>): void;
+  updateSettings(settings: Partial<Omit<SettingsSlice, 'updateSettings' | 'setPhoticStrobeEnabled' | 'setPhoticStrobeConsentGiven'>>): void;
 };
 
 export type LayoutModeSlice = {

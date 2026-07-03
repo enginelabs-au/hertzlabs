@@ -1,4 +1,5 @@
 import type {RadiantStrokeStyle} from './radiantWavePalette';
+import type {PhoticPalette} from '../../audio/photicStrobeMath';
 
 function parseHex(hex: string): {r: number; g: number; b: number} {
   'worklet';
@@ -19,5 +20,25 @@ export function bandStrokeFromHex(hex: string, intensity: number): RadiantStroke
     halo: `rgba(${r}, ${g}, ${b}, ${(t * 0.24).toFixed(3)})`,
     glow: `rgba(${r}, ${g}, ${b}, ${(t * 0.52).toFixed(3)})`,
     core: `rgba(${r}, ${g}, ${b}, ${Math.min(1, t * 0.96).toFixed(3)})`,
+  };
+}
+
+/** Photic palette applied to neon stroke layers — luminance 0 hides the trace. */
+export function photicStrokeFromPalette(
+  palette: PhoticPalette,
+  luminance: number,
+  intensity: number,
+): RadiantStrokeStyle {
+  'worklet';
+  if (luminance <= 0) {
+    return {halo: 'rgba(0,0,0,0)', glow: 'rgba(0,0,0,0)', core: 'rgba(0,0,0,0)'};
+  }
+  const t = Math.min(1, Math.max(0.35, intensity));
+  const alpha = palette.peakOpacity * luminance * t;
+  const {r, g, b} = palette;
+  return {
+    halo: `rgba(${r}, ${g}, ${b}, ${(alpha * 0.28).toFixed(3)})`,
+    glow: `rgba(${r}, ${g}, ${b}, ${(alpha * 0.58).toFixed(3)})`,
+    core: `rgba(${r}, ${g}, ${b}, ${Math.min(1, alpha * 0.98).toFixed(3)})`,
   };
 }

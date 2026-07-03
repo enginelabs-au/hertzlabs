@@ -65,6 +65,18 @@ export function LegalMenuBar({showLayoutToggle = true}: LegalMenuBarProps) {
         </Text>
         <Pressable
           style={[styles.menuBtn, compact && styles.menuBtnCompact]}
+          onPress={() => setActiveModal('science')}
+          accessibilityRole="button"
+          accessibilityLabel="Scientific references and research summaries">
+          <Text style={[styles.menuLabel, compact && styles.menuLabelCompact]} maxFontSizeMultiplier={1.2}>
+            Science
+          </Text>
+        </Pressable>
+        <Text style={[styles.separator, compact && styles.separatorCompact]} maxFontSizeMultiplier={1.0}>
+          ·
+        </Text>
+        <Pressable
+          style={[styles.menuBtn, compact && styles.menuBtnCompact]}
           onPress={() => setActiveModal('legal')}
           accessibilityRole="button"
           accessibilityLabel="Legal information">

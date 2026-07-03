@@ -55,6 +55,9 @@ const RequiredUpdateModal = React.lazy(() =>
 const PremiumGiftExpiryModal = React.lazy(() =>
   import('../screens/PremiumGiftExpiryModal').then(m => ({default: m.PremiumGiftExpiryModal})),
 );
+const TheScienceScreen = React.lazy(() =>
+  import('../screens/TheScienceScreen').then(m => ({default: m.TheScienceScreen})),
+);
 
 function ModalLayer({activeModal}: {activeModal: string | null}) {
   if (activeModal == null) {
@@ -65,6 +68,7 @@ function ModalLayer({activeModal}: {activeModal: string | null}) {
       {activeModal === 'legal' && <LegalScreen />}
       {activeModal === 'paywall' && <PaywallScreen />}
       {activeModal === 'feedback' && <FeedbackScreen />}
+      {activeModal === 'science' && <TheScienceScreen />}
       {activeModal === 'promos' && <PromosScreen />}
       {activeModal === 'promo' && <PromoRedemptionModal />}
       {activeModal === 'wellnessCheckin' && <WellnessCheckinModal />}

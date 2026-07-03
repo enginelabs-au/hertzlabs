@@ -9,7 +9,11 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
   isKineticModeEnabled: false,
   beatSliderScale: 'exponential',
   experimentalMode: false,
+  photicStrobeEnabled: false,
+  photicStrobeConsentGiven: false,
   lastUsedParams: null,
 
   updateSettings: settings => set(settings),
+  setPhoticStrobeEnabled: photicStrobeEnabled => set({photicStrobeEnabled}),
+  setPhoticStrobeConsentGiven: photicStrobeConsentGiven => set({photicStrobeConsentGiven}),
 });

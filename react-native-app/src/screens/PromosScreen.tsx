@@ -241,7 +241,6 @@ export function PromosScreen() {
   const practitionerRewardGranted = useHertzStore(s => s.practitionerRewardGranted);
   const betaRequestPending = useHertzStore(s => s.betaRequestPending);
   const betaRewardGranted = useHertzStore(s => s.betaRewardGranted);
-  const shareLinkRewardClaimed = useHertzStore(s => s.shareLinkRewardClaimed);
 
   const generateMyReferralCode = useHertzStore(s => s.generateMyReferralCode);
   const setClipboardPromoCode = useHertzStore(s => s.setClipboardPromoCode);
@@ -254,7 +253,6 @@ export function PromosScreen() {
   const markStreakReward30Claimed = useHertzStore(s => s.markStreakReward30Claimed);
   const markStreakBonusMilestoneClaimed = useHertzStore(s => s.markStreakBonusMilestoneClaimed);
   const markAnniversaryRewardClaimed = useHertzStore(s => s.markAnniversaryRewardClaimed);
-  const markShareLinkRewardClaimed = useHertzStore(s => s.markShareLinkRewardClaimed);
 
   const [pendingReferInstallClaims, setPendingReferInstallClaims] = useState(0);
   const [claimingReward, setClaimingReward] = useState(false);
@@ -563,33 +561,6 @@ export function PromosScreen() {
     await shareStoreListing();
   }, []);
 
-  const handleShareWithReward = useCallback(async () => {
-    const shared = await shareStoreListing();
-    if (!shared || shareLinkRewardClaimed) {
-      return;
-    }
-    Alert.alert(
-      'Share completed?',
-      'If you shared Hertz Labs with someone, tap Claim reward to receive your offer code.',
-      [
-        {text: 'Not now', style: 'cancel'},
-        {
-          text: 'Claim reward',
-          onPress: () => {
-            void (async () => {
-              const claimed = await claimStoreReward('share_link');
-              if (claimed) {
-                markShareLinkRewardClaimed();
-              }
-            })();
-          },
-        },
-      ],
-    );
-  }, [claimStoreReward, markShareLinkRewardClaimed, shareLinkRewardClaimed]);
-
-  // ────────────────────────────────────────────────────────────────────────────
-
   // ────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -712,19 +683,6 @@ export function PromosScreen() {
             status={reviewRewardClaimed ? 'claimed' : 'available'}
             ctaLabel="Rate the App"
             onCta={() => void handleReview()}
-          />
-
-          <EarnCard
-            cardId="share-link"
-            expanded={expandedCardId === 'share-link'}
-            onToggleExpand={toggleCard}
-            icon="📱"
-            title="Share with a Link"
-            description="Send the store listing link once to earn a one-time store offer code."
-            reward="1 store offer"
-            status={shareLinkRewardClaimed ? 'claimed' : 'available'}
-            ctaLabel={shareLinkRewardClaimed ? undefined : storeListingShareLabel()}
-            onCta={() => void handleShareWithReward()}
           />
 
           <EarnCard
@@ -863,8 +821,8 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="🩺"
             title="Practitioner / Therapist"
-            description="Healthcare or wellness practitioner? Apply for a partnership: 3 months free for you plus a 30% referral code for your clients."
-            reward="3 months + 30% code"
+            description="Healthcare or wellness practitioner? Apply for a partnership — 3 months free for you."
+            reward="3 months free"
             rewardVariant="cyan"
             status={practitionerReviewStatus}
             extra={
@@ -974,9 +932,9 @@ export function PromosScreen() {
           </Pressable>
 
           <Text style={styles.legalNote}>
-            Store offer codes are redeemed through the App Store or Google Play. Share rewards
-            require completing the share action. Only one reward per action. Subject to Hertz Labs
-            Terms of Service. Incentivised reviews must reflect honest opinions.
+            Store offer codes are redeemed through the App Store or Google Play. Only one reward
+            per action. Subject to Hertz Labs Terms of Service. Incentivised reviews must reflect
+            honest opinions.
           </Text>
         </ScrollView>
       </View>

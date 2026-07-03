@@ -38,6 +38,8 @@ export type AppMessageFormProps = {
   showFromEmail?: boolean;
   fromEmailPlaceholder?: string;
   requireFromEmail?: boolean;
+  sentMessage?: string;
+  formFooterNote?: string;
   sendLabel?: string;
   onSent?: () => void;
   variant?: 'default' | 'promo';
@@ -54,6 +56,8 @@ export function AppMessageForm({
   fromEmailPlaceholder = 'Your email (optional, for a reply)',
   requireFromEmail = false,
   sendLabel = 'Send message',
+  sentMessage,
+  formFooterNote,
   onSent,
   variant = 'default',
   style,
@@ -96,8 +100,10 @@ export function AppMessageForm({
     return (
       <View style={[styles.wrap, style]}>
         <Text style={[styles.sentText, isPromo && styles.sentTextPromo]}>
-          Message sent to {RECIPIENT_LABEL[to]}. We will review your request and reply by email
-          with an {promoCodeNoun()} when approved.
+          {sentMessage ??
+            (isPromo
+              ? `Message sent to ${RECIPIENT_LABEL[to]}. We will review your request and reply by email with an ${promoCodeNoun()} when approved.`
+              : `Message sent to ${RECIPIENT_LABEL[to]}. We aim to reply within two business days.`)}
         </Text>
       </View>
     );
@@ -151,6 +157,7 @@ export function AppMessageForm({
             ? `Message needs at least 8 characters (${trimmedMessage.length}/8).`
             : `Sends to ${RECIPIENT_LABEL[to]} via Hertz Labs.`}
       </Text>
+      {formFooterNote != null && <Text style={styles.footerNote}>{formFooterNote}</Text>}
     </View>
   );
 }
@@ -202,6 +209,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     color: HertzTheme.text.muted,
+  },
+  footerNote: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: HertzTheme.text.muted,
+    marginTop: 2,
   },
   sentText: {
     fontSize: 13,

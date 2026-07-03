@@ -5,6 +5,7 @@ import {useAudioSharedValues} from '../../hooks/useAudioSharedValues';
 import {clampDriftHz} from '../../audio/channelFrequencies';
 import {useHertzStore} from '../../state/store';
 import {HubOscilloscopeCanvas} from '../waveforms';
+import {PhoticStrobeToggle} from '../waveforms/PhoticStrobeToggle';
 
 const DEFAULT_W = 340;
 const DEFAULT_H = 120;
@@ -24,14 +25,17 @@ export function SimpleOscilloscope({width = DEFAULT_W, height = DEFAULT_H}: Simp
 
   return (
     <View style={styles.wrap}>
-      <HubOscilloscopeCanvas
-        width={width}
-        height={height}
-        dialValues={dialValues}
-        leftDriftHz={leftDriftHz}
-        rightDriftHz={rightDriftHz}
-        beatHz={beatHz}
-      />
+      <PhoticStrobeToggle />
+      <View style={[styles.scopeBox, {width, height}]}>
+        <HubOscilloscopeCanvas
+          width={width}
+          height={height}
+          dialValues={dialValues}
+          leftDriftHz={leftDriftHz}
+          rightDriftHz={rightDriftHz}
+          beatHz={beatHz}
+        />
+      </View>
     </View>
   );
 }
@@ -39,5 +43,10 @@ export function SimpleOscilloscope({width = DEFAULT_W, height = DEFAULT_H}: Simp
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
+    width: '100%',
+  },
+  scopeBox: {
+    position: 'relative',
+    overflow: 'hidden',
   },
 });

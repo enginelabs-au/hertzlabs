@@ -44,6 +44,7 @@
   <a class="brand" href="../">HERTZ LABS</a>
   <a href="../">Home</a>
   <a href="../press/">Press</a>
+  <a href="../affiliate/">Affiliate</a>
   <a href="../privacy/">Privacy</a>
   <a href="../terms/">Terms</a>
   <a href="../support/">Support</a>
@@ -52,11 +53,11 @@
 <div class="container">
   <div class="eyebrow">Legal</div>
   <h1>Privacy Policy</h1>
-  <p class="meta">Last updated: June 2026 &nbsp;·&nbsp; Applies to Hertz Labs v2.0 (iOS &amp; Android)</p>
+  <p class="meta">Last updated: July 2026 &nbsp;·&nbsp; Applies to Hertz Labs v2.4 (iOS, Android &amp; Mac)</p>
 
   <h2>Overview</h2>
-  <p>Hertz Labs ("we", "our", "us") is a binaural beats and audio frequency generation app. We are committed to being transparent about the limited data we collect. This policy describes what data is collected, why, and how it is handled.</p>
-  <p>Hertz Labs does not require you to create an account. We do not collect your name, email address, phone number, or any contact information.</p>
+  <p>Hertz Labs ("we", "our", "us") is a binaural beats and audio frequency generation app. We are committed to being transparent about the data we collect. This policy describes what data is collected, why, and how it is handled.</p>
+  <p>Hertz Labs does not require you to create a username or password account. Most use is tied to an anonymous RevenueCat subscriber identifier on your device.</p>
 
   <h2>Data We Collect</h2>
   <p>The following table describes all categories of data that leave your device when you use Hertz Labs.</p>
@@ -67,6 +68,8 @@
     <tr><td><strong>Device ID</strong></td><td>A device-level identifier used by RevenueCat to associate purchases with your device.</td><td>RevenueCat</td><td>No</td></tr>
     <tr><td><strong>AI Prompts</strong></td><td>Text you type into the AI Guide (e.g. "help me focus") is sent to Google Gemini to generate frequency recommendations. Prompts are not stored by us and are not linked to any account.</td><td>Google Gemini API</td><td>No</td></tr>
     <tr><td><strong>Product Interaction</strong></td><td>Basic usage signals related to purchases (e.g. paywall shown, purchase completed), used by RevenueCat for analytics.</td><td>RevenueCat</td><td>No</td></tr>
+    <tr><td><strong>Feedback &amp; support messages</strong></td><td>If you use the in-app Feedback forms, we process your message text and, if you provide it, your email address. Device model, app version, and platform may be attached automatically. Affiliate applications require an email address.</td><td>Supabase (Edge Functions) → email delivery</td><td>Only if you provide email</td></tr>
+    <tr><td><strong>Promo &amp; referral activity</strong></td><td>If you participate in Promos (referrals, streak rewards, offer-code claims, form submissions such as “Make a post”), we store anonymous subscriber IDs, reward claim status, and any URLs or text you submit for manual review.</td><td>Supabase</td><td>No — tied to anonymous RC ID</td></tr>
   </table>
 
   <h2>Data Processed On-Device Only</h2>
@@ -87,15 +90,22 @@
     <p><strong>Google Gemini API</strong> — powers the AI Guide feature. Text prompts you enter are processed by Google.<br/>
     Privacy policy: <a href="https://policies.google.com/privacy" target="_blank">policies.google.com/privacy</a></p>
   </div>
+  <div class="card">
+    <p><strong>Supabase</strong> — hosts backend functions for feedback delivery, promo reward claims, referral tracking, and app update policy.<br/>
+    Privacy policy: <a href="https://supabase.com/privacy" target="_blank">supabase.com/privacy</a></p>
+  </div>
+
+  <h2>Affiliate applications</h2>
+  <p>If you apply to the Affiliate &amp; Creator Program via the in-app Feedback form, we collect your email address (required), your application message, and attached device metadata. This information is used to evaluate your application and, if you are approved, to manage the partnership. Additional tax or payout information may be collected off-app by email. See our <a href="../affiliate/">Affiliate Program</a> page.</p>
 
   <h2>Children</h2>
   <p>Hertz Labs is not directed at children under 13. We do not knowingly collect data from anyone under 13 years of age. If you believe a child under 13 has used the app, please contact us and we will take appropriate steps.</p>
 
   <h2>Data Retention</h2>
-  <p>We do not maintain our own database of user data. Anonymous identifiers held by RevenueCat are subject to their retention policy. AI prompts sent to Google are subject to Google's data handling policies.</p>
+  <p>Anonymous identifiers held by RevenueCat are subject to their retention policy. AI prompts sent to Google are subject to Google's data handling policies. Feedback and affiliate application emails are retained as long as needed to respond and manage support or partnerships, then deleted or archived per our internal policy.</p>
 
   <h2>Your Rights</h2>
-  <p>Because we collect no personal data linked to your identity, there is no profile to access, correct, or delete. If you have questions about data held by our third-party providers, please refer to their respective privacy policies above.</p>
+  <p>Because most data is anonymous, there is often no profile linked to your real-world identity. If you provided an email address in Feedback or an affiliate application and wish to access or delete that correspondence, contact <a href="mailto:support@enginelabs.com.au">support@enginelabs.com.au</a> or <a href="mailto:hello@enginelabs.com.au">hello@enginelabs.com.au</a>. For data held by RevenueCat or Google, refer to their privacy policies above.</p>
 
   <h2>Changes to This Policy</h2>
   <p>We may update this policy from time to time. Material changes will be reflected in the "Last updated" date above. Continued use of the app after changes constitutes acceptance of the updated policy.</p>
@@ -107,10 +117,11 @@
 <footer>
   <a href="../">Hertz Labs</a>
   <a href="https://github.com/enginelabs-au/hertzlabs" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <a href="../affiliate/">Affiliate Program</a>
   <a href="../privacy/">Privacy Policy</a>
   <a href="../terms/">Terms of Service</a>
   <a href="../support/">Support</a>
-  <p style="margin-top:12px">© 2026 Engine Labs. All rights reserved. · Hertz Labs v2.0</p>
+  <p style="margin-top:12px">© 2026 Engine Labs. All rights reserved. · Hertz Labs v2.4</p>
 </footer>
 </body>
 </html>

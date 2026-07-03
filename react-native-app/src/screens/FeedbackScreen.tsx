@@ -8,9 +8,11 @@ import {
 } from 'react-native';
 import {AppMessageForm} from '../components/messaging/AppMessageForm';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
-import {SUPPORT_EMAIL} from '../constants/appInfo';
+import {SUPPORT_EMAIL, HELLO_EMAIL} from '../constants/appInfo';
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
+
+const AFFILIATE_TERMS_URL = 'https://enginelabs-au.github.io/hertzlabs/affiliate/';
 
 type FeedbackActionProps = {
   title: string;
@@ -18,9 +20,25 @@ type FeedbackActionProps = {
   subject: string;
   bodyPrefix: string;
   category: string;
+  to?: 'support' | 'hello';
+  requireFromEmail?: boolean;
+  fromEmailPlaceholder?: string;
+  sentMessage?: string;
+  formFooterNote?: string;
 };
 
-function FeedbackAction({title, description, subject, bodyPrefix, category}: FeedbackActionProps) {
+function FeedbackAction({
+  title,
+  description,
+  subject,
+  bodyPrefix,
+  category,
+  to = 'support',
+  requireFromEmail = false,
+  fromEmailPlaceholder,
+  sentMessage,
+  formFooterNote,
+}: FeedbackActionProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -37,13 +55,22 @@ function FeedbackAction({title, description, subject, bodyPrefix, category}: Fee
         <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
       </Pressable>
       {expanded && (
-        <AppMessageForm
-          to="support"
-          subject={subject}
-          category={category}
-          placeholder={`${bodyPrefix.trim()}\n\n`}
-          prompt={`Send a message to ${SUPPORT_EMAIL}. Device details are attached automatically.`}
-        />
+        <View style={styles.formWrap}>
+          <AppMessageForm
+            to={to}
+            subject={subject}
+            category={category}
+            placeholder={`${bodyPrefix.trim()}\n\n`}
+            prompt={`Send a message to ${to === 'hello' ? HELLO_EMAIL : SUPPORT_EMAIL}. Device details are attached automatically.`}
+            requireFromEmail={requireFromEmail}
+            fromEmailPlaceholder={
+              fromEmailPlaceholder ??
+              (requireFromEmail ? 'Your email (required)' : 'Your email (optional, for a reply)')
+            }
+            sentMessage={sentMessage}
+            formFooterNote={formFooterNote}
+          />
+        </View>
       )}
     </View>
   );
@@ -92,8 +119,33 @@ export function FeedbackScreen() {
             category="feedback_feature"
           />
 
+          <FeedbackAction
+            title="Become an affiliate"
+            description="Apply to partner with Hertz Labs — promote with authentic content and explore revenue share for qualified creators. Earnings subject to application and partnership terms."
+            subject="Hertz Labs — affiliate application"
+            bodyPrefix={
+              'My channels (links):\n\nAudience / niche:\n\nHow I would promote Hertz Labs:\n\nI use Hertz Labs: (yes/no)\n\nMy HZ referrer code (if any):'
+            }
+            category="feedback_affiliate_apply"
+            to="hello"
+            requireFromEmail
+            fromEmailPlaceholder="Your email (required — we reply here about your application)"
+            sentMessage={`Application sent to ${HELLO_EMAIL}. We review affiliate applications manually. Submitting does not guarantee acceptance or any specific earnings.`}
+            formFooterNote={`Partnership terms: ${AFFILIATE_TERMS_URL}`}
+          />
+
+          <FeedbackAction
+            title="Connect with us"
+            description="Developers, media, legal, partnerships, or general inquiries — say hello."
+            subject="Hertz Labs — connect"
+            bodyPrefix="I'd like to connect about:"
+            category="feedback_connect"
+            to="hello"
+          />
+
           <Text style={styles.note}>
-            Messages go to {SUPPORT_EMAIL}. We aim to reply within two business days.
+            Messages go to {SUPPORT_EMAIL} (bug reports and features) or {HELLO_EMAIL} (affiliate
+            and connect). We aim to reply within two business days.
           </Text>
         </ScrollView>
       </View>
@@ -185,6 +237,10 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 14,
     color: HertzTheme.text.muted,
+  },
+  formWrap: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
   },
   note: {
     fontSize: 12,
