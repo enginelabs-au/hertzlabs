@@ -13,6 +13,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AIGuideChatSection} from '../components/ai/AIGuideChatSection';
 import {HomeBeatSlider, HomeHorizontalBands} from '../components/home/HomeFreqControls';
+import {StreakWidget} from '../components/home/StreakWidget';
 import {ScreenScrollLayout} from '../components/layout/ScreenScrollLayout';
 import {MicIcon} from '../components/icons/MicIcon';
 import {useSpeechToText} from '../hooks/useSpeechToText';
@@ -118,6 +119,7 @@ export function HomeScreen() {
         <Text style={styles.brand} maxFontSizeMultiplier={1.2}>
           HERTZ LABS
         </Text>
+        <StreakWidget />
 
         {isMacWide ? (
           <>

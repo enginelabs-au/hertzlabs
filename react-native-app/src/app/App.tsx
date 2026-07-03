@@ -16,6 +16,7 @@ import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {usePromoRewardBoot} from './hooks/usePromoRewardBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
+import {streakEngagementHandlers, useStreakEngagement} from '../hooks/useStreakEngagement';
 import {shouldShowForceUpdateOverlay} from '../state/slices/growth';
 import {subscribeToReferralLinks} from '../services/referralLinkService';
 import {reportReferralInstall} from '../services/referralTrackingService';
@@ -25,6 +26,8 @@ import {installProtocolSync} from '../state/middleware/protocolSync';
 import {HertzAudioClient} from '../audio/HertzAudioClient';
 import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
 import {HertzTheme} from '../theme/hertzTheme';
+import {summarizeActiveSubscription} from '../monetization/activeSubscriptionSummary';
+import Purchases from 'react-native-purchases';
 
 const BG = HertzTheme.bg;
 
@@ -55,14 +58,29 @@ const RequiredUpdateModal = React.lazy(() =>
 const PremiumGiftExpiryModal = React.lazy(() =>
   import('../screens/PremiumGiftExpiryModal').then(m => ({default: m.PremiumGiftExpiryModal})),
 );
+const CancellationWinbackModal = React.lazy(() =>
+  import('../screens/CancellationWinbackModal').then(m => ({default: m.CancellationWinbackModal})),
+);
+const StreakRestoreModal = React.lazy(() =>
+  import('../screens/StreakRestoreModal').then(m => ({default: m.StreakRestoreModal})),
+);
+const LapsedWinbackModal = React.lazy(() =>
+  import('../screens/LapsedWinbackModal').then(m => ({default: m.LapsedWinbackModal})),
+);
 const TheScienceScreen = React.lazy(() =>
   import('../screens/TheScienceScreen').then(m => ({default: m.TheScienceScreen})),
 );
 
 function ModalLayer({activeModal}: {activeModal: string | null}) {
+  const streakDays = useHertzStore(s => s.streakDays);
+  const peakStreakDays = useHertzStore(s => s.peakStreakDays);
+
   if (activeModal == null) {
     return null;
   }
+
+  const streakHandlers = streakEngagementHandlers();
+
   return (
     <Suspense fallback={null}>
       {activeModal === 'legal' && <LegalScreen />}
@@ -74,8 +92,50 @@ function ModalLayer({activeModal}: {activeModal: string | null}) {
       {activeModal === 'wellnessCheckin' && <WellnessCheckinModal />}
       {activeModal === 'welcomePremium' && <WelcomePremiumModal />}
       {activeModal === 'premiumGiftExpiry' && <PremiumGiftExpiryModal />}
+      {activeModal === 'streakRestore' && (
+        <StreakRestoreModal
+          streakDays={streakDays}
+          peakStreakDays={peakStreakDays}
+          shieldsRemaining={streakHandlers.shieldsRemaining}
+          onAccept={streakHandlers.onAcceptRestore}
+          onDecline={streakHandlers.onDeclineRestore}
+          onUseShield={streakHandlers.onUseShield}
+        />
+      )}
+      {activeModal === 'lapsedWinback7' && (
+        <LapsedWinbackModal
+          peakStreakDays={peakStreakDays}
+          includePremiumOffer={false}
+          onRestore={streakHandlers.onLapsed7Restore}
+          onDecline={streakHandlers.onLapsed7Decline}
+        />
+      )}
+      {activeModal === 'lapsedWinback30' && (
+        <LapsedWinbackModal
+          peakStreakDays={peakStreakDays}
+          includePremiumOffer
+          onRestore={streakHandlers.onLapsed30Restore}
+          onDecline={streakHandlers.onLapsed30Decline}
+        />
+      )}
+      {activeModal === 'cancellationWinback' && <PaywallCancellationWinback />}
     </Suspense>
   );
+}
+
+function PaywallCancellationWinback() {
+  const [summary, setSummary] = React.useState<
+    import('../monetization/activeSubscriptionSummary').ActiveSubscriptionSummary | null
+  >(null);
+  React.useEffect(() => {
+    void Purchases.getCustomerInfo().then(info => {
+      setSummary(summarizeActiveSubscription(info));
+    });
+  }, []);
+  if (summary == null) {
+    return null;
+  }
+  return <CancellationWinbackModal summary={summary} />;
 }
 
 type BoundaryState = {error: Error | null};
@@ -151,8 +211,9 @@ function AppContent(): React.JSX.Element {
   const activeModal = useHertzStore(s => s.activeModal);
 
   useGrowthEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
+  useStreakEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
 
-  // Referral deep links (custom scheme + universal links — no third-party SDK)
+  // Legacy referral deep links — analytics only (v3 rewards use manual HZ codes on Plans).
   useEffect(() => {
     const setPendingReferrerCode = useHertzStore.getState().setPendingReferrerCode;
     return subscribeToReferralLinks(referralCode => {

@@ -138,6 +138,9 @@ export type SettingsSlice = {
   /** Screen photic strobe (AVE) — off by default; requires explicit consent. */
   photicStrobeEnabled: boolean;
   photicStrobeConsentGiven: boolean;
+  /** Local streak reminder scheduling (Feature 19). */
+  streakRemindersEnabled: boolean;
+  promotionalOffersEnabled: boolean;
   setPhoticStrobeEnabled(enabled: boolean): void;
   setPhoticStrobeConsentGiven(given: boolean): void;
   lastUsedParams: AudioParamsValues | null;
@@ -207,6 +210,8 @@ export type BreathPacerSlice = {
 
 export type {GrowthSlice} from './slices/growth';
 export type {PromoSlice, PromoEntitlement} from './slices/promo';
+export type {GuidedDepthSlice} from './slices/guidedDepth';
+export type {AsmrSlice} from './slices/asmr';
 
 export type AppStore = AudioParamsSlice &
   SessionSlice &
@@ -222,4 +227,6 @@ export type AppStore = AudioParamsSlice &
   BreathPacerSlice &
   import('./slices/growth').GrowthSlice &
   import('./slices/aiChat').AiChatSlice &
-  import('./slices/promo').PromoSlice;
+  import('./slices/promo').PromoSlice &
+  import('./slices/guidedDepth').GuidedDepthSlice &
+  import('./slices/asmr').AsmrSlice;

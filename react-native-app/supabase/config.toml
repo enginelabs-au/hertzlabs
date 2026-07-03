@@ -63,3 +63,15 @@ verify_jwt = false
 
 [functions.register-referrer]
 verify_jwt = false
+
+[functions.claim-referral]
+verify_jwt = false
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.claim-cancellation-winback]
+verify_jwt = false
+
+[functions.cancellation-feedback]
+verify_jwt = false

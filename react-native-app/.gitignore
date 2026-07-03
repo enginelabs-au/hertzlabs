@@ -7,6 +7,10 @@ ios/build/
 ios/build-device/
 build-device/
 build-sim/
+build-device-debug/
+build-device-release/
+build-sim-debug/
+build-sim-release/
 build/mac/DerivedData/
 build/mac/*.app/
 android/app/.cxx/

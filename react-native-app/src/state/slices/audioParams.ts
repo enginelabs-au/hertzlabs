@@ -2,7 +2,7 @@ import type {StateCreator} from 'zustand';
 import {clampDriftHz} from '../../audio/channelFrequencies';
 import {breathGainMultiplierAt, modulatedBreathGain} from '../../breathPacer/breathEnvelope';
 import {DEFAULT_NOISE_MIX, layersFromLegacyNoiseType} from '../../audio/noiseLayers';
-import {pushNoiseToNative} from '../../audio/pushNoiseToNative';
+import {pushCombinedNoiseToNative} from '../../audio/pushNoiseToNative';
 import {
   DEFAULT_RAMP_MS,
   clampGain,
@@ -136,7 +136,12 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
       );
     });
     const s = get();
-    pushNoiseToNative(s.noiseLayers, s.noiseMix);
+    pushCombinedNoiseToNative({
+      ambientLayers: s.noiseLayers,
+      ambientMix: s.noiseMix,
+      asmrEnabled: s.asmrEnabled,
+      asmrMix: s.asmrStemMix,
+    });
   },
 
   setNoiseMix: mix => {
@@ -148,7 +153,12 @@ export const createAudioParamsSlice: StateCreator<AppStore, [], [], AudioParamsS
       ),
     );
     const s = get();
-    pushNoiseToNative(s.noiseLayers, s.noiseMix);
+    pushCombinedNoiseToNative({
+      ambientLayers: s.noiseLayers,
+      ambientMix: s.noiseMix,
+      asmrEnabled: s.asmrEnabled,
+      asmrMix: s.asmrStemMix,
+    });
   },
 
   applyPreset: (preset: Preset) => {

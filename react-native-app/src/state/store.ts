@@ -15,6 +15,8 @@ import {createLayoutModeSlice} from './slices/layoutMode';
 import {createUiSlice} from './slices/ui';
 import {createGrowthSlice} from './slices/growth';
 import {createPromoSlice} from './slices/promo';
+import {createGuidedDepthSlice} from './slices/guidedDepth';
+import {createAsmrSlice} from './slices/asmr';
 import {persist, persistedStoreOptions} from './middleware/persist';
 import type {AppStore} from './types';
 
@@ -37,6 +39,8 @@ export const useHertzStore = create<AppStore>()(
         ...createAiChatSlice(...args),
         ...createGrowthSlice(...args),
         ...createPromoSlice(...args),
+        ...createGuidedDepthSlice(...args),
+        ...createAsmrSlice(...args),
       }),
       persistedStoreOptions,
     ),

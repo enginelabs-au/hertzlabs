@@ -1,4 +1,4 @@
-export type BreathPatternId = 'box' | '478' | 'resonant';
+export type BreathPatternId = 'box' | '478' | 'resonant' | 'wimhof' | 'alternate';
 
 export type BreathPatternMeta = {
   id: BreathPatternId;
@@ -6,6 +6,8 @@ export type BreathPatternMeta = {
   label: string;
   subtitle: string;
   cycleSec: number;
+  /** Show safety disclaimer when selected (intense patterns). */
+  safetyNote?: string;
 };
 
 export const BREATH_PATTERNS: BreathPatternMeta[] = [
@@ -27,8 +29,24 @@ export const BREATH_PATTERNS: BreathPatternMeta[] = [
     id: 'resonant',
     nativeId: 2,
     label: 'Resonant Pacing',
-    subtitle: '5.5s in · 5.5s out',
+    subtitle: '5.5s in · 5.5s out (~5.5 breaths/min)',
     cycleSec: 11,
+  },
+  {
+    id: 'wimhof',
+    nativeId: 3,
+    label: 'Energising Cycles',
+    subtitle: '30 deep breaths · exhale hold · recovery breath',
+    cycleSec: 90,
+    safetyNote:
+      'Intense breathwork — not medical treatment. Stop if dizzy or unwell; never use in water or while driving.',
+  },
+  {
+    id: 'alternate',
+    nativeId: 4,
+    label: 'Alternate Nostril (visual)',
+    subtitle: '4s in · 4s hold · 4s out — left/right cue only',
+    cycleSec: 16,
   },
 ];
 
@@ -39,3 +57,7 @@ export function breathPatternToNativeId(id: BreathPatternId): number {
 export const DEFAULT_BREATH_DELTA_DB = 4.5;
 export const MIN_BREATH_DELTA_DB = 3;
 export const MAX_BREATH_DELTA_DB = 6;
+
+export function breathPatternMeta(id: BreathPatternId): BreathPatternMeta {
+  return BREATH_PATTERNS.find(p => p.id === id) ?? BREATH_PATTERNS[0];
+}

@@ -11,7 +11,7 @@ export type InAppRewardType =
   | 'anniversary'
   | 'wellness'
   | 'share_link'
-  | 'refer_install';
+  | 'lapsed_winback_30';
 
 export type ClaimPromoRewardResult =
   | {
@@ -19,7 +19,6 @@ export type ClaimPromoRewardResult =
       code: string;
       store: 'apple' | 'google';
       redeemUrl: string;
-      pendingReferInstallClaims: number;
     }
   | {ok: false; error: string};
 
@@ -54,7 +53,6 @@ export async function claimPromoReward(
       code?: string;
       store?: 'apple' | 'google';
       redeemUrl?: string;
-      pendingReferInstallClaims?: number;
     };
     if (!res.ok || data.ok !== true || data.code == null) {
       return {ok: false, error: data.error ?? 'Could not claim reward.'};
@@ -64,7 +62,6 @@ export async function claimPromoReward(
       code: data.code,
       store: data.store ?? 'apple',
       redeemUrl: data.redeemUrl ?? '',
-      pendingReferInstallClaims: data.pendingReferInstallClaims ?? 0,
     };
   } catch {
     return {ok: false, error: 'Could not reach server. Check your connection.'};

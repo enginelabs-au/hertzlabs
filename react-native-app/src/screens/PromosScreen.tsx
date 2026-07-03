@@ -10,14 +10,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {requestAppReview} from '../monetization/requestAppReview';
+import {copyPromoToClipboard} from '../monetization/promoClipboard';
 import {useHertzStore} from '../state/store';
 import {daysSince} from '../state/slices/promo';
 import {HertzTheme} from '../theme/hertzTheme';
 import {macScaledFont} from '../platform/macTypography';
 
 const fs = macScaledFont;
-import {storeListingShareLabel, shareStoreListing} from '../services/referralLinkService';
+import {storeListingShareLabel, shareReferralListing} from '../services/referralLinkService';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {HELLO_EMAIL} from '../constants/appInfo';
 import {AppMessageForm} from '../components/messaging/AppMessageForm';
@@ -46,6 +46,11 @@ import {
   STREAK_REWARD_7_DAYS,
   streakBonusProgress,
 } from '../promos/streakRewards';
+import {
+  nextStreakTier,
+  shieldsEarnedForStreak,
+  streakTierForDays,
+} from '../promos/streakGamification';
 
 const FORM_INPUT_ANDROID = Platform.select({
   android: {includeFontPadding: false} as const,
@@ -227,6 +232,8 @@ export function PromosScreen() {
 
   const myReferralCode = useHertzStore(s => s.myReferralCode);
   const streakDays = useHertzStore(s => s.streakDays);
+  const peakStreakDays = useHertzStore(s => s.peakStreakDays);
+  const streakShieldsUsed = useHertzStore(s => s.streakShieldsUsed);
   const firstInstallDate = useHertzStore(s => s.firstInstallDate);
   const reviewRewardClaimed = useHertzStore(s => s.reviewRewardClaimed);
   const streakReward7Claimed = useHertzStore(s => s.streakReward7Claimed);
@@ -254,8 +261,8 @@ export function PromosScreen() {
   const markStreakBonusMilestoneClaimed = useHertzStore(s => s.markStreakBonusMilestoneClaimed);
   const markAnniversaryRewardClaimed = useHertzStore(s => s.markAnniversaryRewardClaimed);
 
-  const [pendingReferInstallClaims, setPendingReferInstallClaims] = useState(0);
   const [claimingReward, setClaimingReward] = useState(false);
+  const shownReferrerRewardKeys = useRef<Set<string>>(new Set());
 
   // Initialise on first visit
   useEffect(() => {
@@ -292,12 +299,39 @@ export function PromosScreen() {
       };
 
       syncPromoRewardStatuses(statuses);
-      setPendingReferInstallClaims(statuses.pendingReferInstallClaims);
       prevRewardSnapshot.current = {
         post: statuses.post === 'approved',
         practitioner: statuses.practitioner === 'approved',
         beta: statuses.beta === 'approved',
       };
+
+      for (const reward of statuses.referrerRewards ?? []) {
+        const key = `${reward.rewardType}:${reward.rewardKey}`;
+        if (shownReferrerRewardKeys.current.has(key)) {
+          continue;
+        }
+        shownReferrerRewardKeys.current.add(key);
+        const tierLabel = reward.rewardTier === '3_month' ? '3 months' : '1 month';
+        Alert.alert(
+          'Referral reward',
+          `Someone used your HZ code — you earned ${tierLabel} Premium free. Your store offer code is ready.`,
+          [
+            {text: 'Later', style: 'cancel'},
+            {
+              text: 'View code',
+              onPress: () => {
+                setClipboardPromoCode(reward.code);
+                showStoreOfferAlert({
+                  title: 'Referral reward',
+                  code: reward.code,
+                  onCopy: setClipboardPromoCode,
+                  onRedeem: () => setActiveModal('promo'),
+                });
+              },
+            },
+          ],
+        );
+      }
 
       if (newlyApproved.post) {
         Alert.alert('Post approved', promoApprovedAlertBody(), [{text: 'OK'}]);
@@ -320,7 +354,6 @@ export function PromosScreen() {
         return false;
       }
       setClipboardPromoCode(result.code);
-      setPendingReferInstallClaims(result.pendingReferInstallClaims);
       showStoreOfferAlert({
         title: 'Reward claimed',
         code: result.code,
@@ -342,6 +375,9 @@ export function PromosScreen() {
   const streak30Unlocked = !streakReward30Claimed && streakDays >= 30;
   const nextStreakBonus = nextUnclaimedStreakBonus(streakDays, streakBonusMilestonesClaimed);
   const streakBonusUnlocked = nextStreakBonus != null && streakDays >= nextStreakBonus;
+  const streakTier = streakTierForDays(streakDays);
+  const nextTier = nextStreakTier(streakDays);
+  const shieldsRemaining = Math.max(0, shieldsEarnedForStreak(streakDays) - streakShieldsUsed);
 
   const canWellnessCheckin = (() => {
     if (lastWellnessCheckinDate == null) {
@@ -405,9 +441,21 @@ export function PromosScreen() {
     }
   }, [claimStoreReward, markAnniversaryRewardClaimed]);
 
-  const handleReferInstallClaim = useCallback(async () => {
-    await claimStoreReward('refer_install');
-  }, [claimStoreReward]);
+  const handleReferShare = useCallback(async () => {
+    if (myReferralCode == null) {
+      return;
+    }
+    await shareReferralListing(myReferralCode);
+  }, [myReferralCode]);
+
+  const handleCopyReferralCode = useCallback(() => {
+    if (myReferralCode == null) {
+      return;
+    }
+    void copyPromoToClipboard(myReferralCode).then(() => {
+      Alert.alert('Copied', `${myReferralCode} copied to clipboard.`, [{text: 'OK'}]);
+    });
+  }, [myReferralCode]);
 
   const handleWellnessCheckin = useCallback(() => {
     setActiveModal('wellnessCheckin');
@@ -557,10 +605,6 @@ export function PromosScreen() {
     markPractitionerSubmissionPending,
   ]);
 
-  const handleShareStoreListing = useCallback(async () => {
-    await shareStoreListing();
-  }, []);
-
   // ────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -583,13 +627,31 @@ export function PromosScreen() {
 
           <Text style={styles.sectionLabel}>STREAK REWARDS</Text>
 
+          {streakDays > 0 ? (
+            <View style={styles.streakTierBanner}>
+              <Text style={styles.streakTierEmoji}>{streakTier.emoji}</Text>
+              <View style={styles.streakTierBody}>
+                <Text style={styles.streakTierTitle}>
+                  {streakTier.label} · {streakDays} day{streakDays === 1 ? '' : 's'}
+                </Text>
+                <Text style={styles.streakTierSub}>
+                  Peak {peakStreakDays}
+                  {nextTier != null ? ` · ${nextTier.minDays - streakDays}d to ${nextTier.label}` : ''}
+                  {shieldsRemaining > 0
+                    ? ` · ${shieldsRemaining} shield${shieldsRemaining === 1 ? '' : 's'}`
+                    : ''}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <EarnCard
             cardId="streak-7"
             expanded={expandedCardId === 'streak-7'}
             onToggleExpand={toggleCard}
             icon="🔥"
             title="7-Day Streak"
-            description="Open Hertz Labs 7 days in a row."
+            description="Open Hertz Labs 7 days in a row with 2+ min playback per day."
             reward={`${STREAK_REWARD_7_DAYS} days free`}
             status={streakReward7Claimed ? 'claimed' : 'available'}
             ctaLabel={streak7Unlocked ? 'Claim Reward' : undefined}
@@ -648,26 +710,26 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="👥"
             title="Refer a Friend"
-            description="Send the App Store or Google Play link to a friend. When they install, claim a store offer code here (up to 6 months)."
-            reward="Up to 6 months"
+            description="Share the store link plus your HZ code. Friends enter it on Plans → Referral after install — you both get store offer codes (1 month each; every 6th referral earns you 3 months)."
+            reward="Unlimited referrals"
             rewardVariant="cyan"
             status="available"
             ctaLabel={storeListingShareLabel()}
-            onCta={() => void handleShareStoreListing()}
+            onCta={() => void handleReferShare()}
             extra={
-              pendingReferInstallClaims > 0 ? (
-                <Pressable
-                  style={styles.cardBtn}
-                  onPress={() => void handleReferInstallClaim()}
-                  disabled={claimingReward}>
-                  {claimingReward ? (
-                    <ActivityIndicator size="small" color={GOLD} />
-                  ) : (
-                    <Text style={styles.cardBtnText}>
-                      Claim {promoCodeNoun()} ({pendingReferInstallClaims})
-                    </Text>
-                  )}
-                </Pressable>
+              myReferralCode != null ? (
+                <View style={styles.referralCodeRow}>
+                  <View style={styles.referralCodeBox}>
+                    <Text style={styles.referralCodeLabel}>YOUR HZ CODE</Text>
+                    <Text style={styles.referralCodeValue}>{myReferralCode}</Text>
+                  </View>
+                  <Pressable
+                    style={styles.cardBtn}
+                    onPress={handleCopyReferralCode}
+                    accessibilityRole="button">
+                    <Text style={styles.cardBtnText}>Copy code</Text>
+                  </Pressable>
+                </View>
               ) : undefined
             }
           />
@@ -1175,11 +1237,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: GOLD,
   },
+  referralCodeRow: {
+    gap: 10,
+  },
+  referralCodeBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(92,225,255,0.25)',
+    backgroundColor: 'rgba(92,225,255,0.06)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  referralCodeLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: CYAN,
+    letterSpacing: 1.1,
+  },
+  referralCodeValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    fontFamily: HertzTheme.mono,
+    letterSpacing: 2,
+  },
   claimedNote: {
     fontSize: 11,
     color: SUCCESS,
     fontStyle: 'italic',
   },
+  // Streak tier banner (F15)
+  streakTierBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.25)',
+    backgroundColor: 'rgba(251,191,36,0.06)',
+  },
+  streakTierEmoji: {fontSize: 24},
+  streakTierBody: {flex: 1, gap: 2},
+  streakTierTitle: {fontSize: 14, fontWeight: '700', color: '#FFFFFF'},
+  streakTierSub: {fontSize: 11, color: MUTED},
   // Streak bar
   streakBarWrap: {
     flexDirection: 'row',

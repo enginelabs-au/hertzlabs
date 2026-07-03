@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import type {PromoEntitlement} from '../state/slices/promo';
 import {usesStoreNativeRedemption} from '../monetization/appleStoreCompliance';
+import {canShowCancellationWinback} from '../monetization/cancellationWinbackFlow';
 import {AppStoreOfferRedemptionPanel} from '../components/monetization/AppStoreOfferRedemptionPanel';
+import {ReferralCodePanel} from '../components/monetization/ReferralCodePanel';
 import Purchases from 'react-native-purchases';
 import type {CustomerInfo, Package} from 'react-native-purchases';
 import {
@@ -109,8 +111,18 @@ function StoreUnavailableCard({
   );
 }
 
-function ActiveSubscriptionCard({summary}: {summary: ActiveSubscriptionSummary}) {
+function ActiveSubscriptionCard({
+  summary,
+  onManagePress,
+}: {
+  summary: ActiveSubscriptionSummary;
+  onManagePress?: () => void;
+}) {
   const openManagement = useCallback(() => {
+    if (onManagePress != null) {
+      onManagePress();
+      return;
+    }
     if (!summary.managementURL) {
       Alert.alert(
         'Manage Subscription',
@@ -120,7 +132,7 @@ function ActiveSubscriptionCard({summary}: {summary: ActiveSubscriptionSummary})
       return;
     }
     void Linking.openURL(summary.managementURL);
-  }, [summary.managementURL]);
+  }, [summary.managementURL, onManagePress]);
 
   return (
     <View style={[styles.activeCard, summary.isPremium && styles.activeCardPremium]}>
@@ -394,6 +406,18 @@ export function PaywallScreen() {
     setActiveModal(null);
   }, [dismissPaywallNudgeForSession, setActiveModal]);
 
+  const handleManageSubscription = useCallback(() => {
+    if (canShowCancellationWinback(subscriptionSummary)) {
+      setActiveModal('cancellationWinback');
+      return;
+    }
+    if (subscriptionSummary.managementURL) {
+      void Linking.openURL(subscriptionSummary.managementURL);
+      return;
+    }
+    Alert.alert('Manage Subscription', PAYWALL_STORE.manageFallbackMessage, [{text: 'OK'}]);
+  }, [setActiveModal, subscriptionSummary]);
+
   const handlePurchase = useCallback(
     async (plan: PaywallPlan) => {
       if (purchasing) {
@@ -484,7 +508,10 @@ export function PaywallScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scrollContent, scrollInsets]}
           keyboardShouldPersistTaps="handled">
-          <ActiveSubscriptionCard summary={subscriptionSummary} />
+          <ActiveSubscriptionCard
+            summary={subscriptionSummary}
+            onManagePress={handleManageSubscription}
+          />
 
           {/* Feature comparison */}
           <PremiumFeatureList />
@@ -543,6 +570,8 @@ export function PaywallScreen() {
               onBrowsePromos={() => setActiveModal('promos')}
             />
           )}
+
+          <ReferralCodePanel onRedeem={() => setActiveModal('promo')} />
 
           {/* Restore */}
           <Pressable

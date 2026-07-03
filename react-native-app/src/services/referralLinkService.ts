@@ -1,10 +1,8 @@
 /**
- * Referral deep links (incoming) + store listing share (outgoing).
+ * Referral deep links (incoming analytics) + store listing share with HZ code (outgoing).
  *
- * Outgoing share uses the App Store / Google Play listing for this device only —
- * no copy-paste codes or landing-page URLs.
- *
- * Incoming attribution still accepts legacy landing-page and custom-scheme links.
+ * v3 manual referral: outgoing share includes store URL + HZ ID + Plans instructions.
+ * Incoming deep links are logged for analytics only — they do not grant rewards.
  */
 
 import {Linking, Platform, Share} from 'react-native';
@@ -26,9 +24,34 @@ export function storeListingShareLabel(): string {
   return Platform.OS === 'android' ? 'Share on Google Play' : 'Share App Store Link';
 }
 
+export function referralShareMessage(referralCode: string): string {
+  const link = storeListingUrl();
+  return (
+    `${SHARE_INTRO}\n\n` +
+    `${link}\n\n` +
+    `After install, open Hertz Labs → Plans → Referral and enter my code ${referralCode}.`
+  );
+}
+
 /**
- * Opens the system share sheet with a single store link (no duplicate URL on iOS).
+ * Opens the system share sheet with store URL + HZ referral instructions.
  * Returns true if the user completed a share action.
+ */
+export async function shareReferralListing(referralCode: string): Promise<boolean> {
+  const message = referralShareMessage(referralCode);
+  try {
+    const result =
+      Platform.OS === 'ios'
+        ? await Share.share({message, url: storeListingUrl(), title: 'Hertz Labs'})
+        : await Share.share({message});
+    return result.action === Share.sharedAction;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @deprecated Use shareReferralListing — store URL only, no HZ code.
  */
 export async function shareStoreListing(): Promise<boolean> {
   const link = storeListingUrl();

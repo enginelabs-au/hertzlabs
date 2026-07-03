@@ -15,9 +15,7 @@ export type InAppRewardType =
   | 'anniversary'
   | 'wellness'
   | 'share_link'
-  | 'refer_install';
-
-export const REFER_INSTALL_MAX_CLAIMS = 6;
+  | 'lapsed_winback_30';
 
 const REWARD_TIER: Record<InAppRewardType, StoreOfferRewardTier> = {
   streak_7: '1_month',
@@ -27,7 +25,7 @@ const REWARD_TIER: Record<InAppRewardType, StoreOfferRewardTier> = {
   anniversary: '1_month',
   wellness: '1_month',
   share_link: '1_month',
-  refer_install: '1_month',
+  lapsed_winback_30: '1_month',
 };
 
 export function rewardTierForInApp(type: InAppRewardType): StoreOfferRewardTier {
@@ -46,53 +44,12 @@ export type ClaimedStoreCode = {
   poolId: string;
 };
 
-export async function countReferInstalls(
-  sb: SupabaseClient,
-  referrerCode: string,
-): Promise<number> {
-  const {count, error} = await sb
-    .from('referral_installs')
-    .select('*', {count: 'exact', head: true})
-    .eq('referrer_code', referrerCode);
-  if (error != null) {
-    console.error('[inAppPromoRewards] referral install count failed:', error.message);
-    return 0;
-  }
-  return count ?? 0;
-}
-
-export async function countReferInstallClaims(
-  sb: SupabaseClient,
-  rcUserId: string,
-): Promise<number> {
-  const {count, error} = await sb
-    .from('promo_reward_claims')
-    .select('*', {count: 'exact', head: true})
-    .eq('rc_user_id', rcUserId)
-    .eq('reward_type', 'refer_install');
-  if (error != null) {
-    console.error('[inAppPromoRewards] refer claim count failed:', error.message);
-    return 0;
-  }
-  return count ?? 0;
-}
-
+/** @deprecated v3 — install-link rewards retired; always returns 0. */
 export async function pendingReferInstallClaims(
-  sb: SupabaseClient,
-  rcUserId: string,
+  _sb: SupabaseClient,
+  _rcUserId: string,
 ): Promise<number> {
-  const {data: profile} = await sb
-    .from('referrer_profiles')
-    .select('referrer_code')
-    .eq('rc_user_id', rcUserId)
-    .maybeSingle();
-  if (profile?.referrer_code == null) {
-    return 0;
-  }
-  const installs = await countReferInstalls(sb, profile.referrer_code as string);
-  const claimed = await countReferInstallClaims(sb, rcUserId);
-  const cap = Math.min(installs, REFER_INSTALL_MAX_CLAIMS);
-  return Math.max(0, cap - claimed);
+  return 0;
 }
 
 /** Idempotent read of an existing claim. */
@@ -135,28 +92,13 @@ export async function allocateInAppReward(
     return {ok: true, claim: existing};
   }
 
-  if (rewardType === 'refer_install') {
-    const pending = await pendingReferInstallClaims(sb, rcUserId);
-    if (pending <= 0) {
-      return {
-        ok: false,
-        error: 'No referral installs to claim yet. Share your link and check back after a friend installs.',
-        status: 409,
-      };
-    }
-    if (rewardKey.length === 0) {
-      const claimed = await countReferInstallClaims(sb, rcUserId);
-      rewardKey = String(claimed + 1);
-    }
-  }
-
   const store = storeForOutreachPlatform(platform);
   if (store == null) {
     return {ok: false, error: 'Could not determine your app store. Try again from your device.', status: 400};
   }
 
   const tier = rewardTierForInApp(rewardType);
-  const submissionType = rewardType === 'refer_install' ? 'refer_install' : rewardType;
+  const submissionType = rewardType;
   const allocated = await allocateOne(sb, store, tier, submissionType, null, rcUserId);
   if (allocated == null) {
     return {

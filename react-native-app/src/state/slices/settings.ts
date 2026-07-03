@@ -11,6 +11,8 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
   experimentalMode: false,
   photicStrobeEnabled: false,
   photicStrobeConsentGiven: false,
+  streakRemindersEnabled: true,
+  promotionalOffersEnabled: true,
   lastUsedParams: null,
 
   updateSettings: settings => set(settings),

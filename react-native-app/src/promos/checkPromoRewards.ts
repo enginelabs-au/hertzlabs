@@ -6,11 +6,19 @@ const CHECK_REWARDS_URL = supabaseFunctionUrl('check-promo-rewards');
 
 export type PromoRewardStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
+export type ReferrerRewardRow = {
+  code: string;
+  rewardTier: string;
+  rewardType: string;
+  rewardKey: string;
+  redeemUrl: string;
+};
+
 export type PromoRewardSnapshot = {
   post: PromoRewardStatus;
   practitioner: PromoRewardStatus;
   beta: PromoRewardStatus;
-  pendingReferInstallClaims: number;
+  referrerRewards: ReferrerRewardRow[];
 };
 
 export async function fetchPromoRewardStatus(): Promise<PromoRewardSnapshot | null> {
@@ -32,7 +40,7 @@ export async function fetchPromoRewardStatus(): Promise<PromoRewardSnapshot | nu
       post: data.post ?? 'none',
       practitioner: data.practitioner ?? 'none',
       beta: data.beta ?? 'none',
-      pendingReferInstallClaims: data.pendingReferInstallClaims ?? 0,
+      referrerRewards: data.referrerRewards ?? [],
     };
   } catch {
     return null;

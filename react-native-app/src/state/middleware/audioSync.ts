@@ -1,6 +1,6 @@
 import {HertzAudioClient} from '../../audio/HertzAudioClient';
 import {mapStateToNativeAudio} from '../../audio/engineModeMapping';
-import {pushNoiseToNative} from '../../audio/pushNoiseToNative';
+import {pushCombinedNoiseToNative} from '../../audio/pushNoiseToNative';
 import type {AppStore, EngineState, OutputRoute} from '../types';
 
 let installed = false;
@@ -31,6 +31,11 @@ export function installAudioSync(store: SelectorStore): () => void {
   const unsubscribeNoisePink = store.subscribe(s => s.noiseLayers.pink, () => pushNoise());
   const unsubscribeNoiseBrown = store.subscribe(s => s.noiseLayers.brown, () => pushNoise());
   const unsubscribeNoiseMix = store.subscribe(s => s.noiseMix, () => pushNoise());
+  const unsubscribeAsmrEnabled = store.subscribe(s => s.asmrEnabled, () => pushNoise());
+  const unsubscribeAsmrRain = store.subscribe(s => s.asmrStemMix.rain, () => pushNoise());
+  const unsubscribeAsmrRoom = store.subscribe(s => s.asmrStemMix.room, () => pushNoise());
+  const unsubscribeAsmrBrush = store.subscribe(s => s.asmrStemMix.brush, () => pushNoise());
+  const unsubscribeAsmrTap = store.subscribe(s => s.asmrStemMix.tap, () => pushNoise());
   const unsubscribePhase   = store.subscribe(s => s.phaseAngle,() => pushParams());
   const unsubscribeLeftDrift  = store.subscribe(s => s.leftDriftHz, () => pushParams());
   const unsubscribeRightDrift = store.subscribe(s => s.rightDriftHz, () => pushParams());
@@ -47,7 +52,12 @@ export function installAudioSync(store: SelectorStore): () => void {
 
   function pushNoise() {
     const s = store.getState();
-    pushNoiseToNative(s.noiseLayers, s.noiseMix);
+    pushCombinedNoiseToNative({
+      ambientLayers: s.noiseLayers,
+      ambientMix: s.noiseMix,
+      asmrEnabled: s.asmrEnabled,
+      asmrMix: s.asmrStemMix,
+    });
   }
 
   function pushParams() {
@@ -87,6 +97,11 @@ export function installAudioSync(store: SelectorStore): () => void {
     unsubscribeNoisePink();
     unsubscribeNoiseBrown();
     unsubscribeNoiseMix();
+    unsubscribeAsmrEnabled();
+    unsubscribeAsmrRain();
+    unsubscribeAsmrRoom();
+    unsubscribeAsmrBrush();
+    unsubscribeAsmrTap();
     unsubscribePhase(); unsubscribeLeftDrift(); unsubscribeRightDrift();
     unsubscribeEngine(); unsubscribeExperimental();
     unsubscribeBreathEnabled(); unsubscribeBreathPattern(); unsubscribeBreathDelta();

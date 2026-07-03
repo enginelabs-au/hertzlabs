@@ -2,6 +2,7 @@ import React from 'react';
 import {Pressable, StyleSheet, Switch, Text, View, type ViewStyle} from 'react-native';
 import {
   BREATH_PATTERNS,
+  breathPatternMeta,
   MAX_BREATH_DELTA_DB,
   MIN_BREATH_DELTA_DB,
   type BreathPatternId,
@@ -10,6 +11,7 @@ import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {MathFoldSection} from '../math/MathFoldSection';
 import {NeonSlider} from '../player/NeonSlider';
+import {BreathVisualizer} from './BreathVisualizer';
 
 type BreathPacerSectionProps = {
   foldStyle?: ViewStyle;
@@ -20,22 +22,30 @@ export function BreathPacerSection({foldStyle, embedded = false}: BreathPacerSec
   const enabled = useHertzStore(s => s.breathPacerEnabled);
   const patternId = useHertzStore(s => s.breathPatternId);
   const deltaDb = useHertzStore(s => s.breathDeltaDb);
+  const breathClockStartedAtMs = useHertzStore(s => s.breathClockStartedAtMs);
   const setEnabled = useHertzStore(s => s.setBreathPacerEnabled);
   const setPatternId = useHertzStore(s => s.setBreathPatternId);
   const setDeltaDb = useHertzStore(s => s.setBreathDeltaDb);
 
   const deltaNorm =
     (deltaDb - MIN_BREATH_DELTA_DB) / (MAX_BREATH_DELTA_DB - MIN_BREATH_DELTA_DB);
+  const safetyNote = breathPatternMeta(patternId).safetyNote;
 
   return (
     <MathFoldSection
       icon="🫁"
       title="Acoustic Breath Pacing"
       tag="Overlay"
-      blurb="Close your eyes — volume follows inhale, hold, exhale cycles in the DSP"
+      blurb="Animated guide + volume follows inhale, hold, and exhale cycles in the DSP"
       defaultExpanded={false}
       embedded={embedded}
       style={foldStyle}>
+      <BreathVisualizer
+        enabled={enabled}
+        patternId={patternId}
+        clockStartedAtMs={breathClockStartedAtMs}
+      />
+
       <View style={styles.row}>
         <Text style={styles.toggleLabel}>Breath overlay</Text>
         <Switch
@@ -56,6 +66,10 @@ export function BreathPacerSection({foldStyle, embedded = false}: BreathPacerSec
         onSelect={setPatternId}
         disabled={!enabled}
       />
+
+      {safetyNote != null && enabled ? (
+        <Text style={styles.safetyNote}>{safetyNote}</Text>
+      ) : null}
 
       <View style={[styles.deltaRow, !enabled && styles.disabled]}>
         <Text style={styles.deltaLabel}>Depth · {deltaDb.toFixed(1)} dB</Text>
@@ -153,6 +167,13 @@ const styles = StyleSheet.create({
     color: HertzTheme.text.muted,
     marginTop: 3,
     fontFamily: HertzTheme.mono,
+  },
+  safetyNote: {
+    fontSize: 10,
+    lineHeight: 15,
+    color: HertzTheme.neon.magenta,
+    fontFamily: HertzTheme.mono,
+    marginBottom: 10,
   },
   deltaRow: {
     gap: 8,

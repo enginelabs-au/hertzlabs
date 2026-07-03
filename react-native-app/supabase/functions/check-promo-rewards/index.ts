@@ -20,6 +20,47 @@ const CORS = {
 
 type RewardStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
+type ReferrerRewardRow = {
+  code: string;
+  rewardTier: string;
+  rewardType: string;
+  rewardKey: string;
+  redeemUrl: string;
+};
+
+async function pendingReferrerRewards(
+  sb: ReturnType<typeof createClient>,
+  rcUserId: string,
+): Promise<ReferrerRewardRow[]> {
+  const {data} = await sb
+    .from('promo_reward_claims')
+    .select('code, reward_tier, reward_type, reward_key, store')
+    .eq('rc_user_id', rcUserId)
+    .in('reward_type', ['refer_referrer_1mo', 'refer_referrer_3mo', 'refer_purchase_upgrade'])
+    .order('created_at', {ascending: false})
+    .limit(20);
+
+  if (data == null) {
+    return [];
+  }
+
+  return data.map(row => {
+    const store = row.store as string;
+    const code = row.code as string;
+    const redeemUrl =
+      store === 'google'
+        ? `https://play.google.com/redeem?code=${encodeURIComponent(code)}`
+        : `https://apps.apple.com/redeem?ctx=offercodes&id=6777604364&code=${encodeURIComponent(code)}`;
+    return {
+      code,
+      rewardTier: row.reward_tier as string,
+      rewardType: row.reward_type as string,
+      rewardKey: row.reward_key as string,
+      redeemUrl,
+    };
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', {headers: CORS});
   if (req.method !== 'POST') return json({error: 'Method not allowed.'}, 405);
@@ -61,12 +102,14 @@ Deno.serve(async (req: Request) => {
   ]);
 
   const pendingReferrals = await pendingReferInstallClaims(sb, rcAppUserId);
+  const referrerRewards = await pendingReferrerRewards(sb, rcAppUserId);
 
   return json({
     post: mapStatus(postRows.data?.[0]?.status as string | undefined),
     practitioner: mapStatus(practRows.data?.[0]?.status as string | undefined),
     beta: mapStatus(betaRows.data?.[0]?.status as string | undefined),
     pendingReferInstallClaims: pendingReferrals,
+    referrerRewards,
   });
 });
 

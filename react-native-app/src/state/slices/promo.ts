@@ -2,6 +2,12 @@ import type {StateCreator} from 'zustand';
 import type {PremiumGiftReminderKind} from '../../monetization/premiumGiftReminders';
 import {formatPromoCodeDisplay} from '../../monetization/promoCodeFormat';
 import {WELCOME_PREMIUM_CAMPAIGN} from '../../monetization/welcomePremiumConstants';
+import {
+  isQualifyingPlaybackToday,
+  localDateIso,
+  yesterdayIso,
+} from '../../promos/streakEngagement';
+import {shieldsEarnedForStreak} from '../../promos/streakGamification';
 import type {AppStore} from '../types';
 
 export type PromoEntitlement =
@@ -86,6 +92,24 @@ export type PromoSlice = {
   activePremiumGiftReminder: PremiumGiftReminderKind | null;
   /** Bump to force-reset promo claim flags on next app launch (persisted). */
   promoClaimResetEpoch: number;
+  /** Highest consecutive qualifying streak reached (Feature 15). */
+  peakStreakDays: number;
+  /** Shields consumed this streak run (Feature 15). */
+  streakShieldsUsed: number;
+  /** ISO date of last day with ≥2 min qualifying playback (Feature 19). */
+  lastQualifyingDate: string | null;
+  /** Playback seconds accumulated for qualifying check today. */
+  todayQualifyingPlaybackSec: number;
+  /** ISO date for todayQualifyingPlaybackSec bucket. */
+  todayQualifyingBucketDate: string | null;
+  /** Break episode id for one restore offer per miss (Feature 19). */
+  streakBreakEpisodeId: string | null;
+  streakRestoreOfferedAtMs: number | null;
+  streakRestoreDeclinedAtMs: number | null;
+  lapsed7RestoreAtMs: number | null;
+  lapsed30WinbackAtMs: number | null;
+  /** User declined miss-day restore — blocks 7/30 restore until new run. */
+  streakRestoreHardDeclined: boolean;
 
   setClipboardPromoCode(code: string | null): void;
   applyPromo(code: string, entitlement: PromoEntitlement, expiresAt?: number | null): void;
@@ -118,9 +142,18 @@ export type PromoSlice = {
     practitioner: 'none' | 'pending' | 'approved' | 'rejected';
     beta: 'none' | 'pending' | 'approved' | 'rejected';
   }): void;
+  addQualifyingPlaybackSec(seconds: number): void;
+  consumeStreakShield(): boolean;
+  acceptStreakRestore(): void;
+  declineStreakRestore(): void;
+  resetStreakHard(): void;
+  markLapsed7RestoreUsed(): void;
+  markLapsed30WinbackUsed(): void;
+  beginNewStreakRun(): void;
+  markStreakRestoreOffered(): void;
 };
 
-export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set => ({
+export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = (set, get) => ({
   appliedPromoCode: null,
   appliedPromoEntitlement: null,
   appliedPromoExpiresAt: null,
@@ -151,6 +184,17 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   welcomePremiumExpiryDayReminderShown: false,
   activePremiumGiftReminder: null,
   promoClaimResetEpoch: 0,
+  peakStreakDays: 0,
+  streakShieldsUsed: 0,
+  lastQualifyingDate: null,
+  todayQualifyingPlaybackSec: 0,
+  todayQualifyingBucketDate: null,
+  streakBreakEpisodeId: null,
+  streakRestoreOfferedAtMs: null,
+  streakRestoreDeclinedAtMs: null,
+  lapsed7RestoreAtMs: null,
+  lapsed30WinbackAtMs: null,
+  streakRestoreHardDeclined: false,
 
   applyPromo(code, entitlement, expiresAt = null) {
     const normalized = normalizePromoEntitlement(entitlement);
@@ -207,15 +251,120 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = set 
   },
 
   checkInStreak() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateIso();
     set(s => {
       if (s.lastStreakDate === today) {
         return {};
       }
-      const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+      const yesterday = yesterdayIso();
       const newStreak = s.lastStreakDate === yesterday ? s.streakDays + 1 : 1;
-      return {streakDays: newStreak, lastStreakDate: today};
+      const peakStreakDays = Math.max(s.peakStreakDays, newStreak);
+      return {streakDays: newStreak, lastStreakDate: today, peakStreakDays};
     });
+  },
+
+  addQualifyingPlaybackSec(seconds) {
+    if (seconds <= 0) {
+      return;
+    }
+    const today = localDateIso();
+    set(s => {
+      const bucket =
+        s.todayQualifyingBucketDate === today ? s.todayQualifyingPlaybackSec + seconds : seconds;
+      return {
+        todayQualifyingBucketDate: today,
+        todayQualifyingPlaybackSec: bucket,
+      };
+    });
+    const state = get();
+    if (
+      state.todayQualifyingBucketDate === today &&
+      isQualifyingPlaybackToday(state.todayQualifyingPlaybackSec) &&
+      state.lastQualifyingDate !== today
+    ) {
+      get().checkInStreak();
+      set({lastQualifyingDate: today});
+    }
+  },
+
+  consumeStreakShield() {
+    let consumed = false;
+    set(s => {
+      const earned = shieldsEarnedForStreak(s.streakDays);
+      if (s.streakShieldsUsed >= earned) {
+        return {};
+      }
+      consumed = true;
+      const today = localDateIso();
+      const restoredStreak = Math.max(s.streakDays, s.peakStreakDays, 1);
+      return {
+        streakShieldsUsed: s.streakShieldsUsed + 1,
+        streakDays: restoredStreak,
+        lastStreakDate: today,
+        lastQualifyingDate: today,
+        streakBreakEpisodeId: null,
+        streakRestoreOfferedAtMs: null,
+      };
+    });
+    return consumed;
+  },
+
+  acceptStreakRestore() {
+    set(s => {
+      const restored = Math.max(s.streakDays, s.peakStreakDays);
+      return {
+        streakDays: restored > 0 ? restored : s.peakStreakDays,
+        lastStreakDate: localDateIso(),
+        lastQualifyingDate: null,
+        streakBreakEpisodeId: null,
+        streakRestoreOfferedAtMs: null,
+        streakRestoreDeclinedAtMs: null,
+      };
+    });
+  },
+
+  declineStreakRestore() {
+    set(s => ({
+      streakDays: 0,
+      lastStreakDate: null,
+      streakRestoreDeclinedAtMs: Date.now(),
+      streakRestoreHardDeclined: true,
+      streakBreakEpisodeId: null,
+      streakRestoreOfferedAtMs: null,
+    }));
+  },
+
+  resetStreakHard() {
+    set({
+      streakDays: 0,
+      lastStreakDate: null,
+      streakBreakEpisodeId: null,
+      streakRestoreOfferedAtMs: null,
+    });
+  },
+
+  markLapsed7RestoreUsed() {
+    set({lapsed7RestoreAtMs: Date.now()});
+  },
+
+  markLapsed30WinbackUsed() {
+    set({lapsed30WinbackAtMs: Date.now()});
+  },
+
+  beginNewStreakRun() {
+    set({
+      streakRestoreHardDeclined: false,
+      streakBreakEpisodeId: null,
+      streakRestoreOfferedAtMs: null,
+      streakRestoreDeclinedAtMs: null,
+    });
+  },
+
+  markStreakRestoreOffered() {
+    set(s => ({
+      streakRestoreOfferedAtMs: Date.now(),
+      streakBreakEpisodeId: s.streakBreakEpisodeId ?? `break-${Date.now()}`,
+    }));
   },
 
   ensureFirstInstallDate() {

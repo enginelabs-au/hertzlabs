@@ -8,6 +8,9 @@ import type {EngineCategoryId} from '../layout/CategoryTabBar';
 import {ENGINE_CATEGORIES} from '../layout/CategoryTabBar';
 import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {GuidedDepthSection} from '../guidedDepth/GuidedDepthSection';
+import {AsmrMixSection} from '../asmr/AsmrMixSection';
+import {PhoticStrobeToggle} from '../waveforms/PhoticStrobeToggle';
 import {HertzTheme} from '../../theme/hertzTheme';
 
 function HeadphonePill({required}: {required: boolean}) {
@@ -103,7 +106,12 @@ function EngineRow({meta, isActive, isLocked, isComingSoon, onSelect, onUpgrade}
 
       {expanded && (
         <View style={styles.seqWrap}>
+          <GuidedDepthSection foldStyle={styles.seqFold} embedded />
           <BreathPacerSection foldStyle={styles.seqFold} embedded />
+          <AsmrMixSection foldStyle={styles.seqFold} embedded />
+          <View style={styles.visualWrap}>
+            <PhoticStrobeToggle />
+          </View>
           <ProtocolSequencesSection foldStyle={styles.seqFold} engineMode={meta.mode} embedded />
         </View>
       )}
@@ -261,6 +269,10 @@ const styles = StyleSheet.create({
   seqFold: {
     marginHorizontal: 0,
     marginBottom: 4,
+  },
+  visualWrap: {
+    marginHorizontal: 6,
+    marginBottom: 6,
   },
   comingSoonCard: {
     borderRadius: 14,

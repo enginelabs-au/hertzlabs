@@ -51,7 +51,7 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
   const setActiveModal = useHertzStore(s => s.setActiveModal);
   const setActivePremiumGiftReminder = useHertzStore(s => s.setActivePremiumGiftReminder);
 
-  const checkInStreak = useHertzStore(s => s.checkInStreak);
+  const addQualifyingPlaybackSec = useHertzStore(s => s.addQualifyingPlaybackSec);
   const ensureFirstInstallDate = useHertzStore(s => s.ensureFirstInstallDate);
 
   const launchRecorded = useRef(false);
@@ -83,19 +83,20 @@ export function useGrowthEngagement(hydrated: boolean, promptsEnabled: boolean):
     }
     launchRecorded.current = true;
     recordAppLaunch();
-    checkInStreak();
     ensureFirstInstallDate();
-  }, [promptsEnabled, recordAppLaunch, checkInStreak, ensureFirstInstallDate]);
+  }, [promptsEnabled, recordAppLaunch, ensureFirstInstallDate]);
 
   useEffect(() => {
     if (!promptsEnabled || !isPlaying) {
       return;
     }
     const id = setInterval(() => {
-      addPlaybackSeconds(PLAYBACK_TICK_MS / 1000);
+      const sec = PLAYBACK_TICK_MS / 1000;
+      addPlaybackSeconds(sec);
+      addQualifyingPlaybackSec(sec);
     }, PLAYBACK_TICK_MS);
     return () => clearInterval(id);
-  }, [promptsEnabled, isPlaying, addPlaybackSeconds]);
+  }, [promptsEnabled, isPlaying, addPlaybackSeconds, addQualifyingPlaybackSec]);
 
   useEffect(() => {
     if (!promptsEnabled || showForceUpdateOverlay || activeModal != null) {
