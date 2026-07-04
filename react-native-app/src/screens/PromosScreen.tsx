@@ -17,7 +17,9 @@ import {HertzTheme} from '../theme/hertzTheme';
 import {macScaledFont} from '../platform/macTypography';
 
 const fs = macScaledFont;
-import {storeListingShareLabel, shareReferralListing} from '../services/referralLinkService';
+import {storeListingShareLabel, shareReferralListing, shareFocusChallengeComplete} from '../services/referralLinkService';
+import {FocusChallengeDayStrip} from '../components/promos/FocusChallengeDayStrip';
+import type {PromoRewardStatus} from '../promos/checkPromoRewards';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {HELLO_EMAIL} from '../constants/appInfo';
 import {AppMessageForm} from '../components/messaging/AppMessageForm';
@@ -51,6 +53,10 @@ import {
   shieldsEarnedForStreak,
   streakTierForDays,
 } from '../promos/streakGamification';
+import {FOCUS_CHALLENGE_TOTAL_DAYS} from '../focusChallenge/dayTemplates';
+import {
+  focusChallengeCompletedToday,
+} from '../focusChallenge/eligibility';
 
 const FORM_INPUT_ANDROID = Platform.select({
   android: {includeFontPadding: false} as const,
@@ -248,6 +254,14 @@ export function PromosScreen() {
   const practitionerRewardGranted = useHertzStore(s => s.practitionerRewardGranted);
   const betaRequestPending = useHertzStore(s => s.betaRequestPending);
   const betaRewardGranted = useHertzStore(s => s.betaRewardGranted);
+  const focusChallengeStatus = useHertzStore(s => s.focusChallengeStatus);
+  const focusChallengeCurrentDay = useHertzStore(s => s.focusChallengeCurrentDay);
+  const focusChallengeRewardClaimed = useHertzStore(s => s.focusChallengeRewardClaimed);
+  const focusChallengeLastCompletedDate = useHertzStore(s => s.focusChallengeLastCompletedDate);
+  const startFocusChallenge = useHertzStore(s => s.startFocusChallenge);
+  const restartFocusChallenge = useHertzStore(s => s.restartFocusChallenge);
+  const syncFocusChallengeMissedDay = useHertzStore(s => s.syncFocusChallengeMissedDay);
+  const markFocusChallengeRewardClaimed = useHertzStore(s => s.markFocusChallengeRewardClaimed);
 
   const generateMyReferralCode = useHertzStore(s => s.generateMyReferralCode);
   const setClipboardPromoCode = useHertzStore(s => s.setClipboardPromoCode);
@@ -262,12 +276,14 @@ export function PromosScreen() {
   const markAnniversaryRewardClaimed = useHertzStore(s => s.markAnniversaryRewardClaimed);
 
   const [claimingReward, setClaimingReward] = useState(false);
+  const [affiliateStatus, setAffiliateStatus] = useState<PromoRewardStatus>('none');
   const shownReferrerRewardKeys = useRef<Set<string>>(new Set());
 
   // Initialise on first visit
   useEffect(() => {
     generateMyReferralCode();
-  }, [generateMyReferralCode]);
+    syncFocusChallengeMissedDay();
+  }, [generateMyReferralCode, syncFocusChallengeMissedDay]);
 
   useEffect(() => {
     if (myReferralCode == null) {
@@ -299,6 +315,16 @@ export function PromosScreen() {
       };
 
       syncPromoRewardStatuses(statuses);
+      setAffiliateStatus(statuses.affiliate ?? 'none');
+      if (statuses.focusChallenge?.status != null && statuses.focusChallenge.status !== 'idle') {
+        useHertzStore.getState().applyFocusChallengeServerPatch({
+          status: statuses.focusChallenge.status as 'active' | 'failed' | 'complete',
+          attemptId: statuses.focusChallenge.attemptId,
+          currentDay: statuses.focusChallenge.currentDay,
+          lastCompletedDate: statuses.focusChallenge.lastCompletedDate,
+          rewardClaimed: statuses.focusChallenge.rewardClaimed,
+        });
+      }
       prevRewardSnapshot.current = {
         post: statuses.post === 'approved',
         practitioner: statuses.practitioner === 'approved',
@@ -378,6 +404,45 @@ export function PromosScreen() {
   const streakTier = streakTierForDays(streakDays);
   const nextTier = nextStreakTier(streakDays);
   const shieldsRemaining = Math.max(0, shieldsEarnedForStreak(streakDays) - streakShieldsUsed);
+
+  const focusChallengeCompletedDays =
+    focusChallengeStatus === 'complete'
+      ? FOCUS_CHALLENGE_TOTAL_DAYS
+      : focusChallengeStatus === 'active' && focusChallengeLastCompletedDate != null
+        ? Math.max(0, focusChallengeCurrentDay - 1)
+        : 0;
+
+  const focusChallengeDoneForToday = focusChallengeCompletedToday(focusChallengeLastCompletedDate);
+
+  const focusChallengeCardStatus: 'available' | 'claimed' | 'soon' | 'pending' =
+    focusChallengeRewardClaimed
+      ? 'claimed'
+      : focusChallengeStatus === 'complete'
+        ? 'available'
+        : focusChallengeStatus === 'failed'
+          ? 'available'
+          : 'available';
+
+  const handleFocusChallengePrimary = useCallback(() => {
+    if (focusChallengeStatus === 'idle' || focusChallengeStatus === 'failed') {
+      if (focusChallengeStatus === 'failed') {
+        restartFocusChallenge();
+      } else {
+        startFocusChallenge();
+      }
+    }
+    setActiveModal('focusChallengeBriefing');
+  }, [focusChallengeStatus, restartFocusChallenge, setActiveModal, startFocusChallenge]);
+
+  const handleFocusChallengeClaim = useCallback(async () => {
+    if (focusChallengeRewardClaimed) {
+      return;
+    }
+    const ok = await claimStoreReward('focus_challenge_30');
+    if (ok) {
+      markFocusChallengeRewardClaimed();
+    }
+  }, [claimStoreReward, focusChallengeRewardClaimed, markFocusChallengeRewardClaimed]);
 
   const canWellnessCheckin = (() => {
     if (lastWellnessCheckinDate == null) {
@@ -824,10 +889,114 @@ export function PromosScreen() {
             onToggleExpand={toggleCard}
             icon="🏆"
             title="30-Day Focus Challenge"
-            description="Complete a 30-day 'binaural focus challenge' with daily check-ins and submit a final recap post."
-            reward="Lifetime 20% off"
+            description="Daily guided session with breathing, ambient texture, and a short reflection. Complete 30 consecutive calendar days."
+            reward="1 month free"
             rewardVariant="cyan"
-            status="soon"
+            status={focusChallengeCardStatus}
+            ctaLabel={
+              focusChallengeRewardClaimed
+                ? undefined
+                : focusChallengeStatus === 'complete'
+                  ? 'Claim reward'
+                  : focusChallengeStatus === 'failed'
+                    ? 'Restart challenge'
+                    : focusChallengeStatus === 'active'
+                      ? focusChallengeDoneForToday
+                        ? 'Back tomorrow'
+                        : `Continue Day ${focusChallengeCurrentDay}`
+                      : 'Start Day 1'
+            }
+            onCta={
+              focusChallengeRewardClaimed
+                ? undefined
+                : focusChallengeStatus === 'complete'
+                  ? () => void handleFocusChallengeClaim()
+                  : handleFocusChallengePrimary
+            }
+            extra={
+              focusChallengeStatus !== 'idle' ? (
+                <View style={styles.focusChallengeMeta}>
+                  <FocusChallengeDayStrip
+                    currentDay={focusChallengeCurrentDay}
+                    lastCompletedDate={focusChallengeLastCompletedDate}
+                    status={focusChallengeStatus}
+                  />
+                  <StreakBar
+                    current={focusChallengeCompletedDays}
+                    target={FOCUS_CHALLENGE_TOTAL_DAYS}
+                  />
+                  <Text style={styles.formNote}>
+                    {focusChallengeStatus === 'failed'
+                      ? 'You missed a day — restart from Day 1. One streak shield can forgive a single missed day.'
+                      : focusChallengeStatus === 'complete'
+                        ? focusChallengeRewardClaimed
+                          ? 'Reward claimed — thank you for completing the challenge!'
+                          : 'All 30 days complete — claim your store offer code.'
+                        : focusChallengeStatus === 'active'
+                          ? focusChallengeDoneForToday
+                            ? `Day ${Math.max(1, focusChallengeCurrentDay - 1)} complete — come back tomorrow for Day ${focusChallengeCurrentDay}.`
+                            : `In progress — Day ${focusChallengeCurrentDay} of ${FOCUS_CHALLENGE_TOTAL_DAYS}. Play ≥80% of today's session, then reflect.`
+                          : null}
+                  </Text>
+                  {focusChallengeStatus === 'complete' ? (
+                    <Pressable
+                      style={styles.shareChallengeBtn}
+                      onPress={() => void shareFocusChallengeComplete()}>
+                      <Text style={styles.shareChallengeBtnText}>Share my streak (optional)</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : undefined
+            }
+          />
+
+          <EarnCard
+            cardId="affiliate-partner"
+            expanded={expandedCardId === 'affiliate-partner'}
+            onToggleExpand={toggleCard}
+            icon="🤝"
+            title="Become an affiliate"
+            description="Creators and partners — apply for paid collaboration. Manual review; no guaranteed earnings."
+            reward="Partnership"
+            rewardVariant="muted"
+            status={
+              affiliateStatus === 'approved'
+                ? 'claimed'
+                : affiliateStatus === 'pending'
+                  ? 'pending'
+                  : affiliateStatus === 'rejected'
+                    ? 'available'
+                    : 'available'
+            }
+            ctaLabel={
+              affiliateStatus === 'pending'
+                ? 'Application pending'
+                : affiliateStatus === 'approved'
+                  ? undefined
+                  : 'Apply in Feedback'
+            }
+            onCta={
+              affiliateStatus === 'pending' || affiliateStatus === 'approved'
+                ? undefined
+                : () => setActiveModal('feedback')
+            }
+            extra={
+              affiliateStatus === 'approved' ? (
+                <Text style={styles.formNote}>
+                  Approved — we will contact you by email with partnership terms. Payouts are handled
+                  off-app.
+                </Text>
+              ) : affiliateStatus === 'rejected' ? (
+                <Text style={styles.formNote}>
+                  Your last application was not accepted. You may apply again with updated details.
+                </Text>
+              ) : affiliateStatus === 'pending' ? (
+                <Text style={styles.formNote}>
+                  Application under review at hello@enginelabs.com.au — typically within a few business
+                  days.
+                </Text>
+              ) : undefined
+            }
           />
 
           <Text style={styles.sectionLabel}>WELLNESS REWARDS</Text>
@@ -1307,6 +1476,16 @@ const styles = StyleSheet.create({
     minWidth: 70,
     textAlign: 'right',
   },
+  focusChallengeMeta: {gap: 8, marginTop: 4},
+  shareChallengeBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(92,225,255,0.35)',
+  },
+  shareChallengeBtnText: {fontSize: 12, color: CYAN, fontWeight: '600'},
   anniversaryNote: {
     fontSize: 11,
     color: MUTED,

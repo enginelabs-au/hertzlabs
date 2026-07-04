@@ -18,6 +18,7 @@ import {SimpleCollapsibleSection} from '../simple/SimpleCollapsibleSection';
 import {SimpleSessionAutomation} from '../simple/SimpleSessionAutomation';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
+import {ModeSessionEnhancements} from '../session/ModeSessionEnhancements';
 import {
   formatRecommendationMessage,
   generateGuidance,
@@ -600,6 +601,7 @@ export function AIGuideChatSection({
           style={styles.simpleGuideMenu}>
           <SimpleSessionAutomation compact />
           <View style={styles.automationFolds}>
+            <ModeSessionEnhancements foldStyle={styles.protocolFold} embedded />
             <BreathPacerSection foldStyle={styles.protocolFold} embedded />
             <ProtocolSequencesSection foldStyle={styles.protocolFold} embedded />
           </View>
@@ -607,6 +609,7 @@ export function AIGuideChatSection({
       )}
       {layoutMode === 'advanced' && (
         <View style={styles.automationFolds}>
+          <ModeSessionEnhancements foldStyle={styles.protocolFold} embedded />
           <BreathPacerSection foldStyle={styles.protocolFold} embedded />
           <ProtocolSequencesSection foldStyle={styles.protocolFold} embedded />
         </View>

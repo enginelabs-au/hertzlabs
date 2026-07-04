@@ -16,7 +16,11 @@ import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
 import {usePromoRewardBoot} from './hooks/usePromoRewardBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
+import {useFocusChallengeEngagement} from '../hooks/useFocusChallengeEngagement';
+import {useStreakNotificationSchedule} from '../hooks/useStreakNotificationSchedule';
+import {useStreakNotificationPress} from '../hooks/useStreakNotificationPress';
 import {streakEngagementHandlers, useStreakEngagement} from '../hooks/useStreakEngagement';
+import {FocusChallengeSessionBar} from '../components/promos/FocusChallengeSessionBar';
 import {shouldShowForceUpdateOverlay} from '../state/slices/growth';
 import {subscribeToReferralLinks} from '../services/referralLinkService';
 import {reportReferralInstall} from '../services/referralTrackingService';
@@ -66,6 +70,12 @@ const StreakRestoreModal = React.lazy(() =>
 );
 const LapsedWinbackModal = React.lazy(() =>
   import('../screens/LapsedWinbackModal').then(m => ({default: m.LapsedWinbackModal})),
+);
+const FocusChallengeBriefingModal = React.lazy(() =>
+  import('../screens/FocusChallengeBriefingModal').then(m => ({default: m.FocusChallengeBriefingModal})),
+);
+const FocusChallengeReflectionModal = React.lazy(() =>
+  import('../screens/FocusChallengeReflectionModal').then(m => ({default: m.FocusChallengeReflectionModal})),
 );
 const TheScienceScreen = React.lazy(() =>
   import('../screens/TheScienceScreen').then(m => ({default: m.TheScienceScreen})),
@@ -118,6 +128,8 @@ function ModalLayer({activeModal}: {activeModal: string | null}) {
           onDecline={streakHandlers.onLapsed30Decline}
         />
       )}
+      {activeModal === 'focusChallengeBriefing' && <FocusChallengeBriefingModal />}
+      {activeModal === 'focusChallengeReflection' && <FocusChallengeReflectionModal />}
       {activeModal === 'cancellationWinback' && <PaywallCancellationWinback />}
     </Suspense>
   );
@@ -212,6 +224,9 @@ function AppContent(): React.JSX.Element {
 
   useGrowthEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
   useStreakEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
+  useStreakNotificationSchedule(hydrated && hasAcceptedSafetyTerms);
+  useStreakNotificationPress(hydrated && hasAcceptedSafetyTerms);
+  useFocusChallengeEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
 
   // Legacy referral deep links — analytics only (v3 rewards use manual HZ codes on Plans).
   useEffect(() => {
@@ -300,7 +315,10 @@ function AppContent(): React.JSX.Element {
           </Text>
         </View>
       )}
-      {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
+      <View style={styles.shell}>
+        <FocusChallengeSessionBar />
+        {hasAcceptedSafetyTerms ? <MainTabs /> : <SafetyOnboardingScreen />}
+      </View>
       <ModalLayer activeModal={activeModal} />
       {showForceUpdateOverlay && (
         <Suspense fallback={null}>
@@ -338,6 +356,9 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: BG,
+  },
+  shell: {
+    flex: 1,
   },
   boot: {
     flex: 1,

@@ -1,6 +1,6 @@
-/** Supabase anon key for edge-function calls from the app (public). */
+/** Supabase publishable key for edge-function calls from the app (public). Synced from .env via sync-native-secrets.js */
 export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12YXdremh3Z3Rsd3h3a3NzdnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDE2OTcsImV4cCI6MjA5NzQxNzY5N30.mD0kFjNJFSlNEpOWHuO6tA0D1Oc_FHF2UqhDd2AMVOU';
+  'sb_publishable_TevJqC2VQ9v9cPMKAvl75w_Ck0Jv31_';
 
 export const SUPABASE_FUNCTION_HEADERS = {
   'Content-Type': 'application/json',

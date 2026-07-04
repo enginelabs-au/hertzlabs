@@ -17,6 +17,7 @@ import {createGrowthSlice} from './slices/growth';
 import {createPromoSlice} from './slices/promo';
 import {createGuidedDepthSlice} from './slices/guidedDepth';
 import {createAsmrSlice} from './slices/asmr';
+import {createFocusChallengeSlice} from './slices/focusChallenge';
 import {persist, persistedStoreOptions} from './middleware/persist';
 import type {AppStore} from './types';
 
@@ -41,6 +42,7 @@ export const useHertzStore = create<AppStore>()(
         ...createPromoSlice(...args),
         ...createGuidedDepthSlice(...args),
         ...createAsmrSlice(...args),
+        ...createFocusChallengeSlice(...args),
       }),
       persistedStoreOptions,
     ),

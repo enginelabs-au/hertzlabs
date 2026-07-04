@@ -2,6 +2,7 @@ import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
+import {ModeSessionEnhancements} from '../session/ModeSessionEnhancements';
 import {MathFoldSection} from './MathFoldSection';
 import {CommandLineCard} from '../layout/CommandLineCard';
 import {CustomFormulaInput} from './CustomFormulaInput';
@@ -39,6 +40,7 @@ export function CustomFormulaSection({
       />
       <CustomFormulaInput embedded onFormulaApplied={onFormulaApplied} />
       <View style={styles.nestedFold}>
+        <ModeSessionEnhancements foldStyle={styles.nestedFoldInner} embedded />
         <BreathPacerSection foldStyle={styles.nestedFoldInner} embedded />
         <ProtocolSequencesSection foldStyle={styles.nestedFoldInner} embedded />
       </View>

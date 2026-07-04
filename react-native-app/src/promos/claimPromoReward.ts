@@ -11,7 +11,8 @@ export type InAppRewardType =
   | 'anniversary'
   | 'wellness'
   | 'share_link'
-  | 'lapsed_winback_30';
+  | 'lapsed_winback_30'
+  | 'focus_challenge_30';
 
 export type ClaimPromoRewardResult =
   | {

@@ -45,8 +45,8 @@ const BINURAL_PRESETS: SessionProtocol[] = [
     title: 'Deep Work',
     description: 'Gamma spike into sustained Beta — classic dichotic focus arc.',
     steps: [
-      {id: 'g', label: 'Gamma · 40 Hz', durationSec: 5 * 60, startBeatHz: 20, endBeatHz: 40, curve: 'linear', startGain: 0.5, endGain: 0.55, engineMode: 'binaural'},
-      {id: 'b', label: 'Beta · 18 Hz', durationSec: 45 * 60, startBeatHz: 40, endBeatHz: 18, curve: 'logarithmic', startGain: 0.55, endGain: 0.48, engineMode: 'binaural'},
+      {id: 'g', label: 'Gamma · 40 Hz', durationSec: 5 * 60, startBeatHz: 20, endBeatHz: 40, curve: 'linear', startGain: 0.5, endGain: 0.55, engineMode: 'binaural', breathPatternId: 'box'},
+      {id: 'b', label: 'Beta · 18 Hz', durationSec: 45 * 60, startBeatHz: 40, endBeatHz: 18, curve: 'logarithmic', startGain: 0.55, endGain: 0.48, engineMode: 'binaural', breathPatternId: 'box'},
     ],
   }),
   proto({
@@ -54,9 +54,9 @@ const BINURAL_PRESETS: SessionProtocol[] = [
     title: 'Sleep',
     description: 'Alpha → Theta → Delta descent with gentle volume fade.',
     steps: [
-      {id: 'a', label: 'Alpha · 10 Hz', durationSec: 15 * 60, startBeatHz: 12, endBeatHz: 10, curve: 'linear', startGain: 0.42, endGain: 0.4, engineMode: 'binaural'},
-      {id: 't', label: 'Theta · 6 Hz', durationSec: 15 * 60, startBeatHz: 10, endBeatHz: 6, curve: 'logarithmic', startGain: 0.4, endGain: 0.34, engineMode: 'binaural'},
-      {id: 'd', label: 'Delta · 1.5 Hz', durationSec: 30 * 60, startBeatHz: 6, endBeatHz: 1.5, curve: 'logarithmic', startGain: 0.34, endGain: 0.25, engineMode: 'binaural'},
+      {id: 'a', label: 'Alpha · 10 Hz', durationSec: 15 * 60, startBeatHz: 12, endBeatHz: 10, curve: 'linear', startGain: 0.42, endGain: 0.4, engineMode: 'binaural', breathPatternId: 'box'},
+      {id: 't', label: 'Theta · 6 Hz', durationSec: 15 * 60, startBeatHz: 10, endBeatHz: 6, curve: 'logarithmic', startGain: 0.4, endGain: 0.34, engineMode: 'binaural', breathPatternId: '478'},
+      {id: 'd', label: 'Delta · 1.5 Hz', durationSec: 30 * 60, startBeatHz: 6, endBeatHz: 1.5, curve: 'logarithmic', startGain: 0.34, endGain: 0.25, engineMode: 'binaural', breathPatternId: '478'},
     ],
   }),
   proto({
@@ -70,8 +70,8 @@ const BINURAL_PRESETS: SessionProtocol[] = [
     title: 'Calm Alpha',
     description: 'Settle from low Beta into steady Alpha relaxation.',
     steps: [
-      {id: 'c1', label: 'Beta · 14 Hz', durationSec: 8 * 60, startBeatHz: 16, endBeatHz: 14, curve: 'linear', startGain: 0.45, endGain: 0.42, engineMode: 'binaural'},
-      {id: 'c2', label: 'Alpha · 10 Hz', durationSec: 22 * 60, startBeatHz: 14, endBeatHz: 10, curve: 'logarithmic', startGain: 0.42, endGain: 0.38, engineMode: 'binaural'},
+      {id: 'c1', label: 'Beta · 14 Hz', durationSec: 8 * 60, startBeatHz: 16, endBeatHz: 14, curve: 'linear', startGain: 0.45, endGain: 0.42, engineMode: 'binaural', breathPatternId: 'box'},
+      {id: 'c2', label: 'Alpha · 10 Hz', durationSec: 22 * 60, startBeatHz: 14, endBeatHz: 10, curve: 'logarithmic', startGain: 0.42, endGain: 0.38, engineMode: 'binaural', breathPatternId: 'resonant'},
     ],
   }),
   proto({
@@ -79,9 +79,9 @@ const BINURAL_PRESETS: SessionProtocol[] = [
     title: 'Theta Drift',
     description: 'Slow glide into deep Theta for meditation.',
     steps: [
-      {id: 'td1', label: 'Alpha · 9 Hz', durationSec: 10 * 60, startBeatHz: 12, endBeatHz: 9, curve: 'linear', startGain: 0.44, endGain: 0.4, engineMode: 'binaural'},
-      {id: 'td2', label: 'Theta · 5 Hz', durationSec: 25 * 60, startBeatHz: 9, endBeatHz: 5, curve: 'logarithmic', startGain: 0.4, endGain: 0.32, engineMode: 'binaural'},
-      {id: 'td3', label: 'Theta · 4 Hz', durationSec: 15 * 60, startBeatHz: 5, endBeatHz: 4, curve: 'linear', startGain: 0.32, endGain: 0.28, engineMode: 'binaural'},
+      {id: 'td1', label: 'Alpha · 9 Hz', durationSec: 10 * 60, startBeatHz: 12, endBeatHz: 9, curve: 'linear', startGain: 0.44, endGain: 0.4, engineMode: 'binaural', breathPatternId: 'resonant'},
+      {id: 'td2', label: 'Theta · 5 Hz', durationSec: 25 * 60, startBeatHz: 9, endBeatHz: 5, curve: 'logarithmic', startGain: 0.4, endGain: 0.32, engineMode: 'binaural', breathPatternId: '478'},
+      {id: 'td3', label: 'Theta · 4 Hz', durationSec: 15 * 60, startBeatHz: 5, endBeatHz: 4, curve: 'linear', startGain: 0.32, endGain: 0.28, engineMode: 'binaural', breathPatternId: '478'},
     ],
   }),
 ];

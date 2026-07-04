@@ -125,6 +125,18 @@ Deno.serve(async (req: Request) => {
     } else {
       approveId = row?.id as string;
     }
+  } else if (isAffiliateApply) {
+    const {error} = await sb.from('affiliate_applications').insert({
+      email: fromEmail,
+      message,
+      rc_user_id: rcUserId,
+      platform: platform || null,
+      app_version: appVersion || null,
+      status: 'pending',
+    });
+    if (error != null) {
+      console.error('[send-app-message] affiliate_applications insert:', error);
+    }
   }
 
   const {data: inserted, error: insertErr} = await sb

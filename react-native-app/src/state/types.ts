@@ -212,6 +212,7 @@ export type {GrowthSlice} from './slices/growth';
 export type {PromoSlice, PromoEntitlement} from './slices/promo';
 export type {GuidedDepthSlice} from './slices/guidedDepth';
 export type {AsmrSlice} from './slices/asmr';
+export type {FocusChallengeSlice} from './slices/focusChallenge';
 
 export type AppStore = AudioParamsSlice &
   SessionSlice &
@@ -229,4 +230,5 @@ export type AppStore = AudioParamsSlice &
   import('./slices/aiChat').AiChatSlice &
   import('./slices/promo').PromoSlice &
   import('./slices/guidedDepth').GuidedDepthSlice &
-  import('./slices/asmr').AsmrSlice;
+  import('./slices/asmr').AsmrSlice &
+  import('./slices/focusChallenge').FocusChallengeSlice;

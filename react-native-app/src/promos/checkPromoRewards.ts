@@ -18,7 +18,15 @@ export type PromoRewardSnapshot = {
   post: PromoRewardStatus;
   practitioner: PromoRewardStatus;
   beta: PromoRewardStatus;
+  affiliate: PromoRewardStatus;
   referrerRewards: ReferrerRewardRow[];
+  focusChallenge?: {
+    status?: string;
+    attemptId?: string;
+    currentDay?: number;
+    lastCompletedDate?: string | null;
+    rewardClaimed?: boolean;
+  };
 };
 
 export async function fetchPromoRewardStatus(): Promise<PromoRewardSnapshot | null> {
@@ -40,7 +48,9 @@ export async function fetchPromoRewardStatus(): Promise<PromoRewardSnapshot | nu
       post: data.post ?? 'none',
       practitioner: data.practitioner ?? 'none',
       beta: data.beta ?? 'none',
+      affiliate: data.affiliate ?? 'none',
       referrerRewards: data.referrerRewards ?? [],
+      focusChallenge: data.focusChallenge,
     };
   } catch {
     return null;

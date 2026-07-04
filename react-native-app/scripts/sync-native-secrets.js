@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Syncs GEMINI_API_KEY from `.env` into gitignored GenerativeAI-Info.plist files (xor-v1).
+ * Syncs secrets from `.env` into native / JS targets:
+ * - GEMINI_API_KEY → gitignored GenerativeAI-Info.plist (xor-v1)
+ * - SUPABASE_PROJECT_PUBLISHING_KEY → src/monetization/supabaseAnon.ts
  * Never logs key values.
  */
 const fs = require('fs');
@@ -8,6 +10,7 @@ const path = require('path');
 
 const appRoot = path.join(__dirname, '..');
 const envPath = path.join(appRoot, '.env');
+const SUPABASE_ANON_TS = path.join(appRoot, 'src/monetization/supabaseAnon.ts');
 
 const PLIST_TARGETS = [
   path.join(appRoot, 'ios/HertzLabsBinauralBeats/GenerativeAI-Info.plist'),
@@ -65,19 +68,42 @@ function writeGenerativeAiPlist(targetPath, encodedKey) {
   fs.writeFileSync(targetPath, xml);
 }
 
+function syncSupabasePublishableKey(publishableKey) {
+  if (!publishableKey) {
+    console.log('sync-native-secrets: no SUPABASE_PROJECT_PUBLISHING_KEY in .env');
+    return;
+  }
+  if (!fs.existsSync(SUPABASE_ANON_TS)) {
+    console.warn('sync-native-secrets: supabaseAnon.ts not found');
+    return;
+  }
+  const src = fs.readFileSync(SUPABASE_ANON_TS, 'utf8');
+  const next = src.replace(
+    /export const SUPABASE_ANON_KEY =\s*\n\s*'[^']*';/,
+    `export const SUPABASE_ANON_KEY =\n  '${publishableKey}';`,
+  );
+  if (next === src) {
+    console.warn('sync-native-secrets: could not patch SUPABASE_ANON_KEY in supabaseAnon.ts');
+    return;
+  }
+  fs.writeFileSync(SUPABASE_ANON_TS, next);
+  console.log('sync-native-secrets: updated supabaseAnon.ts publishable key');
+}
+
 const env = parseEnv(envPath);
 const gemini = (env.GEMINI_API_KEY || '').trim();
+const publishable = (env.SUPABASE_PROJECT_PUBLISHING_KEY || '').trim();
 
-if (!gemini) {
+syncSupabasePublishableKey(publishable);
+
+if (gemini) {
+  const encoded = xorEncodeV1(gemini);
+  for (const target of PLIST_TARGETS) {
+    writeGenerativeAiPlist(target, encoded);
+  }
+  console.log(
+    `sync-native-secrets: updated ${PLIST_TARGETS.length} GenerativeAI-Info.plist file(s) (keys not printed)`,
+  );
+} else {
   console.log('sync-native-secrets: no GEMINI_API_KEY in .env');
-  process.exit(0);
 }
-
-const encoded = xorEncodeV1(gemini);
-for (const target of PLIST_TARGETS) {
-  writeGenerativeAiPlist(target, encoded);
-}
-
-console.log(
-  `sync-native-secrets: updated ${PLIST_TARGETS.length} GenerativeAI-Info.plist file(s) (keys not printed)`,
-);

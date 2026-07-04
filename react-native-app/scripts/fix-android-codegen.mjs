@@ -18,14 +18,50 @@ const JAVA_DIR = path.join(ROOT, 'android/app/build/generated/source/codegen/jav
 const CMAKE = path.join(JNI_DIR, 'CMakeLists.txt');
 const APP_SPEC = 'HertzLabsBinauralBeatsSpec';
 
-const WRONG_GLOBS = [
-  'file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS *.cpp react/renderer/components/HertzLabsBinauralBeatsSpec/*.cpp)',
-  `file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS ${APP_SPEC}-generated.cpp react/renderer/components/${APP_SPEC}/*.cpp)`,
-];
-const FIXED_GLOB = `file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS ${APP_SPEC}-generated.cpp react/renderer/components/${APP_SPEC}/*.cpp)`;
+const FIXED_CMAKE = `# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# Patched by fix-android-codegen.mjs — app-local Hertz specs only (third-party via AAR).
+
+cmake_minimum_required(VERSION 3.13)
+set(CMAKE_VERBOSE_MAKEFILE on)
+
+file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS ${APP_SPEC}-generated.cpp react/renderer/components/${APP_SPEC}/*.cpp)
+
+add_library(
+  react_codegen_${APP_SPEC}
+  OBJECT
+  \${react_codegen_SRCS}
+)
+
+target_include_directories(react_codegen_${APP_SPEC} PUBLIC . react/renderer/components/${APP_SPEC})
+
+target_link_libraries(
+  react_codegen_${APP_SPEC}
+  fbjni
+  jsi
+  reactnative
+)
+
+target_compile_reactnative_options(react_codegen_${APP_SPEC} PRIVATE)
+`;
+
+function patchCMakeLists() {
+  if (!fs.existsSync(CMAKE)) {
+    console.warn(`fix-android-codegen: ${CMAKE} not found — run Gradle codegen first`);
+    return;
+  }
+  const cmake = fs.readFileSync(CMAKE, 'utf8');
+  const expectedGlob = `file(GLOB react_codegen_SRCS CONFIGURE_DEPENDS ${APP_SPEC}-generated.cpp react/renderer/components/${APP_SPEC}/*.cpp)`;
+  if (cmake.includes(expectedGlob) && cmake.includes(`react_codegen_${APP_SPEC}`)) {
+    console.log('fix-android-codegen: CMakeLists already patched');
+    return;
+  }
+  fs.writeFileSync(CMAKE, FIXED_CMAKE);
+  console.log('fix-android-codegen: rewrote CMakeLists for app-local codegen only');
+}
 
 /** Third-party codegen Java is linked via each library's AAR — keep app-local Hertz specs only. */
-const JAVA_KEEP = /^NativeHertz|^com\/hertzlabs\//;
+const JAVA_KEEP = /^NativeHertz|NativeHertz|^com\/hertzlabs\//;
 
 function removeThirdPartyJavaCodegen() {
   if (!fs.existsSync(JAVA_DIR)) {
@@ -51,30 +87,7 @@ function removeThirdPartyJavaCodegen() {
 }
 
 function main() {
-  if (!fs.existsSync(CMAKE)) {
-    console.warn(`fix-android-codegen: ${CMAKE} not found — run Gradle codegen first`);
-  } else {
-    let cmake = fs.readFileSync(CMAKE, 'utf8');
-    if (cmake.includes(FIXED_GLOB)) {
-      console.log('fix-android-codegen: CMakeLists already patched');
-    } else {
-      let patched = false;
-      for (const wrong of WRONG_GLOBS) {
-        if (cmake.includes(wrong)) {
-          cmake = cmake.replace(wrong, FIXED_GLOB);
-          patched = true;
-          break;
-        }
-      }
-      if (patched) {
-        fs.writeFileSync(CMAKE, cmake);
-        console.log('fix-android-codegen: patched CMakeLists to exclude third-party *-generated.cpp');
-      } else {
-        console.warn('fix-android-codegen: unexpected CMakeLists format — manual review needed');
-      }
-    }
-  }
-
+  patchCMakeLists();
   if (fs.existsSync(JNI_DIR)) {
     for (const name of fs.readdirSync(JNI_DIR)) {
       if (name.endsWith('-generated.cpp') && name !== `${APP_SPEC}-generated.cpp`) {

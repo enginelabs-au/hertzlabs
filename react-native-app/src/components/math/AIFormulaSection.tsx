@@ -16,6 +16,7 @@ import {HertzTheme} from '../../theme/hertzTheme';
 import {MathFoldSection} from './MathFoldSection';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
+import {ModeSessionEnhancements} from '../session/ModeSessionEnhancements';
 import {AI_FORMULA_CHIPS, generateFormulaFromPrompt} from './aiFormulaGenerator';
 import {applyFormulaEvalToSession} from './applyFormulaEvalToSession';
 import type {FormulaAppliedPayload} from './activeFormulaDisplay';
@@ -258,6 +259,7 @@ export function AIFormulaSection({
         <Text style={styles.sendBtnText}>Send →</Text>
       </Pressable>
       <View style={styles.automationFolds}>
+        <ModeSessionEnhancements foldStyle={styles.protocolFold} embedded />
         <BreathPacerSection foldStyle={styles.protocolFold} embedded />
         <ProtocolSequencesSection foldStyle={styles.protocolFold} embedded />
       </View>

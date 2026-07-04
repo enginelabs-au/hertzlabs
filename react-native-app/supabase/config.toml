@@ -75,3 +75,9 @@ verify_jwt = false
 
 [functions.cancellation-feedback]
 verify_jwt = false
+
+[functions.sync-focus-challenge]
+verify_jwt = false
+
+[functions.complete-focus-challenge-day]
+verify_jwt = false

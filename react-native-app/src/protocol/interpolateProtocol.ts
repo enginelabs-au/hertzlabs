@@ -1,4 +1,5 @@
 import {getBandColor} from '../components/ai/aiGuideGenerator';
+import {isBreathPatternId} from '../breathPacer/patterns';
 import type {
   ProtocolEvalState,
   ProtocolRingSegment,
@@ -213,6 +214,7 @@ export function normalizeProtocol(raw: SessionProtocol): SessionProtocol {
     startGain: clamp(s.startGain ?? 0.45, 0.04, 1),
     endGain: clamp(s.endGain ?? s.startGain ?? 0.45, 0.04, 1),
     engineMode: s.engineMode ?? 'binaural',
+    ...(isBreathPatternId(s.breathPatternId) ? {breathPatternId: s.breathPatternId} : {}),
   }));
 
   const last = steps.length > 0 ? steps[steps.length - 1] : null;

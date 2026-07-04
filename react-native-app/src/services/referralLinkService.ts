@@ -50,6 +50,22 @@ export async function shareReferralListing(referralCode: string): Promise<boolea
   }
 }
 
+/** Optional social share after completing the 30-day focus challenge (not required for reward). */
+export async function shareFocusChallengeComplete(): Promise<boolean> {
+  const link = storeListingUrl();
+  const message =
+    `I completed the 30-day Hertz Labs focus challenge — binaural beats, breathing, and daily focus.\n\n${link}`;
+  try {
+    const result =
+      Platform.OS === 'ios'
+        ? await Share.share({message, url: link, title: 'Hertz Labs Focus Challenge'})
+        : await Share.share({message});
+    return result.action === Share.sharedAction;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * @deprecated Use shareReferralListing — store URL only, no HZ code.
  */

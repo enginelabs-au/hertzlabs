@@ -11,6 +11,7 @@ import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
 import {NeonSlider} from '../player/NeonSlider';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
+import {ModeSessionEnhancements} from '../session/ModeSessionEnhancements';
 
 function DescriptorTags({tags}: {tags: string[]}) {
   return (
@@ -97,6 +98,7 @@ function NoiseRow({
 
       {expanded && (
         <View style={styles.nestedFold}>
+          <ModeSessionEnhancements foldStyle={styles.nestedFoldInner} embedded />
           <BreathPacerSection foldStyle={styles.nestedFoldInner} />
         </View>
       )}

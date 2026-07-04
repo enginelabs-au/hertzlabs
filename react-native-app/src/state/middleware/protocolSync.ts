@@ -1,4 +1,5 @@
 import {pushNativeAudioNow} from '../../components/math/applyFormulaEvalToSession';
+import {applyStepBreathBinding} from '../../protocol/applyStepBreathBinding';
 import {evaluateProtocolAt} from '../../protocol/interpolateProtocol';
 import type {AppStore} from '../types';
 
@@ -25,10 +26,20 @@ export function installProtocolSync(store: StoreApi): () => void {
   let intervalId: ReturnType<typeof setInterval> | null = null;
   let lastBeatHz: number | null = null;
   let lastGain: number | null = null;
+  let lastStepIndex: number | null = null;
 
   const reset = () => {
     lastBeatHz = null;
     lastGain = null;
+    lastStepIndex = null;
+  };
+
+  const applyBreathForStepIndex = (state: AppStore, stepIndex: number) => {
+    const protocol = state.activeProtocol;
+    if (protocol == null) {
+      return;
+    }
+    applyStepBreathBinding(state, protocol.steps[stepIndex]);
   };
 
   const tick = () => {
@@ -39,6 +50,11 @@ export function installProtocolSync(store: StoreApi): () => void {
     }
 
     const ev = evaluateProtocolAt(protocol, state.elapsedSec, state.gain);
+
+    if (ev.stepIndex !== lastStepIndex) {
+      lastStepIndex = ev.stepIndex;
+      applyBreathForStepIndex(state, ev.stepIndex);
+    }
 
     if (ev.isComplete && protocol.stopAfterPlayback) {
       state.setParam('beatHz', ev.beatHz);

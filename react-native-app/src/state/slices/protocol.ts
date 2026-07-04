@@ -1,5 +1,6 @@
 import type {StateCreator} from 'zustand';
 import {pushNativeAudioNow} from '../../components/math/applyFormulaEvalToSession';
+import {applyStepBreathBinding} from '../../protocol/applyStepBreathBinding';
 import {
   computeProtocolTotalSec,
   evaluateProtocolAt,
@@ -15,6 +16,7 @@ function applyProtocolEvalNow(get: () => AppStore): void {
     return;
   }
   const ev = evaluateProtocolAt(protocol, get().elapsedSec, get().gain);
+  applyStepBreathBinding(get(), protocol.steps[ev.stepIndex]);
   get().setParam('beatHz', ev.beatHz);
   get().setParam('gain', ev.gain);
   pushNativeAudioNow();
@@ -55,6 +57,7 @@ export const createProtocolSlice: StateCreator<AppStore, [], [], ProtocolSlice> 
       isPaused: false,
     }));
     const ev = evaluateProtocolAt(normalized, 0, get().gain);
+    applyStepBreathBinding(get(), normalized.steps[ev.stepIndex]);
     get().setParam('beatHz', ev.beatHz);
     get().setParam('gain', ev.gain);
     pushNativeAudioNow();

@@ -13,6 +13,7 @@ import {HertzTheme} from '../../theme/hertzTheme';
 import {NeonSlider} from '../player/NeonSlider';
 import {BreathPacerSection} from '../breathPacer/BreathPacerSection';
 import {ProtocolSequencesSection} from '../protocol/ProtocolSequencesSection';
+import {ModeSessionEnhancements} from '../session/ModeSessionEnhancements';
 
 const SIMPLE_ENGINE_ORDER: {mode: EngineMode; label: string}[] = [
   {mode: 'binaural', label: 'Binaural'},
@@ -90,6 +91,7 @@ function SimpleEngineRow({mode, label, active, locked, selected, onSelect}: Simp
 
       {expanded && !locked && (
         <View style={styles.nestedFold}>
+          <ModeSessionEnhancements foldStyle={styles.nestedFoldInner} embedded />
           <BreathPacerSection foldStyle={styles.nestedFoldInner} embedded />
           <ProtocolSequencesSection foldStyle={styles.nestedFoldInner} engineMode={mode} embedded />
         </View>

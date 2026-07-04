@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-  const [postRows, practRows, betaRows] = await Promise.all([
+  const [postRows, practRows, betaRows, affiliateRows] = await Promise.all([
     sb
       .from('post_submissions')
       .select('status')
@@ -99,6 +99,12 @@ Deno.serve(async (req: Request) => {
       .eq('category', 'promo_beta')
       .order('created_at', {ascending: false})
       .limit(1),
+    sb
+      .from('affiliate_applications')
+      .select('status')
+      .eq('rc_user_id', rcAppUserId)
+      .order('created_at', {ascending: false})
+      .limit(1),
   ]);
 
   const pendingReferrals = await pendingReferInstallClaims(sb, rcAppUserId);
@@ -108,8 +114,10 @@ Deno.serve(async (req: Request) => {
     post: mapStatus(postRows.data?.[0]?.status as string | undefined),
     practitioner: mapStatus(practRows.data?.[0]?.status as string | undefined),
     beta: mapStatus(betaRows.data?.[0]?.status as string | undefined),
+    affiliate: mapAffiliateStatus(affiliateRows.data?.[0]?.status as string | undefined),
     pendingReferInstallClaims: pendingReferrals,
     referrerRewards,
+    focusChallenge: await focusChallengeStatus(sb, rcAppUserId),
   });
 });
 
@@ -118,6 +126,33 @@ function mapStatus(raw: string | undefined): RewardStatus {
   if (raw === 'rejected') return 'rejected';
   if (raw === 'pending') return 'pending';
   return 'none';
+}
+
+function mapAffiliateStatus(raw: string | undefined): RewardStatus {
+  return mapStatus(raw);
+}
+
+async function focusChallengeStatus(
+  sb: ReturnType<typeof createClient>,
+  rcUserId: string,
+): Promise<Record<string, unknown>> {
+  const {data} = await sb
+    .from('focus_challenge_progress')
+    .select('attempt_id, status, current_day, last_completed_date, reward_claimed_at')
+    .eq('rc_user_id', rcUserId)
+    .order('started_at', {ascending: false})
+    .limit(1);
+  const row = data?.[0];
+  if (row == null) {
+    return {status: 'idle'};
+  }
+  return {
+    attemptId: row.attempt_id,
+    status: row.status,
+    currentDay: row.current_day,
+    lastCompletedDate: row.last_completed_date,
+    rewardClaimed: row.reward_claimed_at != null,
+  };
 }
 
 function json(body: unknown, status = 200): Response {

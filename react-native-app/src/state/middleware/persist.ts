@@ -129,6 +129,12 @@ export const persistedStoreOptions = {
     lapsed7RestoreAtMs: state.lapsed7RestoreAtMs,
     lapsed30WinbackAtMs: state.lapsed30WinbackAtMs,
     streakRestoreHardDeclined: state.streakRestoreHardDeclined,
+    focusChallengeStatus: state.focusChallengeStatus,
+    focusChallengeAttemptId: state.focusChallengeAttemptId,
+    focusChallengeCurrentDay: state.focusChallengeCurrentDay,
+    focusChallengeLastCompletedDate: state.focusChallengeLastCompletedDate,
+    focusChallengeStartedAtMs: state.focusChallengeStartedAtMs,
+    focusChallengeRewardClaimed: state.focusChallengeRewardClaimed,
   }),
 };
 

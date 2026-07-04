@@ -61,3 +61,7 @@ export const MAX_BREATH_DELTA_DB = 6;
 export function breathPatternMeta(id: BreathPatternId): BreathPatternMeta {
   return BREATH_PATTERNS.find(p => p.id === id) ?? BREATH_PATTERNS[0];
 }
+
+export function isBreathPatternId(value: unknown): value is BreathPatternId {
+  return BREATH_PATTERNS.some(p => p.id === value);
+}

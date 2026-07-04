@@ -1,4 +1,5 @@
 import type {EngineMode} from '../state/types';
+import type {BreathPatternId} from '../breathPacer/patterns';
 
 export type RampCurve = 'linear' | 'logarithmic';
 
@@ -17,6 +18,8 @@ export type ProtocolStep = {
   startGain: number;
   endGain: number;
   engineMode: EngineMode;
+  /** When set, protocol playback switches breath pattern at this step. */
+  breathPatternId?: BreathPatternId;
 };
 
 /** A multi-step frequency journey. Total length = sum of step durations + optional fade-out. */

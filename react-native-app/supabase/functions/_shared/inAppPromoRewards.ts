@@ -15,7 +15,8 @@ export type InAppRewardType =
   | 'anniversary'
   | 'wellness'
   | 'share_link'
-  | 'lapsed_winback_30';
+  | 'lapsed_winback_30'
+  | 'focus_challenge_30';
 
 const REWARD_TIER: Record<InAppRewardType, StoreOfferRewardTier> = {
   streak_7: '1_month',
@@ -26,6 +27,7 @@ const REWARD_TIER: Record<InAppRewardType, StoreOfferRewardTier> = {
   wellness: '1_month',
   share_link: '1_month',
   lapsed_winback_30: '1_month',
+  focus_challenge_30: '1_month',
 };
 
 export function rewardTierForInApp(type: InAppRewardType): StoreOfferRewardTier {

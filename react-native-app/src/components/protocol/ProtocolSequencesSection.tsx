@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import {ENGINE_CATALOG} from '../../audio/engineModes';
+import {BREATH_PATTERNS, breathPatternMeta} from '../../breathPacer/patterns';
 import {getProtocolsForEngine} from '../../protocol/builtinProtocols';
 import {
   computeProtocolTotalSec,
@@ -52,6 +53,9 @@ function StepRow({step, onChange}: StepRowProps) {
   const [open, setOpen] = useState(false);
   const volStart = Math.round(step.startGain * 100);
   const volEnd = Math.round(step.endGain * 100);
+  const breathLabel = step.breathPatternId
+    ? breathPatternMeta(step.breathPatternId).label
+    : null;
 
   return (
     <View style={styles.stepRow}>
@@ -64,6 +68,7 @@ function StepRow({step, onChange}: StepRowProps) {
           <Text style={styles.stepLabel}>{step.label}</Text>
           <Text style={styles.stepSummary}>
             {fmtMin(step.durationSec)} min · {step.startBeatHz}→{step.endBeatHz} Hz · vol {volStart}→{volEnd}%
+            {breathLabel != null ? ` · ${breathLabel}` : ''}
           </Text>
         </View>
         <Text style={[styles.chev, open && styles.chevOpen]}>›</Text>
@@ -121,6 +126,36 @@ function StepRow({step, onChange}: StepRowProps) {
                   onPress={() => onChange({engineMode: e.mode})}>
                   <Text style={[styles.miniChipText, step.engineMode === e.mode && styles.miniChipTextActive]}>
                     {e.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.engineChipScroll}>
+            <View style={styles.inlineRow}>
+              <Text style={styles.miniLabel}>Breath</Text>
+              <Pressable
+                style={[styles.miniChip, step.breathPatternId == null && styles.miniChipActive]}
+                onPress={() => onChange({breathPatternId: undefined})}>
+                <Text
+                  style={[
+                    styles.miniChipText,
+                    step.breathPatternId == null && styles.miniChipTextActive,
+                  ]}>
+                  None
+                </Text>
+              </Pressable>
+              {BREATH_PATTERNS.map(p => (
+                <Pressable
+                  key={p.id}
+                  style={[styles.miniChip, step.breathPatternId === p.id && styles.miniChipActive]}
+                  onPress={() => onChange({breathPatternId: p.id})}>
+                  <Text
+                    style={[
+                      styles.miniChipText,
+                      step.breathPatternId === p.id && styles.miniChipTextActive,
+                    ]}>
+                    {p.label}
                   </Text>
                 </Pressable>
               ))}

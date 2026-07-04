@@ -36,6 +36,8 @@
     "pod:install": "npm run sync:codegen && cd ios && pod install && cd .. && npm run ios:fix-codegen",
     "release:ios": "bash scripts/release-ios.sh",
     "release:mac": "bash scripts/release-mac-catalyst.sh",
+    "update:asc-v30": "node scripts/update-asc-v30-release.mjs",
+    "submit:asc-v30": "node scripts/submit-asc-version-review.mjs --platform IOS --version 3.0 --build 30 && node scripts/submit-asc-version-review.mjs --platform MAC_OS --version 3.0 --build 30",
     "build:ios": "SKIP_ASC_UPLOAD=1 SKIP_FORCE_UPDATE_PUBLISH=1 bash scripts/release-ios.sh",
     "build:mac": "SKIP_ASC_UPLOAD=1 SKIP_FORCE_UPDATE_PUBLISH=1 bash scripts/release-mac-catalyst.sh",
     "mac:build": "bash scripts/install-mac-catalyst-desktop.sh",
@@ -54,6 +56,7 @@
     "reset:promo-test-state": "node scripts/reset-promo-test-state.mjs"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native/codegen": "latest",
     "@sbaiahmed1/react-native-blur": "^4.6.3",
