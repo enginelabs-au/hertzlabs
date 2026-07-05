@@ -38,6 +38,12 @@ export const WHATS_NEW_V30 = `What's New in 3.0
 
 • Stability improvements across iPhone, iPad, and Mac.`;
 
+/** App Store promotional text (max 170 chars) — version localization field. */
+export const PROMOTIONAL_TEXT_V30 =
+  'Start your 7-day free trial — now with 30-Day Focus Challenge, referral rewards, guided depth, ASMR ambience & expanded breathing. Focus, sleep & recovery.';
+
+const LOCALES = ['en-US', 'en-AU'];
+
 const IOS_REVIEW_NOTES = `App Review Notes — Hertz Labs v3.0 (iOS)
 
 Thank you for reviewing build 30.
@@ -70,8 +76,6 @@ Premium: Mac App Store IAP and App Store Offer Codes only — no custom promo un
 Photic strobe, focus challenge, referral HZ codes, guided depth, ASMR layers, streak local notifications, cancellation winback, and affiliate Feedback form behave the same as on iOS.
 
 Contact: info.campbell.douglas@gmail.com | +61419933874`;
-
-const LOCALES = ['en-US', 'en-AU'];
 
 function b64url(input) {
   return Buffer.from(input)
@@ -153,6 +157,32 @@ async function findOrCreateVersion(token, platform) {
   return json.data;
 }
 
+async function patchPromotionalText(token, versionId, platform) {
+  if (PROMOTIONAL_TEXT_V30.length > 170) {
+    throw new Error(`promotionalText exceeds 170 chars (${PROMOTIONAL_TEXT_V30.length})`);
+  }
+  const locs = await ascGetAll(token, `/v1/appStoreVersions/${versionId}/appStoreVersionLocalizations`);
+  const targets = locs.filter(l => LOCALES.includes(l.attributes?.locale ?? ''));
+  if (targets.length === 0) {
+    console.warn(`WARN: No ${LOCALES.join('/')} localizations on ${platform} v${VERSION_STRING}`);
+    return;
+  }
+  for (const loc of targets) {
+    const locale = loc.attributes?.locale;
+    const {status, json} = await asc(token, 'PATCH', `/v1/appStoreVersionLocalizations/${loc.id}`, {
+      data: {
+        type: 'appStoreVersionLocalizations',
+        id: loc.id,
+        attributes: {promotionalText: PROMOTIONAL_TEXT_V30},
+      },
+    });
+    if (status >= 300) {
+      throw new Error(`promotionalText ${platform} ${locale} failed (${status}): ${JSON.stringify(json)}`);
+    }
+    console.log(`OK: ${platform} ${locale} promotional text (${PROMOTIONAL_TEXT_V30.length} chars)`);
+  }
+}
+
 async function patchWhatsNew(token, versionId, platform) {
   const locs = await ascGetAll(token, `/v1/appStoreVersions/${versionId}/appStoreVersionLocalizations`);
   const targets = locs.filter(l => LOCALES.includes(l.attributes?.locale ?? ''));
@@ -170,6 +200,11 @@ async function patchWhatsNew(token, versionId, platform) {
       },
     });
     if (status >= 300) {
+      const detail = json?.errors?.[0]?.detail ?? '';
+      if (status === 409 && detail.includes("Attribute 'whatsNew' cannot be edited")) {
+        console.warn(`SKIP: ${platform} ${locale} What's New locked (${detail})`);
+        continue;
+      }
       throw new Error(`whatsNew ${platform} ${locale} failed (${status}): ${JSON.stringify(json)}`);
     }
     console.log(`OK: ${platform} ${locale} What's New (${WHATS_NEW_V30.length} chars)`);
@@ -213,6 +248,7 @@ async function main() {
     ['MAC_OS', MAC_REVIEW_NOTES],
   ]) {
     const version = await findOrCreateVersion(token, platform);
+    await patchPromotionalText(token, version.id, platform);
     await patchWhatsNew(token, version.id, platform);
     await patchReviewNotes(token, version.id, platform, reviewNotes);
   }
