@@ -58,17 +58,29 @@ async function uploadBundle(token, editId, aabPath) {
   return {status: res.status, json};
 }
 
-function haltExistingReleases(trackJson) {
-  const halted = [];
+function prepareExistingReleases(trackJson) {
+  const kept = [];
   for (const release of trackJson?.releases ?? []) {
-    if (release.status === 'inProgress' || release.status === 'draft') {
-      halted.push({
+    if (release.status === 'draft') {
+      // Drafts cannot be halted via API — omit so the new release replaces them.
+      continue;
+    }
+    if (release.status === 'inProgress') {
+      kept.push({
         ...release,
         status: 'halted',
+        // Play requires fraction on halted staged rollouts.
+        fraction: release.userFraction ?? release.fraction ?? 1,
       });
+      continue;
     }
+    if (release.status === 'completed') {
+      // Supersede the active completed release with the new upload.
+      continue;
+    }
+    kept.push(release);
   }
-  return halted;
+  return kept;
 }
 
 async function main() {
@@ -108,8 +120,8 @@ async function main() {
   let allOk = true;
   for (const track of TRACKS) {
     const current = await playApiRequest(token, 'GET', `${BASE}/edits/${editId}/tracks/${track}`);
-    const halted = haltExistingReleases(current.json);
-    const releases = [...halted, newRelease];
+    const kept = prepareExistingReleases(current.json);
+    const releases = [...kept, newRelease];
     const trackRes = await playApiRequest(token, 'PUT', `${BASE}/edits/${editId}/tracks/${track}`, {
       track,
       releases,
