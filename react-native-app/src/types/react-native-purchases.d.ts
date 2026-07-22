@@ -1,5 +1,5 @@
 /**
- * Type stub for react-native-purchases (RevenueCat SDK v8+).
+ * Type stub for react-native-purchases (RevenueCat SDK v10+).
  * Extended to cover the full surface used in PaywallScreen.
  */
 declare module 'react-native-purchases' {

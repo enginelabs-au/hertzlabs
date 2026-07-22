@@ -20,7 +20,7 @@ android {
         applicationId "com.hertzlabs.binauralbeats"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 32
+        versionCode 33
         versionName "3.0"
 
         externalNativeBuild {
