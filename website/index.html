@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hertz Labs: Binaural Beats</title>
+<meta name="description" content="A precision frequency generator for focus, sleep and meditation.">
+<meta name="theme-color" content="#111018">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Hertz Labs: Binaural Beats">
+<meta property="og:description" content="A precision frequency generator for focus, sleep and meditation.">
+<meta property="og:image" content="https://www.hertzlabs.com.au/assets/icon-512.png">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/home.css">
+<!-- Without scripts the stage cannot be scrubbed, so it stays one screen tall. -->
+<noscript><style>.track { height: 100vh; height: 100svh; }</style></noscript>
+</head>
+<body>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <symbol id="i-apple" viewBox="0 0 24 24"><path fill="#FFFFFF" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+  <symbol id="i-gplay" viewBox="0 0 24 24"><path fill="#4285F4" d="M1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924z"/><path fill="#34A853" d="M13.544 10.989l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973z"/><path fill="#FBBC04" d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594z"/><path fill="#EA4335" d="M13.544 13.056l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 10 11"><path fill="currentColor" d="M2.5 4.5V3a2.5 2.5 0 0 1 5 0v1.5H8a1 1 0 0 1 1 1V10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1h.5zm1.2 0h2.6V3a1.3 1.3 0 0 0-2.6 0v1.5z"/></symbol>
+</svg>
+
+<header id="nav">
+  <nav class="pill" aria-label="Primary">
+    <a class="brand" href="#top">
+      <img src="/assets/icon-192.png" alt="" width="32" height="32">
+      <span>Hertz Labs</span>
+    </a>
+    <div class="links" id="links">
+      <a href="#how">How it works</a>
+      <a href="#contact">Contact</a>
+      <a href="/support">Support</a>
+    </div>
+    <div class="actions">
+      <button class="sound" id="sound" type="button" aria-pressed="false" aria-label="Hear the frequency you are scrolling through" title="Hear this frequency (headphones recommended)">
+        <svg class="sound-off" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM16 9l5 6M21 9l-5 6"/></svg>
+        <svg class="sound-on" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11"/></svg>
+      </button>
+      <a class="cta" href="#download">Download</a>
+      <button class="menu" id="menu" type="button" aria-expanded="false" aria-controls="links" aria-label="Menu"><i></i><i></i></button>
+    </div>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- One pinned stage. Scrolling the tall track turns the dial from 0.1 Hz to 500 Hz. -->
+  <section class="track" id="spectrum" aria-label="The frequency spectrum, from 0.1 to 500 hertz">
+    <div class="stage" id="stage">
+      <canvas id="field" aria-hidden="true"></canvas>
+      <div class="glow" aria-hidden="true"></div>
+
+      <div class="hero" id="hero">
+        <h1>Binaural beats,<br><span>engineered.</span></h1>
+        <p>A precision frequency generator for focus, sleep and meditation.</p>
+        <div class="get">
+          <span class="label">DOWNLOAD FREE FROM</span>
+          <div class="badges">
+            <a class="badge badge-apple" href="https://apps.apple.com/us/app/hertz-labs-binaural-beats/id6777604364" target="_blank" rel="noopener" aria-label="Download on the App Store">
+              <svg width="26" height="26" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span><small>Download on the</small><b>App Store</b></span>
+            </a>
+            <a class="badge badge-play" href="https://play.google.com/store/apps/details?id=com.hertzlabs.binauralbeats&amp;hl=en_AU" target="_blank" rel="noopener" aria-label="Get it on Google Play">
+              <svg width="24" height="26" aria-hidden="true"><use href="#i-gplay"/></svg>
+              <span><small>GET IT ON</small><b>Google Play</b></span>
+            </a>
+            <a class="badge badge-apple" href="https://apps.apple.com/us/app/hertz-labs-binaural-beats/id6777604364" target="_blank" rel="noopener" aria-label="Download on the Mac App Store">
+              <svg width="26" height="26" aria-hidden="true"><use href="#i-apple"/></svg>
+              <span><small>Download on the</small><b>Mac App Store</b></span>
+            </a>
+          </div>
+          <span class="note">iPhone · Mac · Android — headphones recommended</span>
+        </div>
+      </div>
+
+      <!-- Beside the phone: the live tuner readout. Decorative; the captions carry the content. -->
+      <div class="tuner" id="tuner" aria-hidden="true">
+        <div class="t-band"><span data-t="index">BAND 04 / 11</span><i></i><span data-t="greek">ALPHA</span></div>
+        <div class="t-hz"><span data-t="hz">10.0</span><small>Hz</small></div>
+        <div class="t-name"><b data-t="name">CALM</b><span data-t="range">8 – 12 Hz</span></div>
+        <div class="t-eq"><span class="l" data-t="l">215.0</span> <i>and</i> <span class="r" data-t="r">225.0</span> <i>beat at</i> <span class="t" data-t="beat">10.0 Hz</span></div>
+      </div>
+
+      <!-- One caption per scene. -->
+      <div class="scenes" id="scenes">
+        <article class="scene" data-scene="how">
+          <span class="kicker">HOW IT WORKS</span>
+          <h2>Two tones. <br>One beat.</h2>
+          <p>Play <b class="l" data-live="l">215&nbsp;Hz</b> in one ear and <b class="r" data-live="r">225&nbsp;Hz</b> in the other. Your brain hears the <b class="t" data-live="t">10&nbsp;Hz</b> difference: a binaural beat.</p>
+          <p class="aside">Scrolling turns the dial. The slowest frequencies sit at the top of this page, the fastest at the bottom. Press PLAY on the phone to hear where you are.</p>
+        </article>
+        <article class="scene" data-scene="dsp">
+          <span class="kicker">ON-DEVICE SYNTHESIS</span>
+          <h2>Generated live. <br>Works offline.</h2>
+          <p>Every tone is generated on your device in real time, so a session plays with no connection at all.</p>
+        </article>
+        <article class="scene" data-scene="math">
+          <span class="kicker">MATH MODE</span>
+          <h2>Tuned by <br>mathematics.</h2>
+          <p>Tunings from Schumann resonance, the golden ratio, Fibonacci and Solfeggio. The dial catches on two of them here: 5&nbsp;Hz and 7.83&nbsp;Hz.</p>
+        </article>
+        <article class="scene" data-scene="music">
+          <span class="kicker">BACKGROUND</span>
+          <h2>Under your <br>music.</h2>
+          <p>Start your music in another app, then come back. The two mix automatically. Premium keeps the session playing with the screen locked.</p>
+        </article>
+        <article class="scene" data-scene="ai">
+          <span class="kicker">AI GUIDE</span>
+          <h2>Say how you <br>want to feel.</h2>
+          <p>Describe a goal in plain words and the guide suggests frequency settings, or a whole session, to match.</p>
+        </article>
+        <article class="scene" data-scene="engines">
+          <span class="kicker">SEVEN ENGINES</span>
+          <h2>Seven ways <br>to deliver it.</h2>
+          <ul class="engine-list" id="engine-list"></ul>
+        </article>
+        <article class="scene" data-scene="kinetic">
+          <span class="kicker">KINETIC MODE</span>
+          <h2>Move. <br>It listens.</h2>
+          <p>Kinetic Mode uses your phone’s motion sensors to shape the audio in real time. The motion data never leaves your device.</p>
+        </article>
+        <article class="scene" data-scene="param">
+          <span class="kicker">PARAMETRIC CONTROL</span>
+          <h2>Every parameter <br>is yours.</h2>
+          <p>Carrier, beat, volume, drift and angle. Fine-tune each one.</p>
+        </article>
+        <article class="scene" data-scene="open">
+          <span class="kicker">FULL SPECTRUM</span>
+          <h2>No ceiling.</h2>
+          <p>From under 0.5&nbsp;Hz to 500&nbsp;Hz. Eleven bands on one dial.</p>
+        </article>
+      </div>
+
+      <!-- The phone. Its screens are drawn live so every value can follow the scroll. -->
+      <div class="device-wrap" aria-hidden="true">
+        <div class="device" id="device">
+          <div class="screen">
+            <div class="ui" id="ui">
+
+              <div class="pages">
+
+                <!-- Tab 1: Engines -->
+                <section class="pg pg-eng">
+                  <div class="card c-left"><span class="lbl">LEFT</span><b class="num" data-k="l">215</b><i>Hz</i></div>
+                  <div class="card c-target"><span class="lbl">TARGET</span><b class="num" data-k="t">10.00</b><i>Hz</i><em data-k="pill">ALPHA</em></div>
+                  <div class="card c-right"><span class="lbl">RIGHT</span><b class="num" data-k="r">225</b><i>Hz</i></div>
+
+                  <div class="dial d-l"><span data-k="dl">0 Hz</span></div><span class="dlbl dl-l">DRIFT L</span>
+                  <div class="dial d-v"><span data-k="vol">-6.9 dB</span></div><span class="dlbl dl-v">VOLUME</span>
+                  <div class="dial d-r"><span data-k="dr">0 Hz</span></div><span class="dlbl dl-r">DRIFT R</span>
+
+                  <div class="viz">
+                    <ol class="bands" id="ui-bands"></ol>
+                    <canvas id="viz-eng" width="318" height="262"></canvas>
+                    <span class="hz" data-k="hz">10.0 Hz</span>
+                    <div class="scale"><span>LINEAR</span><span class="on">EXPONENTIAL</span></div>
+                    <div class="slider"><i class="fill"></i><i class="knob"></i></div>
+                    <span class="lock"><svg width="10" height="11"><use href="#i-lock"/></svg></span>
+                    <div class="angle">
+                      <span class="a-top">360°</span>
+                      <i class="a-track"></i><i class="a-fill"></i><i class="a-knob"></i>
+                      <span class="a-val" data-k="ang">0°</span>
+                    </div>
+                  </div>
+
+                  <div class="chips" id="ui-chips"><span class="on">ENTRAINMENT</span><span>ACOUSTIC</span><span>MODULATED</span><span>AMBIENT</span></div>
+
+                  <div class="engine">
+                    <svg width="12" height="8" viewBox="0 0 12 8"><path fill="none" stroke="#8FE6FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M1.5 1.5 6 6l4.5-4.5"/></svg>
+                    <b data-k="eng">Binaural</b><span data-k="engsub"> · Dichotic</span>
+                    <i class="dot"></i>
+                  </div>
+
+                  <div class="dock">
+                    <button class="play" id="ui-play" type="button" tabindex="-1">
+                      <svg class="ic-play" width="14" height="14" viewBox="0 0 14 14"><path fill="currentColor" d="M2.5 1.2v11.6L12.5 7z"/></svg>
+                      <svg class="ic-pause" width="14" height="14" viewBox="0 0 14 14"><path fill="currentColor" d="M2.5 1h3.2v12H2.5zM8.3 1h3.2v12H8.3z"/></svg>
+                      <span data-k="play">PLAY</span>
+                    </button>
+                    <span class="chip-k" data-k="kinwrap"><i></i><span data-k="kin">Kinetic OFF</span></span>
+                    <span class="chip-x"><svg width="10" height="11"><use href="#i-lock"/></svg>Experimental</span>
+                    <span class="legal">LEGAL</span>
+                  </div>
+                </section>
+
+                <!-- Tab 2: Math Mode -->
+                <section class="pg pg-math">
+                  <div class="m-viz">
+                    <canvas id="viz-math" width="428" height="236"></canvas>
+                    <span class="m-stats">L: <b data-k="ml">216.1</b> Hz&nbsp;&nbsp;R: <b data-k="mr">223.9</b> Hz</span>
+                  </div>
+                  <div class="m-cmd">
+                    <span class="m-cap">Command line</span>
+                    <code>f_target = |f_L − f_R|</code>
+                    <span class="m-sub">π · φ · Fibonacci constants</span>
+                  </div>
+                  <div class="m-target">
+                    <span>ACTIVE TARGET Δ</span>
+                    <b data-k="mt">7.83 Hz</b>
+                  </div>
+                  <div class="m-lock"><svg width="10" height="11"><use href="#i-lock"/></svg>Custom Formula Input — Premium</div>
+                  <span class="m-head">MATH MODES</span>
+                  <ul class="m-rows" id="ui-math">
+                    <li data-m="schumann"><i>◎</i><b>Schumann Resonance</b><span>7.83 Hz</span></li>
+                    <li data-m="phi"><i>φ</i><b>Golden Ratio</b><span>φ = 1.618</span></li>
+                    <li data-m="fib"><i>Σ</i><b>Fibonacci</b><span>1 · 2 · 3 · 5 · 8</span></li>
+                    <li data-m="sol"><i>♪</i><b>Solfeggio</b><span>396 – 852 Hz</span></li>
+                  </ul>
+                </section>
+
+                <!-- Tab 3: Background -->
+                <section class="pg pg-bg">
+                  <span class="b-title">Background Audio</span>
+                  <div class="b-viz">
+                    <canvas id="viz-bg" width="428" height="204"></canvas>
+                    <span class="b-stats">Left tone: <b data-k="bsrc">215.0</b> Hz</span>
+                  </div>
+                  <h3>Background Audio</h3>
+                  <p class="b-sub">Background playback &amp; music app compatibility</p>
+                  <div class="b-card">
+                    <i class="b-ic">♪</i>
+                    <b>Plays with your music</b>
+                    <span>Works alongside any other audio app. The two mix automatically.</span>
+                    <em class="tag tag-on">ACTIVE</em>
+                    <div class="b-mix"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                  </div>
+                  <div class="b-card b-card-2" id="ui-bgplay">
+                    <i class="b-ic">◐</i>
+                    <b>Background playback</b>
+                    <span>Keep the session running with the screen locked.</span>
+                    <em class="tag tag-pro">PREMIUM</em>
+                    <span class="switch"><i></i></span>
+                  </div>
+                  <p class="b-tip"><b>TIP</b>Start your music first, then come back here.</p>
+                </section>
+
+                <!-- Tab 4: AI Guide -->
+                <section class="pg pg-ai">
+                  <canvas id="viz-ai" width="460" height="240"></canvas>
+                  <h3>AI Guide</h3>
+                  <div class="a-card">
+                    <b>Describe how you want to feel…</b>
+                    <span>Tell the guide your goal in plain English. It sets the engine, carrier and target.</span>
+                    <div class="a-input" id="ui-aiinput"><span class="a-ph">e.g. I need to focus for a coding session…</span><span class="a-text" data-k="aitext"></span><i class="caret"></i></div>
+                    <span class="a-q">WHAT WOULD YOU LIKE TO ACHIEVE?</span>
+                    <div class="a-chips" id="ui-aichips"><span>Focus for coding</span><span>Relax and prepare</span><span>Deep meditation</span><span>Boost creativity</span></div>
+                  </div>
+                  <div class="a-result" id="ui-airesult">
+                    <span class="a-ready">SESSION READY</span>
+                    <dl>
+                      <dt>ENGINE</dt><dd>Binaural · Dichotic</dd>
+                      <dt>CARRIER</dt><dd>220 Hz</dd>
+                      <dt>TARGET</dt><dd><b>14.0 Hz</b> · FOCUS</dd>
+                    </dl>
+                  </div>
+                </section>
+
+              </div>
+
+              <div class="status">
+                <span class="time">9:41</span>
+                <span class="island"></span>
+                <span class="sys" id="ui-sys">
+                  <svg class="s-sig" width="17" height="11" viewBox="0 0 17 11"><path fill="currentColor" d="M0 8h3v3H0zM4.7 5.5h3V11h-3zM9.3 3h3v8h-3zM14 0h3v11h-3z"/></svg>
+                  <svg class="s-wifi" width="16" height="12" viewBox="0 0 16 12"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M1.2 4.3a10 10 0 0 1 13.6 0M3.6 6.9a6.3 6.3 0 0 1 8.8 0M6.1 9.4a2.8 2.8 0 0 1 3.8 0"/></svg>
+                  <svg class="s-air" width="15" height="15" viewBox="0 0 24 24"><path fill="currentColor" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+                  <svg class="s-bat" width="26" height="12" viewBox="0 0 26 12"><rect x=".6" y=".6" width="21.8" height="10.8" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2"/><rect x="2.2" y="2.2" width="18.6" height="7.6" rx="1.9" fill="currentColor"/><path fill="currentColor" fill-opacity=".5" d="M24 4v4c.9-.3 1.4-1 1.4-2S24.9 4.3 24 4z"/></svg>
+                </span>
+              </div>
+
+              <nav class="tabs" id="ui-tabs">
+                <i class="ind"></i>
+                <span class="tab on"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.2" fill="currentColor"/></svg>Engines</span>
+                <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17.5 5h-11l5.8 7-5.8 7h11"/></svg>Math Mode</span>
+                <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M9.5 4.5 18 3v11.2a3 3 0 1 1-1.8-2.75V6.7l-4.9.9v8.6a3 3 0 1 1-1.8-2.75z"/></svg>Background</span>
+                <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5c.6 4.9 2.6 8.3 9.5 9.5-6.9 1.2-8.9 4.6-9.5 9.5-.6-4.9-2.6-8.3-9.5-9.5 6.9-1.2 8.9-4.6 9.5-9.5z"/></svg>AI</span>
+              </nav>
+              <i class="homebar"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <a class="cue" id="cue" href="#how">SCROLL TO TUNE<i></i></a>
+    </div>
+  </section>
+
+  <div class="ticker" aria-label="Engines and tunings">
+    <div class="ticker-track" id="ticker"></div>
+  </div>
+
+  <section class="sheet" id="download">
+    <span class="blob" aria-hidden="true"></span>
+    <img class="app-icon" src="/assets/icon-192.png" alt="Hertz Labs app icon" width="104" height="104">
+    <h2>Find your frequency.</h2>
+    <ol class="legend" id="legend" aria-label="The eleven bands. Choose one to tune to it."></ol>
+    <div class="get get-center">
+      <span class="label">DOWNLOAD FREE FROM</span>
+      <div class="badges">
+        <a class="badge badge-apple" href="https://apps.apple.com/us/app/hertz-labs-binaural-beats/id6777604364" target="_blank" rel="noopener" aria-label="Download on the App Store">
+          <svg width="26" height="26" aria-hidden="true"><use href="#i-apple"/></svg>
+          <span><small>Download on the</small><b>App Store</b></span>
+        </a>
+        <a class="badge badge-play" href="https://play.google.com/store/apps/details?id=com.hertzlabs.binauralbeats&amp;hl=en_AU" target="_blank" rel="noopener" aria-label="Get it on Google Play">
+          <svg width="24" height="26" aria-hidden="true"><use href="#i-gplay"/></svg>
+          <span><small>GET IT ON</small><b>Google Play</b></span>
+        </a>
+        <a class="badge badge-apple" href="https://apps.apple.com/us/app/hertz-labs-binaural-beats/id6777604364" target="_blank" rel="noopener" aria-label="Download on the Mac App Store">
+          <svg width="26" height="26" aria-hidden="true"><use href="#i-apple"/></svg>
+          <span><small>Download on the</small><b>Mac App Store</b></span>
+        </a>
+      </div>
+      <span class="note">iPhone · Mac · Android — headphones recommended</span>
+    </div>
+  </section>
+
+  <section class="sheet sheet-contact" id="contact">
+    <span class="kicker">CONTACT</span>
+    <h2>Talk to us.</h2>
+    <p class="lede">We aim to reply within two business days.</p>
+    <div class="mail">
+      <a href="mailto:support@enginelabs.com.au"><span>SUPPORT</span><b>support@enginelabs.com.au</b></a>
+      <a href="mailto:hello@enginelabs.com.au"><span>PARTNERSHIPS</span><b>hello@enginelabs.com.au</b></a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-row">
+    <div class="foot-brand">
+      <img src="/assets/icon-64.png" alt="" width="28" height="28">
+      <span>© 2026 Engine Labs · Not a medical device</span>
+    </div>
+    <nav aria-label="Legal">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/legal">Legal</a>
+      <a href="/support">Support</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/assets/chrome.js" defer></script>
+<script src="/assets/home.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+/* Shared by every page: fonts, colour tokens, and the two blue scroll rails.
+   Inter and JetBrains Mono are OFL-licensed and self-hosted. */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/assets/fonts/inter.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/assets/fonts/jetbrains-mono.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/assets/fonts/jetbrains-mono-greek.woff2") format("woff2");
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+
+:root {
+  --bg: #111018;
+  --ink: #EDEDF2;
+  --mute: #B4B4C6;
+  --dim: #9A9AB0;
+  --faint: #8686A0;
+  --cyan: #53DDFF;
+  --left: #F8B820;
+  --right: #2EC98C;
+  --blue: #2F8CFF;
+  --blue-hi: #8EC4FF;
+  --rail-track: #0A1424;
+  --rail-h: 10px;
+  --vbar-w: 14px;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* The page never shows a native scrollbar or a white rubber-band edge:
+   the blue rails below replace the first, the dark root colour the second. */
+html {
+  background: var(--bg);
+  overscroll-behavior: none;
+  scrollbar-width: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  overscroll-behavior: none;
+  padding-right: var(--vbar-w);
+}
+
+/* Horizontal rail: shows progress only, never takes pointer or selection.
+   The fill starts empty at the left edge and spans the screen at the end of the page. */
+#hz-rail {
+  position: fixed;
+  z-index: 90;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--rail-h);
+  background: var(--rail-track);
+  border-bottom: 1px solid rgba(47, 140, 255, 0.16);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#hz-rail i {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--blue);
+  box-shadow: 0 0 14px rgba(47, 140, 255, 0.75);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+#hz-rail b,
+#hz-vbar b {
+  position: absolute;
+  background: rgb(var(--c, 47 140 255));
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+#hz-rail b {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+/* Vertical rail: a real scrollbar. Drag the thumb or press the track. */
+#hz-vbar {
+  position: fixed;
+  z-index: 90;
+  top: var(--rail-h);
+  right: 0;
+  bottom: 0;
+  width: var(--vbar-w);
+  background: var(--rail-track);
+  border-left: 1px solid rgba(47, 140, 255, 0.16);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#hz-vbar b {
+  left: 0;
+  width: 5px;
+  height: 1px;
+}
+
+#hz-vbar i {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 3px;
+  right: 2px;
+  height: 48px;
+  border-radius: 99px;
+  background: var(--blue);
+  box-shadow: 0 0 14px rgba(47, 140, 255, 0.65);
+  cursor: grab;
+}
+
+#hz-vbar:hover i {
+  background: #4B9DFF;
+}
+
+#hz-vbar.is-dragging i {
+  background: var(--blue-hi);
+  cursor: grabbing;
+}
+
+/* Readout that rides beside the vertical thumb while a page reports one.
+   It is set on its side so it stays clear of the page's own text. */
+#hz-vflag {
+  position: fixed;
+  z-index: 89;
+  top: 0;
+  right: calc(var(--vbar-w) + 6px);
+  padding: 8px 5px;
+  writing-mode: vertical-rl;
+  border-radius: 8px;
+  border: 1px solid rgba(47, 140, 255, 0.55);
+  background: rgba(10, 24, 46, 0.92);
+  color: #DBEAFF;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+#hz-vflag.is-on {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --rail-h: 8px;
+    --vbar-w: 10px;
+  }
+
+  #hz-vflag {
+    display: none;
+  }
+}

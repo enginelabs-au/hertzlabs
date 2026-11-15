@@ -1,0 +1,20 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/Main.dc", "destination": "/", "permanent": true },
+    { "source": "/Home.dc", "destination": "/", "permanent": true },
+    { "source": "/Privacy.dc", "destination": "/privacy", "permanent": true },
+    { "source": "/Terms.dc", "destination": "/terms", "permanent": true },
+    { "source": "/Legal.dc", "destination": "/legal", "permanent": true },
+    { "source": "/Support.dc", "destination": "/support", "permanent": true }
+  ],
+  "headers": [
+    {
+      "source": "/assets/fonts/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

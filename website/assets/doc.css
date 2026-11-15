@@ -1,0 +1,48 @@
+/* Privacy, Terms, Legal and Support: the document pages' styles, as designed. */
+body{margin:0;background:#111018}
+a{color:#53DDFF}a:hover{color:#9BEBFF}
+.hl-root *{box-sizing:border-box}
+.hl-grid{position:absolute;inset:0;height:640px;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(ellipse 60% 70% at 50% 0%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse 60% 70% at 50% 0%,#000 20%,transparent 75%)}
+.hl-nav{-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%)}
+.hl-navlink{color:#B4B4C6;text-decoration:none;transition:color .2s}
+.hl-navlink:hover{color:#FFFFFF}
+.hl-cta{transition:transform .2s,box-shadow .2s}
+.hl-cta:hover{color:#111018;transform:translateY(-1px);box-shadow:0 8px 28px -6px rgba(83,221,255,.6)}
+.hl-foot{color:#9A9AB0;text-decoration:none;transition:color .2s}
+.hl-foot:hover{color:#FFFFFF}
+@keyframes hl-rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.hl-rise{animation:hl-rise .8s cubic-bezier(.2,.7,.2,1) both}
+@media (prefers-reduced-motion: reduce){.hl-root *{animation:none !important;transition:none !important}}
+.hl-doc h2{margin:56px 0 14px;font-size:22px;font-weight:600;letter-spacing:-.015em;color:#FFFFFF;scroll-margin-top:96px}
+.hl-doc h3{margin:28px 0 8px;font-size:16px;font-weight:600;color:#EDEDF2}
+.hl-doc p,.hl-doc li{font-size:16px;line-height:1.7;color:#B4B4C6}
+.hl-doc p{margin:0 0 14px}
+.hl-doc ul{margin:0 0 14px;padding-left:20px}
+.hl-doc li{margin:0 0 6px}
+.hl-doc strong{color:#EDEDF2;font-weight:600}
+.hl-doc .num{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;color:#53DDFF;margin-right:12px;font-weight:500}
+.hl-doc .tbl{overflow-x:auto;margin:8px 0 18px;border:1px solid rgba(255,255,255,.08);border-radius:16px}
+.hl-doc table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.hl-doc th{text-align:left;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:#9A9AB0;font-weight:500;padding:14px 16px;background:rgba(24,24,40,.7)}
+.hl-doc td{padding:14px 16px;color:#B4B4C6;line-height:1.5;border-top:1px solid rgba(255,255,255,.06);vertical-align:top}
+.hl-doc td:first-child{color:#EDEDF2;font-weight:500}
+.hl-doc .callout{padding:20px 22px;border-radius:16px;background:rgba(248,184,32,.07);border:1px solid rgba(248,184,32,.28);margin:8px 0 18px}
+.hl-doc .callout p{margin:0;color:#E9D9B0}
+.hl-doc details{border-top:1px solid rgba(255,255,255,.08)}
+.hl-doc details:last-of-type{border-bottom:1px solid rgba(255,255,255,.08)}
+.hl-doc summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;min-height:44px;font-size:17px;font-weight:500;color:#EDEDF2}
+.hl-doc summary::-webkit-details-marker{display:none}
+.hl-doc summary::after{content:"+";font-family:'JetBrains Mono',ui-monospace,monospace;font-size:20px;color:#53DDFF;transition:transform .2s}
+.hl-doc details[open] summary::after{transform:rotate(45deg)}
+.hl-doc details p{margin:-4px 0 20px}
+.hl-doc .contact{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:8px 0 8px}
+.hl-doc .contact a{display:flex;flex-direction:column;gap:6px;padding:20px 22px;border-radius:18px;background:rgba(24,24,40,.6);border:1px solid rgba(255,255,255,.08);text-decoration:none;transition:border-color .2s}
+.hl-doc .contact a:hover{border-color:rgba(83,221,255,.4)}
+.hl-doc .contact span{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:#9A9AB0}
+.hl-doc .contact b{font-size:16px;font-weight:500;color:#EDEDF2;word-break:break-all}
+@media (max-width: 640px){
+  .hl-navlinks{display:none !important}
+  .hl-h1{font-size:40px !important}
+  .hl-doc .contact{grid-template-columns:minmax(0,1fr)}
+  .hl-footrow{flex-direction:column !important;align-items:center !important;text-align:center}
+}
