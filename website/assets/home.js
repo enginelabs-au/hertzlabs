@@ -49,6 +49,9 @@
   var SCREEN_RATIO = 460 / 996;
   var TAU = Math.PI * 2;
   var GOLDEN_ANGLE = 2.39996323;
+  var RIPPLE_REACH = 240;                  // px around the pointer where the background rings ripple
+  var RIPPLE_WAVE = TAU / 120;             // one crest every 120 px
+  var RIPPLE_SPEED = 5;                    // radians a second: crests leave the pointer at about 95 px/s
 
   /* ---------- Small helpers ---------- */
 
@@ -182,6 +185,8 @@
   var nav = $("#nav");
   var menuButton = $("#menu");
   var soundButton = $("#sound");
+  var downloadSheet = $("#download");
+  var contactSheet = $("#contact");
   var pages = $$(".pg", ui);
   var tabBar = $("#ui-tabs");
   var tabs = $$(".tab", tabBar);
@@ -261,7 +266,7 @@
 
   /* ---------- Layout ---------- */
 
-  var G = { w: 0, h: 0, wide: true, heroX: 0, heroY: 0, top: 0, range: 1, dpr: 1 };
+  var G = { w: 0, h: 0, wide: true, heroX: 0, heroY: 0, top: 0, range: 1, dpr: 1, download: Infinity, contact: Infinity, end: Infinity };
   var dirty = true;
 
   var field = $("#field");
@@ -328,7 +333,16 @@
     chrome.ticks(BANDS.map(function (band) {
       return { at: clamp01(scrollFor(band.start) / max), rgb: band.css };
     }));
+
+    // Where the sections under the stage start, for the menu's marker.
+    G.download = pageTop(downloadSheet);
+    G.contact = pageTop(contactSheet);
+    G.end = max;
     dirty = true;
+  }
+
+  function pageTop(node) {
+    return node.getBoundingClientRect().top + window.scrollY;
   }
 
   function scrollFor(t) {
@@ -411,9 +425,21 @@
     var cy = h * 0.54;
     var reach = w * 1.12;
 
+    // Under the pointer the rings ripple and brighten a little. Closely spaced
+    // rings are pushed less, so neighbours never cross, and lit less, because
+    // there are more of them.
+    var ripple = pointer.level > 0.004 ? {
+      x: pointer.x,
+      y: pointer.y,
+      reach: G.wide ? RIPPLE_REACH : RIPPLE_REACH * 0.7,
+      push: pointer.level * clamp(gap * 0.4, 6, 14),
+      lift: pointer.level * (0.2 + 0.1 * Math.min(1, gap / 70)),
+      phase: time * RIPPLE_SPEED
+    } : null;
+
     c.lineWidth = 1;
-    ringSet(c, -w * 0.05, cy, -Math.PI / 2, gap, drift, reach, [248, 184, 32], strength);
-    ringSet(c, w * 1.05, cy, Math.PI / 2, gap, drift, reach, [46, 201, 140], strength);
+    ringSet(c, -w * 0.05, cy, -Math.PI / 2, gap, drift, reach, [248, 184, 32], strength, ripple);
+    ringSet(c, w * 1.05, cy, Math.PI / 2, gap, drift, reach, [46, 201, 140], strength, ripple);
 
     // The band names run along the floor of the stage like a film strip.
     if (!G.wide || wordAlpha < 0.01) return;
@@ -429,18 +455,75 @@
     }
   }
 
-  function ringSet(c, cx, cy, from, gap, drift, reach, rgb, strength) {
+  /* One ear's rings: half circles about a point just off the side of the stage.
+     Where the pointer's ripple reaches a ring, that stretch is drawn point by
+     point, pushed in and out along the ring's own radius by a wave travelling
+     away from the pointer. The rest of the ring stays a plain arc. */
+  function ringSet(c, cx, cy, from, gap, drift, reach, rgb, strength, ripple) {
     var fade = c.createRadialGradient(cx, cy, 0, cx, cy, reach);
     fade.addColorStop(0, rgba(rgb, strength));
     fade.addColorStop(1, rgba(rgb, 0));
     c.strokeStyle = fade;
+
+    var far = 0;      // how far the pointer is from this set's centre
+    var toward = 0;   // and in which direction, as an angle along the half ring
+    var lit = null;   // the rippling stretches, stroked again to brighten them
+    if (ripple) {
+      var px = ripple.x - cx;
+      var py = ripple.y - cy;
+      far = Math.sqrt(px * px + py * py) || 1;
+      toward = Math.atan2(py, px) - from;
+      toward -= TAU * Math.floor((toward + Math.PI) / TAU);
+      if (window.Path2D) lit = new Path2D();
+    }
+
     c.beginPath();
     for (var r = gap * drift; r < reach; r += gap) {
       if (r < 1) continue;
       c.moveTo(cx + r * Math.cos(from), cy + r * Math.sin(from));
-      c.arc(cx, cy, r, from, from + Math.PI);
+
+      // The part of this ring, if any, that lies within the ripple's reach.
+      var lo = 0;
+      var hi = 0;
+      if (ripple && Math.abs(far - r) < ripple.reach) {
+        var cosine = (r * r + far * far - ripple.reach * ripple.reach) / (2 * r * far);
+        var half = cosine <= -1 ? Math.PI : Math.acos(Math.min(1, cosine));
+        lo = Math.max(0, toward - half);
+        hi = Math.min(Math.PI, toward + half);
+      }
+      if (hi <= lo) {
+        c.arc(cx, cy, r, from, from + Math.PI);
+        continue;
+      }
+
+      if (lo > 0) c.arc(cx, cy, r, from, from + lo);
+      var steps = Math.max(2, Math.ceil((hi - lo) * r / 8));
+      for (var i = 0; i <= steps; i++) {
+        var angle = from + lo + (hi - lo) * i / steps;
+        var ux = Math.cos(angle);
+        var uy = Math.sin(angle);
+        var dx = cx + r * ux - ripple.x;
+        var dy = cy + r * uy - ripple.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        // Strongest at the pointer, gone (and level) at the edge of its reach.
+        var near = Math.max(0, 1 - (d * d) / (ripple.reach * ripple.reach));
+        var out = r + ripple.push * near * near * Math.sin(d * RIPPLE_WAVE - ripple.phase);
+        var x = cx + out * ux;
+        var y = cy + out * uy;
+        c.lineTo(x, y);
+        if (lit) { if (i) lit.lineTo(x, y); else lit.moveTo(x, y); }
+      }
+      if (hi < Math.PI) c.arc(cx, cy, r, from + hi, from + Math.PI);
     }
     c.stroke();
+
+    if (lit) {
+      var glow = c.createRadialGradient(ripple.x, ripple.y, 0, ripple.x, ripple.y, ripple.reach);
+      glow.addColorStop(0, rgba(rgb, ripple.lift));
+      glow.addColorStop(1, rgba(rgb, 0));
+      c.strokeStyle = glow;
+      c.stroke(lit);
+    }
   }
 
   /* Engines tab: right tone along the top, left tone down the side, and the
@@ -634,6 +717,28 @@
   var position = -1;   // smoothed place on the timeline
   var clock = 0;
   var tilt = { x: 0, y: 0, tx: 0, ty: 0 };
+  // The mouse over the stage: where it is in the window, where its ripple in
+  // the background rings has got to (in stage pixels), and how strong that is.
+  var pointer = { over: false, clientX: 0, clientY: 0, x: 0, y: 0, level: 0 };
+
+  /* The ripple trails the pointer slightly, rises quickly when the pointer
+     arrives and settles slowly once it has gone. */
+  function stir(elapsed) {
+    // The stage is pinned for most of the page and scrolls with it at either end.
+    var stageTop = G.top - window.scrollY + clamp(window.scrollY - G.top, 0, G.range);
+    var x = pointer.clientX;
+    var y = pointer.clientY - stageTop;
+    if (pointer.level < 0.002) {
+      pointer.x = x;
+      pointer.y = y;
+    } else {
+      var follow = 1 - Math.exp(-elapsed * 12);
+      pointer.x += (x - pointer.x) * follow;
+      pointer.y += (y - pointer.y) * follow;
+    }
+    var goal = pointer.over && !reduced ? 1 : 0;
+    pointer.level += (goal - pointer.level) * (1 - Math.exp(-elapsed * (goal ? 7 : 2.2)));
+  }
 
   function render(t, time) {
     var p = clamp01(t / INTRO);
@@ -859,6 +964,8 @@
     }
     tilt.x += (tilt.tx - tilt.x) * 0.08;
     tilt.y += (tilt.ty - tilt.y) * 0.08;
+    stir(elapsed);
+    mark(window.scrollY);
 
     // Past the stage there is nothing to draw, and nothing to hear.
     var visible = window.scrollY < G.top + G.range + G.h;
@@ -884,6 +991,33 @@
     if (id === "how") return scrollFor(INTRO + BANDS[0].span * 0.45);
     var target = document.getElementById(id);
     return target ? target.getBoundingClientRect().top + window.scrollY - 20 : null;
+  }
+
+  /* The menu marks the section on screen. A section counts once it reaches the
+     middle of the window; the last one also counts at the very end of the
+     page, however tall the window is. */
+  var marks = {
+    how: $('#links a[href="#how"]'),
+    download: $('#nav a[href="#download"]'),
+    contact: $('#links a[href="#contact"]')
+  };
+
+  function sectionAt(y) {
+    var middle = y + window.innerHeight / 2;
+    if (middle >= G.contact || y >= G.end - 2) return "contact";
+    if (middle >= G.download) return "download";
+    // "How it works" is the whole dial, from the moment the hero gives way to it.
+    if (y >= scrollFor(INTRO - 0.2)) return "how";
+    return "";
+  }
+
+  function mark(y) {
+    if (!changed("here", sectionAt(y))) return;
+    Object.keys(marks).forEach(function (name) {
+      if (!marks[name]) return;
+      if (name === last.here) marks[name].setAttribute("aria-current", "location");
+      else marks[name].removeAttribute("aria-current");
+    });
   }
 
   function closeMenu() {
@@ -922,11 +1056,16 @@
   $("#ui-play").addEventListener("click", function () { setPlaying(!playing); });
   document.addEventListener("visibilitychange", function () { if (document.hidden && playing) setPlaying(false); });
 
+  // A mouse (or pen) over the stage tilts the phone and stirs the rings behind it.
   stage.addEventListener("pointermove", function (event) {
     if (event.pointerType === "touch") return;
     tilt.tx = (event.clientX / window.innerWidth - 0.5) * 2;
     tilt.ty = (event.clientY / window.innerHeight - 0.5) * 2;
+    pointer.over = true;
+    pointer.clientX = event.clientX;
+    pointer.clientY = event.clientY;
   });
+  stage.addEventListener("pointerleave", function () { pointer.over = false; });
 
   /* ---------- Start ---------- */
 

@@ -26,12 +26,15 @@
 
   function geometry() {
     var max = maxScroll();
+    var y = window.scrollY;
     var visible = root.scrollHeight ? Math.min(1, window.innerHeight / root.scrollHeight) : 1;
     var track = vbar.clientHeight;
     var size = Math.min(track, Math.max(MIN_THUMB, track * visible));
     return {
       max: max,
-      progress: max ? Math.min(1, Math.max(0, window.scrollY / max)) : 0,
+      // A browser can stop a fraction of a pixel short of the end. That still
+      // counts as the end, so the top rail closes completely.
+      progress: !max ? 0 : y >= max - 1 ? 1 : Math.max(0, y / max),
       track: track,
       size: size,
       travel: Math.max(0, track - size)
