@@ -11,6 +11,7 @@ import {ActiveTargetChip} from '../components/math/ActiveTargetChip';
 import {CustomFormulaSection} from '../components/math/CustomFormulaSection';
 import {DEFAULT_BEAT_HZ} from '../audio/paramMapping';
 import {HertzTheme} from '../theme/hertzTheme';
+import {posthog} from '../config/posthog';
 
 const MATH_PRESETS: MathPresetItem[] = [
   {id: 'schumann-1', label: '7.83 Hz', beatHz: 7.83, group: 'Schumann Resonances', isPremium: false, description: 'Primary Schumann resonance — Earth\'s electromagnetic heartbeat.'},
@@ -74,6 +75,11 @@ export function MathModeScreen() {
         setParam('beatHz', preset.beatHz);
         setParam('carrierHz', 220);
       }
+      posthog?.capture('math_preset_applied', {
+        preset_id: preset.id,
+        preset_group: preset.group,
+        frequency_hz: preset.beatHz,
+      });
     },
     [setParam],
   );

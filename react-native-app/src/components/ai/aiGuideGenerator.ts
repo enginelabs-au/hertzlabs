@@ -6,7 +6,15 @@ import {
   getLastAppliedHz,
   isFollowUpPrompt,
 } from '../../ai/aiPromptParsing';
-import {geminiGuideRecommendation, clearOutageAfterSuccessfulFallback, getGeminiOutageReason, geminiUnavailableExplanation, isTransientGeminiOutage, resetGeminiOutageForRetry} from '../../ai/geminiChatClient';
+import {
+  geminiGuideRecommendation,
+  clearOutageAfterSuccessfulFallback,
+  getGeminiOutageReason,
+  geminiUnavailableExplanation,
+  isTransientGeminiOutage,
+  resetGeminiOutageForRetry,
+  type AiObservabilityContext,
+} from '../../ai/geminiChatClient';
 import {inferBeatHzFromPrompt} from '../../ai/parseProtocolFromPrompt';
 import {buildExperientialGuide, classifyExperientialIntent} from '../../ai/experientialIntent';
 import {promptMentionsCarrierOrPitch, sanitizeBeatHzFromModel, parseCarrierHzFromPrompt} from '../../ai/beatHzSanitize';
@@ -44,6 +52,7 @@ export type GuideGenerationOptions = {
   engineType?: string;
   experimental?: boolean;
   premium?: boolean;
+  observability?: AiObservabilityContext;
 };
 
 interface IntentProfile {
@@ -513,7 +522,7 @@ export async function generateGuidance(
           engineType: options.engineType ?? 'binaural',
           experimental: options.experimental ?? false,
           premium: options.premium ?? false,
-        })
+        }, options.observability)
       : null;
 
   const parsed = geminiRaw != null ? parseGeminiGuidePayload(geminiRaw, trimmed) : null;

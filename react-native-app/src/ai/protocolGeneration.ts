@@ -7,7 +7,11 @@ import {
   scaleProtocolStepsToTotalSec,
 } from '../protocol/interpolateProtocol';
 import type {ProtocolStep, RampCurve, SessionProtocol} from '../protocol/types';
-import {geminiProtocolSequence, getGeminiOutageReason} from './geminiChatClient';
+import {
+  geminiProtocolSequence,
+  getGeminiOutageReason,
+  type AiObservabilityContext,
+} from './geminiChatClient';
 import {sanitizeBeatHzFromModel, parseCarrierHzFromPrompt} from './beatHzSanitize';
 import type {ChatTurn} from './aiPromptParsing';
 import {bandNameToHz} from './parseProtocolFromPrompt';
@@ -231,6 +235,7 @@ async function requestGeminiProtocol(
     engineType: EngineMode;
     premium: boolean;
     experimental: boolean;
+    observability?: AiObservabilityContext;
   },
 ): Promise<{raw: unknown | null; parsed: SessionProtocol | null}> {
   const session = {
@@ -244,7 +249,11 @@ async function requestGeminiProtocol(
   const conversationText = buildUserConversationText(history, trimmed);
   const intentText = buildIntentParsingText(history, trimmed);
 
-  const raw = await geminiProtocolSequence(history, trimmed, session, {repair: false, compact: true});
+  const raw = await geminiProtocolSequence(history, trimmed, session, {
+    repair: false,
+    compact: true,
+    observability: options.observability,
+  });
   if (raw == null) {
     return {raw: null, parsed: null};
   }
@@ -976,6 +985,7 @@ export async function generateProtocolFromPrompt(
     engineType?: EngineMode;
     premium?: boolean;
     experimental?: boolean;
+    observability?: AiObservabilityContext;
   } = {},
 ): Promise<ProtocolGenerationResult | null> {
   const trimmed = prompt.trim();
@@ -1028,6 +1038,7 @@ export async function generateProtocolFromPrompt(
       engineType,
       premium,
       experimental,
+      observability: options.observability,
     },
   );
 

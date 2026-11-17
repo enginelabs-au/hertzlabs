@@ -16,6 +16,7 @@ import {FOCUS_CHALLENGE_MIN_PLAY_SEC, FOCUS_CHALLENGE_TOTAL_DAYS} from '../focus
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
+import {posthog} from '../config/posthog';
 
 function LikertRow({
   label,
@@ -138,6 +139,10 @@ export function FocusChallengeReflectionModal() {
 
     const state = useHertzStore.getState();
     const completed = remote.status === 'complete' || state.focusChallengeStatus === 'complete';
+    posthog?.capture('focus_challenge_day_completed', {
+      challenge_day: focusChallengeCurrentDay,
+      challenge_completed: completed,
+    });
 
     if (completed && wasDay30 && !state.focusChallengeRewardClaimed) {
       const result = await claimPromoReward('focus_challenge_30');

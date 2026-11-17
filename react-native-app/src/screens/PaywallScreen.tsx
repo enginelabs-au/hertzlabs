@@ -27,6 +27,7 @@ import {useHertzStore} from '../state/store';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {HertzTheme} from '../theme/hertzTheme';
+import {posthog} from '../config/posthog';
 
 const ENTITLEMENT_ID = REVENUECAT_ENTITLEMENT;
 
@@ -442,6 +443,9 @@ export function PaywallScreen() {
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
         if (Object.keys(result.customerInfo.entitlements.active).includes(ENTITLEMENT_ID)) {
           markPaywallSoftPromptShown();
+          posthog?.capture('subscription_purchased', {
+            plan_key: plan.key,
+          });
         }
       } catch (e) {
         // RevenueCat throws with code; user-cancelled is not an error to alert
@@ -469,6 +473,7 @@ export function PaywallScreen() {
       const isActive = Object.keys(info.entitlements.active).includes(ENTITLEMENT_ID);
       if (isActive) {
         markPaywallSoftPromptShown();
+        posthog?.capture('subscription_restored');
       }
       Alert.alert(
         isActive ? 'Restored' : 'Nothing to Restore',

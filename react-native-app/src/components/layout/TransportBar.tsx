@@ -4,6 +4,7 @@ import {BlurView} from '@sbaiahmed1/react-native-blur';
 import {isMacDesktopBuild} from '../../platform/layoutProfile';
 import {useHertzStore} from '../../state/store';
 import {HertzTheme} from '../../theme/hertzTheme';
+import {posthog} from '../../config/posthog';
 
 /** Matches BlurView overlay on iOS when Mac Catalyst cannot render UIVisualEffectView. */
 const MAC_TRANSPORT_BACKDROP = 'rgba(8,10,18,0.96)';
@@ -16,6 +17,16 @@ export function TransportBar() {
   const requestPlay = useHertzStore(s => s.requestPlay);
   const requestPause = useHertzStore(s => s.requestPause);
   const macDesktop = isMacDesktopBuild();
+
+  const handlePlaybackToggle = () => {
+    if (isPlaying) {
+      posthog?.capture('audio_playback_paused');
+      requestPause();
+    } else {
+      posthog?.capture('audio_playback_started');
+      requestPlay();
+    }
+  };
 
   return (
     <View style={[styles.bar, macDesktop && styles.barMac]}>
@@ -42,7 +53,7 @@ export function TransportBar() {
 
         <Pressable
           style={[styles.transportBtn, isPlaying && styles.transportBtnActive]}
-          onPress={() => (isPlaying ? requestPause() : requestPlay())}
+          onPress={handlePlaybackToggle}
           accessibilityRole="button"
           accessibilityLabel={isPlaying ? 'Pause playback' : 'Play playback'}
           accessibilityState={{selected: isPlaying}}>

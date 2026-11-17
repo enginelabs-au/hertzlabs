@@ -23,6 +23,7 @@ import type {FormulaAppliedPayload} from './activeFormulaDisplay';
 import {useChatAutoScroll} from '../ai/useChatAutoScroll';
 import type {ChatTurn} from '../../ai/aiPromptParsing';
 import {generateProtocolFromPrompt} from '../../ai/protocolGeneration';
+import {createAiTraceId} from '../../ai/geminiChatClient';
 import type {AiApplyPayload, AiChatMessage} from '../../state/slices/aiChat';
 import {
   evaluateAiRateLimit,
@@ -46,6 +47,7 @@ export function AIFormulaSection({
   defaultExpanded = false,
 }: AIFormulaSectionProps) {
   const messages = useHertzStore(s => s.formulaMessages);
+  const aiSessionId = useHertzStore(s => s.formulaAiSessionId);
   const appendMessages = useHertzStore(s => s.appendFormulaMessages);
   const resetChat = useHertzStore(s => s.resetFormulaChat);
   const startProtocol = useHertzStore(s => s.startProtocol);
@@ -103,6 +105,7 @@ export function AIFormulaSection({
       noteAiCall();
       const nearLimitHint = rate.nearLimit ? formatNearLimitHint(rate.remaining) : '';
       setLoading(true);
+      const observability = {sessionId: aiSessionId, traceId: createAiTraceId()};
 
       try {
         const s = useHertzStore.getState();
@@ -113,6 +116,7 @@ export function AIFormulaSection({
           beatHz: s.beatHz,
           gain: s.gain,
           engineType: s.engineType,
+          observability,
         });
         if (protocolResult != null) {
           setProtocolDraftSeed(protocolResult.protocol);
@@ -136,6 +140,7 @@ export function AIFormulaSection({
           engineType: s.engineType,
           experimental,
           premium: isPremiumUnlocked(s.tier),
+          observability,
         });
 
         let assistantText = result.reply;
@@ -167,7 +172,7 @@ export function AIFormulaSection({
         setLoading(false);
       }
     },
-    [appendMessages, loading, messages, noteAiCall, onFormulaApplied, setProtocolDraftSeed, startProtocol],
+    [aiSessionId, appendMessages, loading, messages, noteAiCall, onFormulaApplied, setProtocolDraftSeed, startProtocol],
   );
 
   return (

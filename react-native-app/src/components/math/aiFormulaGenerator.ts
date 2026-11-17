@@ -6,7 +6,7 @@ import {
   getLastAppliedHz,
   isFollowUpPrompt,
 } from '../../ai/aiPromptParsing';
-import {geminiFormulaResponse} from '../../ai/geminiChatClient';
+import {geminiFormulaResponse, type AiObservabilityContext} from '../../ai/geminiChatClient';
 import type {MathFormulaContext} from './evaluateMathFormula';
 import {evaluateMathFormula} from './evaluateMathFormula';
 import {MAX_BEAT_HZ} from '../../audio/paramMapping';
@@ -152,6 +152,7 @@ export type FormulaGenerationOptions = {
   engineType?: string;
   experimental?: boolean;
   premium?: boolean;
+  observability?: AiObservabilityContext;
 };
 
 function escapeRegex(s: string): string {
@@ -305,7 +306,7 @@ export async function generateFormulaFromPrompt(
     f_R: ctx.f_R,
     f_beat: ctx.f_beat,
     f_c: ctx.f_c,
-  });
+  }, options.observability);
 
   const parsed = geminiRaw != null ? parseGeminiFormulaPayload(geminiRaw) : null;
   if (parsed != null) {
