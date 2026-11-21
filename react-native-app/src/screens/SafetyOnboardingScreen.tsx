@@ -9,6 +9,7 @@ import {useHertzStore} from '../state/store';
 import {LegalMenuBar} from '../components/layout/LegalMenuBar';
 import {useLayoutProfile} from '../platform/layoutProfile';
 import {HertzTheme} from '../theme/hertzTheme';
+import {posthog} from '../config/posthog';
 
 const STEP_COUNT = 3;
 const STEP_BEAT_HZ = [8, 10, 12] as const;
@@ -287,7 +288,10 @@ export function SafetyOnboardingScreen() {
             ctaEnabled={ctaEnabled}
             onToggleTerms={() => setCheckedTerms(v => !v)}
             onToggleMedical={() => setCheckedMedical(v => !v)}
-            onAccept={() => setHasAccepted(true)}
+            onAccept={() => {
+              posthog?.capture('safety_onboarding_completed');
+              setHasAccepted(true);
+            }}
           />
         )}
 

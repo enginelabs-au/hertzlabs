@@ -16,6 +16,7 @@ import {canShowCancellationWinback} from '../monetization/cancellationWinbackFlo
 import {AppStoreOfferRedemptionPanel} from '../components/monetization/AppStoreOfferRedemptionPanel';
 import {ReferralCodePanel} from '../components/monetization/ReferralCodePanel';
 import Purchases from 'react-native-purchases';
+import {usePostHog} from 'posthog-react-native';
 import type {CustomerInfo, Package} from 'react-native-purchases';
 import {
   summarizeActiveSubscription,
@@ -334,6 +335,11 @@ export function PaywallScreen() {
   const dismissPaywallNudgeForSession = useHertzStore(s => s.dismissPaywallNudgeForSession);
   const _hydrateFromRC = useHertzStore(s => s._hydrateFromRC);
   const storeNativeRedemption = usesStoreNativeRedemption();
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog?.capture('paywall viewed');
+  }, [posthog]);
 
   const [plans, setPlans] = useState<PaywallPlan[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -442,6 +448,7 @@ export function PaywallScreen() {
         _hydrateFromRC(result.customerInfo, ENTITLEMENT_ID);
         if (Object.keys(result.customerInfo.entitlements.active).includes(ENTITLEMENT_ID)) {
           markPaywallSoftPromptShown();
+          posthog?.capture('purchase completed', {plan: plan.key});
         }
       } catch (e) {
         // RevenueCat throws with code; user-cancelled is not an error to alert
@@ -454,7 +461,7 @@ export function PaywallScreen() {
         setPurchasing(false);
       }
     },
-    [purchasing, storeUnavailableDetail, _hydrateFromRC, markPaywallSoftPromptShown],
+    [purchasing, storeUnavailableDetail, _hydrateFromRC, markPaywallSoftPromptShown, posthog],
   );
 
   const handleRestore = useCallback(async () => {
@@ -469,6 +476,7 @@ export function PaywallScreen() {
       const isActive = Object.keys(info.entitlements.active).includes(ENTITLEMENT_ID);
       if (isActive) {
         markPaywallSoftPromptShown();
+        posthog?.capture('subscription_restored');
       }
       Alert.alert(
         isActive ? 'Restored' : 'Nothing to Restore',

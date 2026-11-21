@@ -111,7 +111,7 @@ export function HomeScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? top : 0}>
-      <StatusBar barStyle="light-content" backgroundColor={HertzTheme.bg} translucent={false} />
+      <StatusBar barStyle="light-content" />
 
       <ScreenScrollLayout
         bottomInset={scrollBottomPad}

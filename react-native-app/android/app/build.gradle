@@ -20,8 +20,8 @@ android {
         applicationId "com.hertzlabs.binauralbeats"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 33
-        versionName "3.0"
+        versionCode 36
+        versionName "3.1"
 
         externalNativeBuild {
             cmake {
@@ -64,7 +64,10 @@ android {
         }
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
+            // Play Console requires meaningful DEX optimization/obfuscation coverage.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
 }

@@ -50,8 +50,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - PurchasesHybridCommon (14.3.0):
-    - RevenueCat (= 5.32.0)
+  - PurchasesHybridCommon (18.22.2):
+    - RevenueCat (= 5.81.1)
   - RCTDeprecation (0.85.3)
   - RCTRequired (0.85.3)
   - RCTSwiftUI (0.85.3)
@@ -1975,7 +1975,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - ReactNativeDependencies (0.85.3)
-  - RevenueCat (5.32.0)
+  - RevenueCat (5.81.1)
   - RNCClipboard (1.16.3):
     - hermes-engine
     - RCTRequired
@@ -1998,7 +1998,31 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNDeviceInfo (15.0.2):
+    - React-Core
   - RNGestureHandler (3.0.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - RNLocalize (3.7.2):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2025,8 +2049,8 @@ PODS:
     - RNNotifee/NotifeeCore (= 9.1.8)
   - RNNotifee/NotifeeCore (9.1.8):
     - React-Core
-  - RNPurchases (8.12.0):
-    - PurchasesHybridCommon (= 14.3.0)
+  - RNPurchases (10.4.4):
+    - PurchasesHybridCommon (= 18.22.2)
     - React-Core
   - RNReanimated (4.4.0):
     - hermes-engine
@@ -2258,7 +2282,9 @@ DEPENDENCIES:
   - "ReactNativeBlur (from `../node_modules/@sbaiahmed1/react-native-blur`)"
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
+  - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNLocalize (from `../node_modules/react-native-localize`)
   - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
@@ -2434,8 +2460,12 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNCClipboard:
     :path: "../node_modules/@react-native-clipboard/clipboard"
+  RNDeviceInfo:
+    :path: "../node_modules/react-native-device-info"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNLocalize:
+    :path: "../node_modules/react-native-localize"
   RNNotifee:
     :path: "../node_modules/@notifee/react-native"
   RNPurchases:
@@ -2452,7 +2482,7 @@ SPEC CHECKSUMS:
   hermes-engine: 7de19476e8eb38e722afb4580345ae438368d284
   NitroModules: 16bc17a076b12304d608f7c915b9d321f56dfc19
   NitroSpeech: e65d1e6dd81cc7a633991bad4ff51fc291354dd4
-  PurchasesHybridCommon: 7f0944cc5411bdcd1ea5d69affa6a6f9aaf87b13
+  PurchasesHybridCommon: e47bc4f611e86fcf8295bf1c984f187982270f02
   RCTDeprecation: a4c521821fab57cbb125b36effe84d897d0dfa12
   RCTRequired: 9f3a7e5645d4bc3f551593de7550bb66ab6e42bc
   RCTSwiftUI: 239ed2eb9e73de5a6f518810630f0c95e01c8702
@@ -2529,11 +2559,13 @@ SPEC CHECKSUMS:
   ReactCommon: 7dfc3250793bf36cf221096ff59e1179e13eef7f
   ReactNativeBlur: 1ca228989aa5d9904e14f705a38d88085fabd2ae
   ReactNativeDependencies: a974db2c6952ff3ba0ba8376d71749687ebcf634
-  RevenueCat: 7e1d0768fb287c9983173c9b28e39ccbeeb828a9
+  RevenueCat: 693b033863262f9776130cc6c1f9255a74ab23ff
   RNCClipboard: 715fa7c6c8366f17d00f05a439ee7488f390fa5f
+  RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
   RNGestureHandler: ed28fea435eee1ea629ed8372c2e98138a73a472
+  RNLocalize: 74d0d3383e04991641b20342353d0776ce49a563
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
-  RNPurchases: 6070b60f5d8f525a58905df50773f7a3252f0cfa
+  RNPurchases: 2d7ea9f2e3246dcf14faddc554546047dc4c7d74
   RNReanimated: 56d68c745cfbb80187b7d78caa72a738901294ee
   RNWorklets: a6ebd7b1ae53f150d747986d70bfc34932d7ffb4
   Yoga: 77dfa8673de2874e1855002ae59c68b8be9b007b

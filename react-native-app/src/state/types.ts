@@ -138,8 +138,12 @@ export type SettingsSlice = {
   /** Screen photic strobe (AVE) — off by default; requires explicit consent. */
   photicStrobeEnabled: boolean;
   photicStrobeConsentGiven: boolean;
-  /** Local streak reminder scheduling (Feature 19). */
+  /** Local streak reminder scheduling — opt-in only (Feature 19). */
   streakRemindersEnabled: boolean;
+  /** Tracks one-time migration to opt-in streak reminders. */
+  streakRemindersOptInEpoch: number;
+  /** True after the post-first-session reminder offer has been shown. */
+  streakRemindersPromptShown: boolean;
   promotionalOffersEnabled: boolean;
   setPhoticStrobeEnabled(enabled: boolean): void;
   setPhoticStrobeConsentGiven(given: boolean): void;

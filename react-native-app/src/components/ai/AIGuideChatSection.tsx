@@ -35,6 +35,7 @@ import {
   shouldShowOutageNotice,
   geminiUnavailableExplanation,
   messageExplainsGeminiOutage,
+  createAiTraceId,
   type GeminiOutageReason,
 } from '../../ai/geminiChatClient';
 import type {AiApplyPayload, AiChatMessage, GuideAdvancedSettings} from '../../state/slices/aiChat';
@@ -45,6 +46,7 @@ import {
 } from '../../ai/aiRateLimit';
 import {HOME_QUICK_CLIPS} from '../home/homeQuickClips';
 import {useChatAutoScroll} from './useChatAutoScroll';
+import {posthog} from '../../config/posthog';
 
 type QuickStartIntent = {
   label: string;
@@ -141,6 +143,7 @@ export function AIGuideChatSection({
   const setProtocolDraftSeed = useHertzStore(s => s.setProtocolDraftSeed);
   const noteAiCall = useHertzStore(s => s.noteAiCall);
   const messages = useHertzStore(s => s.guideMessages);
+  const aiSessionId = useHertzStore(s => s.guideAiSessionId);
   const protocolRunning = useHertzStore(s => s.protocolRunning);
   const appendMessages = useHertzStore(s => s.appendGuideMessages);
   const resetChat = useHertzStore(s => s.resetGuideChat);
@@ -171,6 +174,9 @@ export function AIGuideChatSection({
       setEngineType(clip.engineMode);
       setParam('gain', clip.gain);
       pushNativeAudioNow();
+      posthog?.capture('ai_quick_start_applied', {
+        quick_start: clip.label,
+      });
       setAppliedClip(clip.label);
       setTimeout(() => setAppliedClip(null), 1600);
     },
@@ -278,12 +284,16 @@ export function AIGuideChatSection({
         }
         return;
       }
+      posthog?.capture('ai_guide_request_submitted', {
+        layout_mode: layoutMode,
+      });
       noteAiCall();
       const nearLimitHint = rate.nearLimit ? formatNearLimitHint(rate.remaining) : '';
       setLoading(true);
       // Fresh turn: clear any prior AI-service outage flag so the notice below
       // only reflects this submission.
       resetGeminiOutage();
+      const observability = {sessionId: aiSessionId, traceId: createAiTraceId()};
 
       try {
         const wantsProtocol =
@@ -298,6 +308,7 @@ export function AIGuideChatSection({
           engineType,
           experimental,
           premium,
+          observability,
         });
         const guideOk = !messageExplainsGeminiOutage(rec.explanationShort);
 
@@ -310,6 +321,7 @@ export function AIGuideChatSection({
             engineType,
             premium,
             experimental,
+            observability,
           });
           if (protocolResult != null) {
             const outage = getGeminiOutageReason();
@@ -379,6 +391,7 @@ export function AIGuideChatSection({
     },
     [
       appendMessages,
+      aiSessionId,
       applyGuideSettings,
       beatHz,
       carrierHz,

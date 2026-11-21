@@ -2,6 +2,7 @@ import type {StateCreator} from 'zustand';
 import type {AppStore, EngineMode} from '../types';
 import type {SessionProtocol} from '../../protocol/types';
 import {pruneCallLog} from '../../ai/aiRateLimit';
+import {createAiSessionId} from '../../ai/geminiChatClient';
 
 /** Optional advanced engine settings the AI Guide may set alongside beat/gain. */
 export type GuideAdvancedSettings = {
@@ -42,6 +43,9 @@ export type AiChatMessage = {
 export type AiChatSlice = {
   guideMessages: AiChatMessage[];
   formulaMessages: AiChatMessage[];
+  /** Stable IDs that group each in-memory conversation's AI generations into a session. */
+  guideAiSessionId: string;
+  formulaAiSessionId: string;
   /** Timestamps (ms) of recent AI submits, for the rolling-window rate limit. Not persisted. */
   aiCallLog: number[];
   appendGuideMessages(messages: AiChatMessage[]): void;
@@ -55,13 +59,15 @@ export type AiChatSlice = {
 export const createAiChatSlice: StateCreator<AppStore, [], [], AiChatSlice> = set => ({
   guideMessages: [],
   formulaMessages: [],
+  guideAiSessionId: createAiSessionId('guide'),
+  formulaAiSessionId: createAiSessionId('formula'),
   aiCallLog: [],
   appendGuideMessages: messages =>
     set(s => ({guideMessages: [...s.guideMessages, ...messages]})),
   appendFormulaMessages: messages =>
     set(s => ({formulaMessages: [...s.formulaMessages, ...messages]})),
-  resetGuideChat: () => set({guideMessages: []}),
-  resetFormulaChat: () => set({formulaMessages: []}),
+  resetGuideChat: () => set({guideMessages: [], guideAiSessionId: createAiSessionId('guide')}),
+  resetFormulaChat: () => set({formulaMessages: [], formulaAiSessionId: createAiSessionId('formula')}),
   noteAiCall: () =>
     set(s => {
       const now = Date.now();

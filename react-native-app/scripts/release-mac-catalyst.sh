@@ -13,7 +13,7 @@ EXPORT_PLIST="${EXPORT_PLIST:-/tmp/hertz-mac-release/ExportOptions.plist}"
 SKIA_IOS="$ROOT/node_modules/@shopify/react-native-skia/libs/ios/libskia.xcframework"
 
 skia_has_maccatalyst() {
-  [[ -d "$SKIA_IOS/ios-arm64_x86_64-maccatalyst/libskia.a" ]] && \
+  [[ -f "$SKIA_IOS/ios-arm64_x86_64-maccatalyst/libskia.a" ]] && \
     otool -l "$SKIA_IOS/ios-arm64_x86_64-maccatalyst/libskia.a" 2>/dev/null | rg -q 'platform 6'
 }
 

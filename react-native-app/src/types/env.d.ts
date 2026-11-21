@@ -2,6 +2,8 @@
 declare const process: {env?: Record<string, string | undefined>};
 
 declare module '@env' {
+  export const POSTHOG_PROJECT_TOKEN: string | undefined;
+  export const POSTHOG_HOST: string | undefined;
   export const REVENUECAT_API_KEY_IOS: string | undefined;
   export const REVENUECAT_API_KEY_ANDROID: string | undefined;
   export const REVENUECAT_ENTITLEMENT_ID: string | undefined;

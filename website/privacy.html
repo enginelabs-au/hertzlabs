@@ -13,6 +13,7 @@
 <link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/doc.css">
+<script src="/assets/posthog.js"></script>
 </head>
 <body>
 <div class="hl-root" style="position: relative; min-height: 100vh; background: #111018; color: #EDEDF2; font-family: 'Inter', system-ui, -apple-system, sans-serif; overflow-x: clip; -webkit-font-smoothing: antialiased">
@@ -40,7 +41,7 @@
       <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.18em; color: #53DDFF">PRIVACY POLICY</span>
       <h1 class="hl-h1" style="margin: 0; font-size: 56px; line-height: 1.05; font-weight: 700; letter-spacing: -0.035em; color: #FFFFFF">Privacy</h1>
       <p style="margin: 0; font-size: 18px; line-height: 1.6; color: #B4B4C6">No account needed. Your sessions and settings stay on your device.</p>
-      <span style="font-size: 13px; color: #9A9AB0">Last updated July 2026 · Applies to Hertz Labs on iOS, Android and Mac</span>
+      <span style="font-size: 13px; color: #9A9AB0">Last updated November 2026 · Applies to Hertz Labs on iOS, Android and Mac</span>
     </div>
     <article class="hl-doc hl-rise" style="animation-delay: .12s">
       <h2><span class="num">01</span>Overview</h2>
@@ -54,6 +55,7 @@
           <tr><td>Device ID</td><td>Links purchases to your device</td><td>RevenueCat</td><td>No</td></tr>
           <tr><td>AI Guide prompts</td><td>Text you type into the AI Guide, sent to generate frequency suggestions. We do not store prompts.</td><td>Google Gemini API</td><td>No</td></tr>
           <tr><td>Product interaction</td><td>Purchase signals such as paywall views and completed purchases</td><td>RevenueCat</td><td>No</td></tr>
+          <tr><td>Product analytics</td><td>App opens, playback started, sessions that reach 2 minutes, paywall views, completed purchases, streak reminder taps and toggles, and unanswered streak reminders, plus device model, app version, and an anonymous identifier. No name or email.</td><td>PostHog (EU)</td><td>No</td></tr>
           <tr><td>Feedback &amp; support</td><td>Message text, optional email, plus device model, app version and platform</td><td>Supabase, then email</td><td>Only if you add your email</td></tr>
           <tr><td>Promos &amp; referrals</td><td>Anonymous subscriber ID, reward claim status and submissions for manual review</td><td>Supabase</td><td>No</td></tr>
         </tbody>
@@ -62,7 +64,7 @@
       <ul><li>Motion sensor data (gyroscope and accelerometer), used to shape audio in real time in Kinetic Mode</li><li>Session and frequency settings, kept in encrypted local storage</li><li>App preferences and state</li></ul>
       <p>This data is never transmitted.</p>
       <h2><span class="num">04</span>Third-party services</h2>
-      <ul><li><strong>RevenueCat</strong> manages in-app purchases and subscriptions.</li><li><strong>Google Gemini API</strong> powers the AI Guide and processes your text prompts.</li><li><strong>Supabase</strong> hosts backend functions for feedback, promo rewards, referrals and app update policy.</li><li><strong>Apple App Store</strong> and <strong>Google Play</strong> process payments under their own privacy policies.</li></ul>
+      <ul><li><strong>RevenueCat</strong> manages in-app purchases and subscriptions.</li><li><strong>PostHog</strong> receives anonymous product analytics: app opens, playback, paywall views, completed purchases, streak reminder use, unanswered streak reminders, device model, and app version.</li><li><strong>Google Gemini API</strong> powers the AI Guide and processes your text prompts.</li><li><strong>Supabase</strong> hosts backend functions for feedback, promo rewards, referrals and app update policy.</li><li><strong>Apple App Store</strong> and <strong>Google Play</strong> process payments under their own privacy policies.</li></ul>
       <p>Each service handles data under its own privacy policy.</p>
       <h2><span class="num">05</span>Affiliate applications</h2>
       <p>Affiliate applications sent through the in-app Feedback form need an email address, your message and attached device metadata. We use this to assess your application and, if approved, to manage the partnership. Tax or payout details may be requested separately by email.</p>

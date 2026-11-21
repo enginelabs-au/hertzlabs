@@ -1,21 +1,30 @@
-import {useEffect, useRef} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {AppState, type AppStateStatus} from 'react-native';
+import {usePostHog} from 'posthog-react-native';
 import {useHertzStore} from '../state/store';
 import {localDateIso} from '../promos/streakEngagement';
 import {
-  cancelDailyStreakReminder,
+  cancelDailyStreakReminders,
   cancelStreakNotifications,
+  cancelStreakRestoreNotification,
+  countIgnoredStreakReminders,
   requestStreakNotificationPermission,
-  scheduleDailyStreakReminder,
+  scheduleDailyStreakReminders,
   scheduleStreakRestoreNotification,
+  STREAK_DAILY_REMINDER_LIMIT,
 } from '../notifications/streakNotifications';
 
 const QUALIFYING_SEC = 120;
 
 /**
- * Schedules local streak reminders when enabled; cancels when disabled or day qualified.
+ * Schedules local streak reminders when enabled; cancels when disabled.
+ *
+ * The evening reminders are re-armed every time the app is opened or used, and only
+ * STREAK_DAILY_REMINDER_LIMIT are armed at a time — so after that many go unanswered in a row
+ * they stop until the app is opened again.
  */
 export function useStreakNotificationSchedule(hydrated: boolean): void {
+  const posthog = usePostHog();
   const streakRemindersEnabled = useHertzStore(s => s.streakRemindersEnabled);
   const streakDays = useHertzStore(s => s.streakDays);
   const peakStreakDays = useHertzStore(s => s.peakStreakDays);
@@ -24,11 +33,46 @@ export function useStreakNotificationSchedule(hydrated: boolean): void {
   const todayQualifyingBucketDate = useHertzStore(s => s.todayQualifyingBucketDate);
 
   const permissionRequested = useRef(false);
+  const [foregroundCount, setForegroundCount] = useState(0);
+
+  const todayIso = localDateIso();
+  const bucketToday = todayQualifyingBucketDate === todayIso ? todayQualifyingPlaybackSec : 0;
+  // Today's date once it has its 2 minutes, else null — changes once per qualified day.
+  const qualifiedDate =
+    lastQualifyingDate === todayIso || bucketToday >= QUALIFYING_SEC ? todayIso : null;
 
   useEffect(() => {
-    if (!hydrated || !streakRemindersEnabled) {
+    const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') {
+        setForegroundCount(count => count + 1);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
       void cancelStreakNotifications();
       return;
+    }
+
+    // Reaching here means the app is open or in use, which answers the reminders armed so far.
+    const {streakReminderFireTimesMs, setStreakReminderFireTimes} = useHertzStore.getState();
+    const ignoredCount = countIgnoredStreakReminders(streakReminderFireTimesMs, Date.now());
+    if (streakReminderFireTimesMs.length > 0) {
+      setStreakReminderFireTimes([]);
+    }
+
+    if (!streakRemindersEnabled) {
+      void cancelStreakNotifications();
+      return;
+    }
+
+    if (ignoredCount > 0) {
+      posthog?.capture('streak reminders ignored', {
+        ignored_count: ignoredCount,
+        reminders_paused: ignoredCount >= STREAK_DAILY_REMINDER_LIMIT,
+      });
     }
 
     if (!permissionRequested.current) {
@@ -36,31 +80,33 @@ export function useStreakNotificationSchedule(hydrated: boolean): void {
       void requestStreakNotificationPermission();
     }
 
-    const today = localDateIso();
-    const bucketToday =
-      todayQualifyingBucketDate === today ? todayQualifyingPlaybackSec : 0;
-    const qualifiedToday =
-      lastQualifyingDate === today || bucketToday >= QUALIFYING_SEC;
-
-    if (qualifiedToday) {
-      void cancelDailyStreakReminder();
+    if (streakDays < 1) {
+      void cancelDailyStreakReminders();
       return;
     }
 
-    if (streakDays >= 1) {
-      void scheduleDailyStreakReminder(streakDays);
-    }
-  }, [
-    hydrated,
-    streakRemindersEnabled,
-    streakDays,
-    lastQualifyingDate,
-    todayQualifyingPlaybackSec,
-    todayQualifyingBucketDate,
-  ]);
+    let superseded = false;
+    scheduleDailyStreakReminders(streakDays, qualifiedDate != null)
+      .then(fireTimesMs => {
+        if (!superseded) {
+          setStreakReminderFireTimes(fireTimesMs);
+        }
+      })
+      .catch(() => {
+        // Arming failed, so no reminder will be shown and there is nothing to count.
+      });
+    return () => {
+      superseded = true;
+    };
+  }, [hydrated, streakRemindersEnabled, streakDays, qualifiedDate, foregroundCount, posthog]);
 
   useEffect(() => {
     if (!hydrated || !streakRemindersEnabled) {
+      return;
+    }
+    // Playing today means "You missed yesterday" is no longer true for tomorrow morning.
+    if (qualifiedDate != null) {
+      void cancelStreakRestoreNotification();
       return;
     }
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
@@ -73,5 +119,12 @@ export function useStreakNotificationSchedule(hydrated: boolean): void {
       }
     });
     return () => sub.remove();
-  }, [hydrated, streakRemindersEnabled, lastQualifyingDate, streakDays, peakStreakDays]);
+  }, [
+    hydrated,
+    streakRemindersEnabled,
+    lastQualifyingDate,
+    streakDays,
+    peakStreakDays,
+    qualifiedDate,
+  ]);
 }

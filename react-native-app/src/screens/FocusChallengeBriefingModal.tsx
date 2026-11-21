@@ -5,6 +5,7 @@ import {focusChallengeCanStartSession, FOCUS_CHALLENGE_NEXT_DAY_MESSAGE} from '.
 import {useHertzStore} from '../state/store';
 import {HertzTheme} from '../theme/hertzTheme';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
+import {posthog} from '../config/posthog';
 
 export function FocusChallengeBriefingModal() {
   const setActiveModal = useHertzStore(s => s.setActiveModal);
@@ -28,9 +29,19 @@ export function FocusChallengeBriefingModal() {
       return;
     }
     beginFocusChallengeSession();
+    posthog?.capture('focus_challenge_session_started', {
+      challenge_day: focusChallengeCurrentDay,
+    });
     requestPlay();
     setActiveModal(null);
-  }, [beginFocusChallengeSession, dismiss, requestPlay, sessionGate, setActiveModal]);
+  }, [
+    beginFocusChallengeSession,
+    dismiss,
+    focusChallengeCurrentDay,
+    requestPlay,
+    sessionGate,
+    setActiveModal,
+  ]);
 
   const prescription = focusChallengePrescriptionForDay(focusChallengeCurrentDay);
 
@@ -74,7 +85,7 @@ export function FocusChallengeBriefingModal() {
 
 const styles = StyleSheet.create({
   overlay: {flex: 1, justifyContent: 'flex-end'},
-  backdrop: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)'},
+  backdrop: {...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.65)'},
   sheet: {
     backgroundColor: HertzTheme.bgCard,
     borderTopLeftRadius: 16,

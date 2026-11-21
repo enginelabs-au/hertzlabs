@@ -1,10 +1,12 @@
 import {useEffect} from 'react';
+import {usePostHog} from 'posthog-react-native';
 import {useHertzStore} from '../state/store';
 
 /**
  * Opens Promos or streak-restore modal when user taps a local Notifee notification.
  */
 export function useStreakNotificationPress(hydrated: boolean): void {
+  const posthog = usePostHog();
   const setActiveModal = useHertzStore(s => s.setActiveModal);
 
   useEffect(() => {
@@ -20,6 +22,9 @@ export function useStreakNotificationPress(hydrated: boolean): void {
         const {EventType} = mod;
 
         const handlePress = (campaign: unknown) => {
+          if (campaign === 'streak_restore' || campaign === 'streak_daily') {
+            posthog?.capture('streak reminder tapped', {campaign});
+          }
           if (campaign === 'streak_restore') {
             setActiveModal('streakRestore');
             return;
@@ -49,5 +54,5 @@ export function useStreakNotificationPress(hydrated: boolean): void {
     return () => {
       unsubForeground?.();
     };
-  }, [hydrated, setActiveModal]);
+  }, [hydrated, setActiveModal, posthog]);
 }

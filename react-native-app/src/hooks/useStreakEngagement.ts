@@ -11,11 +11,10 @@ import {shieldsEarnedForStreak} from '../promos/streakGamification';
 
 /**
  * Missed-day restore + lapsed-user winback (Feature 19).
- * Local notification scheduling is mirrored via cold-start checks when streakRemindersEnabled.
+ * In-app modals only — local notifications are scheduled separately when streakRemindersEnabled.
  */
 export function useStreakEngagement(hydrated: boolean, promptsEnabled: boolean): void {
   const activeModal = useHertzStore(s => s.activeModal);
-  const streakRemindersEnabled = useHertzStore(s => s.streakRemindersEnabled);
   const promotionalOffersEnabled = useHertzStore(s => s.promotionalOffersEnabled);
 
   const streakDays = useHertzStore(s => s.streakDays);
@@ -39,7 +38,7 @@ export function useStreakEngagement(hydrated: boolean, promptsEnabled: boolean):
   const checked = useRef(false);
 
   useEffect(() => {
-    if (!hydrated || !promptsEnabled || !streakRemindersEnabled || checked.current) {
+    if (!hydrated || !promptsEnabled || checked.current) {
       return;
     }
     if (activeModal != null) {
@@ -97,7 +96,6 @@ export function useStreakEngagement(hydrated: boolean, promptsEnabled: boolean):
   }, [
     hydrated,
     promptsEnabled,
-    streakRemindersEnabled,
     promotionalOffersEnabled,
     activeModal,
     streakDays,

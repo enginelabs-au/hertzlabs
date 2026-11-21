@@ -1,5 +1,6 @@
 import type {StateStorage} from 'zustand/middleware';
 import {createJSONStorage, persist} from 'zustand/middleware';
+import {STREAK_REMINDERS_OPT_IN_EPOCH} from '../slices/settings';
 import {clampDriftHz} from '../../audio/channelFrequencies';
 import {normalizePromoEntitlement, PROMO_CLAIM_RESET_EPOCH} from '../slices/promo';
 import type {AppStore} from '../types';
@@ -48,6 +49,11 @@ export const persistedStoreOptions = {
         state.clipboardPromoCode = null;
         state.promoClaimResetEpoch = PROMO_CLAIM_RESET_EPOCH;
       }
+      const streakRemindersEpoch = state.streakRemindersOptInEpoch ?? 0;
+      if (streakRemindersEpoch < STREAK_REMINDERS_OPT_IN_EPOCH) {
+        state.streakRemindersEnabled = false;
+        state.streakRemindersOptInEpoch = STREAK_REMINDERS_OPT_IN_EPOCH;
+      }
     }
   },
   partialize: (state: AppStore) => ({
@@ -64,6 +70,8 @@ export const persistedStoreOptions = {
     photicStrobeEnabled: state.photicStrobeEnabled,
     photicStrobeConsentGiven: state.photicStrobeConsentGiven,
     streakRemindersEnabled: state.streakRemindersEnabled,
+    streakRemindersOptInEpoch: state.streakRemindersOptInEpoch,
+    streakRemindersPromptShown: state.streakRemindersPromptShown,
     promotionalOffersEnabled: state.promotionalOffersEnabled,
     guidedDepthEnabled: state.guidedDepthEnabled,
     guidedDepthPresetId: state.guidedDepthPresetId,
@@ -129,6 +137,7 @@ export const persistedStoreOptions = {
     lapsed7RestoreAtMs: state.lapsed7RestoreAtMs,
     lapsed30WinbackAtMs: state.lapsed30WinbackAtMs,
     streakRestoreHardDeclined: state.streakRestoreHardDeclined,
+    streakReminderFireTimesMs: state.streakReminderFireTimesMs,
     focusChallengeStatus: state.focusChallengeStatus,
     focusChallengeAttemptId: state.focusChallengeAttemptId,
     focusChallengeCurrentDay: state.focusChallengeCurrentDay,

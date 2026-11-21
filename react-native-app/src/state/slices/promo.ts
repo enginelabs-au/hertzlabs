@@ -110,6 +110,11 @@ export type PromoSlice = {
   lapsed30WinbackAtMs: number | null;
   /** User declined miss-day restore — blocks 7/30 restore until new run. */
   streakRestoreHardDeclined: boolean;
+  /**
+   * When the evening reminders armed at the last app open or use will fire (Unix ms). Any that
+   * have passed by the next open were shown with nobody opening the app in between (Feature 19).
+   */
+  streakReminderFireTimesMs: number[];
 
   setClipboardPromoCode(code: string | null): void;
   applyPromo(code: string, entitlement: PromoEntitlement, expiresAt?: number | null): void;
@@ -151,6 +156,7 @@ export type PromoSlice = {
   markLapsed30WinbackUsed(): void;
   beginNewStreakRun(): void;
   markStreakRestoreOffered(): void;
+  setStreakReminderFireTimes(fireTimesMs: number[]): void;
 };
 
 export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = (set, get) => ({
@@ -195,6 +201,7 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = (set
   lapsed7RestoreAtMs: null,
   lapsed30WinbackAtMs: null,
   streakRestoreHardDeclined: false,
+  streakReminderFireTimesMs: [],
 
   applyPromo(code, entitlement, expiresAt = null) {
     const normalized = normalizePromoEntitlement(entitlement);
@@ -365,6 +372,10 @@ export const createPromoSlice: StateCreator<AppStore, [], [], PromoSlice> = (set
       streakRestoreOfferedAtMs: Date.now(),
       streakBreakEpisodeId: s.streakBreakEpisodeId ?? `break-${Date.now()}`,
     }));
+  },
+
+  setStreakReminderFireTimes(fireTimesMs) {
+    set({streakReminderFireTimesMs: fireTimesMs});
   },
 
   ensureFirstInstallDate() {

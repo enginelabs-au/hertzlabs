@@ -1,4 +1,5 @@
 import {GEMINI_API_KEY} from '@env';
+import {posthog} from '../config/posthog';
 import type {ChatTurn} from './aiPromptParsing';
 import {buildConversationContents} from './aiPromptParsing';
 import {buildUserConversationText} from './parseProtocolFromPrompt';
@@ -41,11 +42,86 @@ export type GeminiSessionContext = {
 type GeminiContentPart = {text: string};
 type GeminiContent = {role?: string; parts: GeminiContentPart[]};
 
+export type AiObservabilityContext = {
+  sessionId: string;
+  traceId: string;
+};
+
+/**
+ * Manual AI capture intentionally includes prompts and completions by default.
+ * Set to true before sending sensitive AI content to PostHog.
+ */
+export const AI_OBSERVABILITY_PRIVACY_MODE = false;
+
+export function createAiSessionId(surface: 'guide' | 'formula'): string {
+  return `gemini-${surface}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function createAiTraceId(): string {
+  return `gemini-trace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+const defaultAiSessionId = createAiSessionId('guide');
+
 type GeminiCallOptions = {
   maxOutputTokens?: number;
   temperature?: number;
   systemSuffix?: string;
+  observability?: AiObservabilityContext;
 };
+
+type GeminiGenerationCapture = {
+  observability: AiObservabilityContext;
+  model: string;
+  input: {role: string; content: string}[];
+  latencyMs: number;
+  httpStatus?: number;
+  output?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  stopReason?: string;
+  error?: string;
+};
+
+function captureGeminiGeneration({
+  observability,
+  model,
+  input,
+  latencyMs,
+  httpStatus,
+  output,
+  inputTokens,
+  outputTokens,
+  stopReason,
+  error,
+}: GeminiGenerationCapture): void {
+  try {
+    posthog?.capture('$ai_generation', {
+      $ai_trace_id: observability.traceId,
+      $ai_session_id: observability.sessionId,
+      $ai_span_name: 'gemini_generate_content',
+      $ai_model: model,
+      $ai_provider: 'gemini',
+      $ai_latency: latencyMs / 1000,
+      ...(httpStatus != null ? {$ai_http_status: httpStatus} : {}),
+      ...(inputTokens != null ? {$ai_input_tokens: inputTokens} : {}),
+      ...(outputTokens != null ? {$ai_output_tokens: outputTokens} : {}),
+      ...(stopReason != null ? {$ai_stop_reason: stopReason} : {}),
+      $ai_is_error: error != null,
+      ...(error != null ? {$ai_error: error} : {}),
+      ...(AI_OBSERVABILITY_PRIVACY_MODE
+        ? {}
+        : {
+            $ai_input: input,
+            ...(output != null
+              ? {$ai_output_choices: [{role: 'assistant', content: output}]}
+              : {}),
+          }),
+    });
+  } catch {
+    // Observability must never affect an in-progress Gemini request.
+  }
+}
 
 function getApiKey(): string | null {
   const key = (GEMINI_API_KEY ?? '').replace(/\r/g, '').trim();
@@ -286,13 +362,10 @@ async function callGeminiJson(
     options.systemSuffix ??
     'Focus on the user\'s latest message. Honor explicit Hz and timing values from the conversation.';
 
+  const systemInstruction = `${systemPrompt}\n\nCurrent live session: ${sessionLine}\n\n${suffix}`;
   const body = {
     systemInstruction: {
-      parts: [
-        {
-          text: `${systemPrompt}\n\nCurrent live session: ${sessionLine}\n\n${suffix}`,
-        },
-      ],
+      parts: [{text: systemInstruction}],
     },
     contents,
     generationConfig: {
@@ -301,6 +374,17 @@ async function callGeminiJson(
       responseMimeType: 'application/json',
     },
   };
+  const observability = options.observability ?? {
+    sessionId: defaultAiSessionId,
+    traceId: createAiTraceId(),
+  };
+  const aiInput = [
+    {role: 'system', content: systemInstruction},
+    ...contents.map(content => ({
+      role: content.role === 'model' ? 'assistant' : 'user',
+      content: content.parts.map(part => part.text).join('\n'),
+    })),
+  ];
 
   const fetchOptionsBase: Omit<RequestInit, 'body'> = {
     method: 'POST',
@@ -327,8 +411,10 @@ async function callGeminiJson(
       if (Date.now() >= deadline) {
         break;
       }
+      const requestStartedAt = Date.now();
       try {
         const res = await fetch(url, {...fetchOptionsBase, body: JSON.stringify(body)});
+        const latencyMs = Date.now() - requestStartedAt;
 
         if (!res.ok) {
           type ErrorJson = QuotaErrorBody & {error?: {status?: string}};
@@ -339,6 +425,14 @@ async function callGeminiJson(
             errorJson = undefined;
           }
           const bodyStatus = errorJson?.error?.status;
+          captureGeminiGeneration({
+            observability,
+            model,
+            input: aiInput,
+            latencyMs,
+            httpStatus: res.status,
+            error: `Gemini HTTP ${res.status}`,
+          });
 
           // Rate / quota limit on THIS model → try the next model immediately (separate pool).
           if (res.status === 429 || bodyStatus === 'RESOURCE_EXHAUSTED') {
@@ -380,16 +474,38 @@ async function callGeminiJson(
 
         let json: {
           candidates?: {content?: {parts?: {text?: string}[]}; finishReason?: string}[];
+          usageMetadata?: {promptTokenCount?: number; candidatesTokenCount?: number};
           error?: {message?: string};
         };
         try {
           json = (await res.json()) as typeof json;
         } catch {
+          captureGeminiGeneration({
+            observability,
+            model,
+            input: aiInput,
+            latencyMs,
+            httpStatus: res.status,
+            error: 'Gemini response JSON parsing failed',
+          });
           everyFailureWasQuota = false;
           lastOutageReason = 'server';
           break;
         }
-        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        const candidate = json.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        captureGeminiGeneration({
+          observability,
+          model,
+          input: aiInput,
+          latencyMs,
+          httpStatus: res.status,
+          output: text,
+          inputTokens: json.usageMetadata?.promptTokenCount,
+          outputTokens: json.usageMetadata?.candidatesTokenCount,
+          stopReason: candidate?.finishReason,
+          error: text == null || text.trim().length === 0 ? 'Gemini returned an empty response' : undefined,
+        });
         if (text == null || text.trim().length === 0) {
           everyFailureWasQuota = false;
           lastOutageReason = 'empty';
@@ -404,6 +520,13 @@ async function callGeminiJson(
         lastOutageReason = 'empty';
         break;
       } catch {
+        captureGeminiGeneration({
+          observability,
+          model,
+          input: aiInput,
+          latencyMs: Date.now() - requestStartedAt,
+          error: 'Gemini network request failed',
+        });
         everyFailureWasQuota = false;
         lastOutageReason = 'network';
         if (attempt < MAX_TRANSIENT_RETRIES_PER_MODEL && Date.now() < deadline) {
@@ -656,19 +779,22 @@ export async function geminiGuideRecommendation(
   history: ChatTurn[],
   latestPrompt: string,
   session: GeminiSessionContext,
+  observability?: AiObservabilityContext,
 ): Promise<unknown | null> {
   const sessionLine = `live: beat ${session.beatHz.toFixed(2)} Hz, carrier ${session.carrierHz.toFixed(1)} Hz, gain ${(session.gain * 100).toFixed(0)}%, engine ${session.engineType}. availability: ${availabilityClause(session)}`;
-  return callGeminiJson(AI_GUIDE_SYSTEM_PROMPT, history, latestPrompt, sessionLine);
+  return callGeminiJson(AI_GUIDE_SYSTEM_PROMPT, history, latestPrompt, sessionLine, {observability});
 }
 
 export async function geminiFormulaResponse(
   history: ChatTurn[],
   latestPrompt: string,
   session: GeminiSessionContext & {f_L: number; f_R: number; f_beat: number; f_c: number},
+  observability?: AiObservabilityContext,
 ): Promise<unknown | null> {
   const sessionLine = `live: f_L=${session.f_L.toFixed(2)}, f_R=${session.f_R.toFixed(2)}, f_beat=${session.f_beat.toFixed(2)}, f_c=${session.f_c.toFixed(1)}, engine ${session.engineType}. availability: ${availabilityClause(session)}`;
   return callGeminiJson(AI_FORMULA_SYSTEM_PROMPT, history, latestPrompt, sessionLine, {
     temperature: 0.45,
+    observability,
   });
 }
 
@@ -882,7 +1008,7 @@ export async function geminiProtocolSequence(
   history: ChatTurn[],
   latestPrompt: string,
   session: GeminiSessionContext,
-  options: {repair?: boolean; compact?: boolean} = {},
+  options: {repair?: boolean; compact?: boolean; observability?: AiObservabilityContext} = {},
 ): Promise<unknown | null> {
   const sessionLine = `live: beat ${session.beatHz.toFixed(2)} Hz, gain ${(session.gain * 100).toFixed(0)}%, engine ${session.engineType}. availability: ${availabilityClause(session)}`;
   const userBrief = buildUserConversationText(history, latestPrompt);
@@ -899,5 +1025,6 @@ export async function geminiProtocolSequence(
     temperature: options.repair ? 0.2 : 0.35,
     maxOutputTokens: useCompact ? 768 : 1024,
     systemSuffix: repairSuffix,
+    observability: options.observability,
   });
 }

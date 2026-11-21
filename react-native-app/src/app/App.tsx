@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
+import {PostHogProvider} from 'posthog-react-native';
 import {useHertzStore} from '../state/store';
 import {SafetyOnboardingScreen} from '../screens/SafetyOnboardingScreen';
 import {useRevenueCatBoot} from './hooks/useRevenueCatBoot';
@@ -17,6 +18,8 @@ import {usePromoRewardBoot} from './hooks/usePromoRewardBoot';
 import {MainTabs} from '../navigation/MainTabs';
 import {useGrowthEngagement} from '../hooks/useGrowthEngagement';
 import {useFocusChallengeEngagement} from '../hooks/useFocusChallengeEngagement';
+import {usePlaybackAnalytics} from '../hooks/usePlaybackAnalytics';
+import {useStreakReminderPrompt} from '../hooks/useStreakReminderPrompt';
 import {useStreakNotificationSchedule} from '../hooks/useStreakNotificationSchedule';
 import {useStreakNotificationPress} from '../hooks/useStreakNotificationPress';
 import {streakEngagementHandlers, useStreakEngagement} from '../hooks/useStreakEngagement';
@@ -32,6 +35,9 @@ import {isHertzAudioTurboModuleLinked} from '../audio/nativeAudioLink';
 import {HertzTheme} from '../theme/hertzTheme';
 import {summarizeActiveSubscription} from '../monetization/activeSubscriptionSummary';
 import Purchases from 'react-native-purchases';
+import {PostHogProvider} from 'posthog-react-native';
+import {posthog} from '../config/posthog';
+import {posthogLog} from '../config/posthogLogger';
 
 const BG = HertzTheme.bg;
 
@@ -164,6 +170,10 @@ class RootErrorBoundary extends Component<{children: ReactNode}, BoundaryState> 
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('[RootErrorBoundary]', error, info.componentStack);
+    posthogLog.error('application_boundary_error', {
+      error_type: error.name || 'Error',
+      source: 'root_error_boundary',
+    });
   }
 
   render(): ReactNode {
@@ -212,6 +222,16 @@ function useStoreHydrated(): boolean {
   return hydrated;
 }
 
+function PostHogRoot({children}: {children: ReactNode}): React.JSX.Element {
+  return (
+    <PostHogProvider
+      client={posthog}
+      autocapture={{captureTouches: false, captureScreens: false}}>
+      {children}
+    </PostHogProvider>
+  );
+}
+
 function AppContent(): React.JSX.Element {
   useRevenueCatBoot();
   const hydrated = useStoreHydrated();
@@ -226,7 +246,15 @@ function AppContent(): React.JSX.Element {
   useStreakEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
   useStreakNotificationSchedule(hydrated && hasAcceptedSafetyTerms);
   useStreakNotificationPress(hydrated && hasAcceptedSafetyTerms);
+  usePlaybackAnalytics(hydrated && hasAcceptedSafetyTerms);
+  useStreakReminderPrompt(hydrated && hasAcceptedSafetyTerms);
   useFocusChallengeEngagement(hydrated, hydrated && hasAcceptedSafetyTerms);
+
+  useEffect(() => {
+    if (hydrated) {
+      posthogLog.info('app_state_hydrated', {source: 'zustand_persistence'});
+    }
+  }, [hydrated]);
 
   // Legacy referral deep links — analytics only (v3 rewards use manual HZ codes on Plans).
   useEffect(() => {
@@ -335,14 +363,16 @@ export function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <RootErrorBoundary>
-        <GestureHandlerRootView style={styles.root}>
-          <StatusBar barStyle="light-content" backgroundColor={BG} translucent={false} />
-          <SafeAreaView
-            style={styles.safe}
-            edges={isMacDesktop ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}>
-            <AppContent />
-          </SafeAreaView>
-        </GestureHandlerRootView>
+        <PostHogRoot>
+          <GestureHandlerRootView style={styles.root}>
+            <StatusBar barStyle="light-content" />
+            <SafeAreaView
+              style={styles.safe}
+              edges={isMacDesktop ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}>
+              <AppContent />
+            </SafeAreaView>
+          </GestureHandlerRootView>
+        </PostHogRoot>
       </RootErrorBoundary>
     </SafeAreaProvider>
   );

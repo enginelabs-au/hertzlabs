@@ -49,7 +49,7 @@ export function RequiredUpdateModal() {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5,5,8,0.92)',
     alignItems: 'center',
     justifyContent: 'center',

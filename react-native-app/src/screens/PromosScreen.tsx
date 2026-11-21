@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import {copyPromoToClipboard} from '../monetization/promoClipboard';
+import {requestAppReview} from '../monetization/requestAppReview';
 import {useHertzStore} from '../state/store';
 import {daysSince} from '../state/slices/promo';
 import {HertzTheme} from '../theme/hertzTheme';
@@ -19,6 +20,7 @@ import {macScaledFont} from '../platform/macTypography';
 const fs = macScaledFont;
 import {storeListingShareLabel, shareReferralListing, shareFocusChallengeComplete} from '../services/referralLinkService';
 import {FocusChallengeDayStrip} from '../components/promos/FocusChallengeDayStrip';
+import {StreakRemindersToggle} from '../components/promos/StreakRemindersToggle';
 import type {PromoRewardStatus} from '../promos/checkPromoRewards';
 import {useModalScrollInsets} from '../components/layout/useModalScrollInsets';
 import {HELLO_EMAIL} from '../constants/appInfo';
@@ -692,6 +694,8 @@ export function PromosScreen() {
 
           <Text style={styles.sectionLabel}>STREAK REWARDS</Text>
 
+          <StreakRemindersToggle />
+
           {streakDays > 0 ? (
             <View style={styles.streakTierBanner}>
               <Text style={styles.streakTierEmoji}>{streakTier.emoji}</Text>
@@ -1175,7 +1179,7 @@ export function PromosScreen() {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'flex-end',
     zIndex: 105,

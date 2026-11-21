@@ -53,7 +53,7 @@
 <div class="container">
   <div class="eyebrow">Legal</div>
   <h1>Privacy Policy</h1>
-  <p class="meta">Last updated: July 2026 &nbsp;·&nbsp; Applies to Hertz Labs v2.4 (iOS, Android &amp; Mac)</p>
+  <p class="meta">Last updated: November 2026 &nbsp;·&nbsp; Applies to Hertz Labs v3.0 (iOS, Android &amp; Mac)</p>
 
   <h2>Overview</h2>
   <p>Hertz Labs ("we", "our", "us") is a binaural beats and audio frequency generation app. We are committed to being transparent about the data we collect. This policy describes what data is collected, why, and how it is handled.</p>
@@ -68,6 +68,7 @@
     <tr><td><strong>Device ID</strong></td><td>A device-level identifier used by RevenueCat to associate purchases with your device.</td><td>RevenueCat</td><td>No</td></tr>
     <tr><td><strong>AI Prompts</strong></td><td>Text you type into the AI Guide (e.g. "help me focus") is sent to Google Gemini to generate frequency recommendations. Prompts are not stored by us and are not linked to any account.</td><td>Google Gemini API</td><td>No</td></tr>
     <tr><td><strong>Product Interaction</strong></td><td>Basic usage signals related to purchases (e.g. paywall shown, purchase completed), used by RevenueCat for analytics.</td><td>RevenueCat</td><td>No</td></tr>
+    <tr><td><strong>Product analytics</strong></td><td>App opens, playback started, sessions that reach 2 minutes, paywall views, completed purchases, streak reminder taps and toggles, and how many streak reminders went unanswered, plus device model, app version, and an anonymous identifier, so we can see how the app is used. No name or email is sent.</td><td>PostHog (EU)</td><td>No — anonymous identifier</td></tr>
     <tr><td><strong>Feedback &amp; support messages</strong></td><td>If you use the in-app Feedback forms, we process your message text and, if you provide it, your email address. Device model, app version, and platform may be attached automatically. Affiliate applications require an email address.</td><td>Supabase (Edge Functions) → email delivery</td><td>Only if you provide email</td></tr>
     <tr><td><strong>Promo &amp; referral activity</strong></td><td>If you participate in Promos (referrals, streak rewards, offer-code claims, form submissions such as “Make a post”), we store anonymous subscriber IDs, reward claim status, and any URLs or text you submit for manual review.</td><td>Supabase</td><td>No — tied to anonymous RC ID</td></tr>
   </table>
@@ -91,6 +92,10 @@
     Privacy policy: <a href="https://policies.google.com/privacy" target="_blank">policies.google.com/privacy</a></p>
   </div>
   <div class="card">
+    <p><strong>PostHog</strong> — product analytics for app opens, playback, paywall views, completed purchases, streak reminder use, and unanswered streak reminders. Events are sent to PostHog in the EU and are tied to an anonymous identifier, not a name or email.<br/>
+    Privacy policy: <a href="https://posthog.com/privacy" target="_blank">posthog.com/privacy</a></p>
+  </div>
+  <div class="card">
     <p><strong>Supabase</strong> — hosts backend functions for feedback delivery, promo reward claims, referral tracking, and app update policy.<br/>
     Privacy policy: <a href="https://supabase.com/privacy" target="_blank">supabase.com/privacy</a></p>
   </div>
@@ -102,7 +107,7 @@
   <p>Hertz Labs is not directed at children under 13. We do not knowingly collect data from anyone under 13 years of age. If you believe a child under 13 has used the app, please contact us and we will take appropriate steps.</p>
 
   <h2>Data Retention</h2>
-  <p>Anonymous identifiers held by RevenueCat are subject to their retention policy. AI prompts sent to Google are subject to Google's data handling policies. Feedback and affiliate application emails are retained as long as needed to respond and manage support or partnerships, then deleted or archived per our internal policy.</p>
+  <p>Anonymous identifiers held by RevenueCat and PostHog are subject to their retention policies. AI prompts sent to Google are subject to Google's data handling policies. Feedback and affiliate application emails are retained as long as needed to respond and manage support or partnerships, then deleted or archived per our internal policy.</p>
 
   <h2>Your Rights</h2>
   <p>Because most data is anonymous, there is often no profile linked to your real-world identity. If you provided an email address in Feedback or an affiliate application and wish to access or delete that correspondence, contact <a href="mailto:support@enginelabs.com.au">support@enginelabs.com.au</a> or <a href="mailto:hello@enginelabs.com.au">hello@enginelabs.com.au</a>. For data held by RevenueCat or Google, refer to their privacy policies above.</p>
